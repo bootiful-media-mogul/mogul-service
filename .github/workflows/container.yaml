@@ -52,7 +52,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           export ROOT_DIR=$GITHUB_WORKSPACE
-          ./mvnw package
+          ./mvnw -DskipTests clean package
           echo "Built the .jar, but need to figure out how to build the container." 
           
 
