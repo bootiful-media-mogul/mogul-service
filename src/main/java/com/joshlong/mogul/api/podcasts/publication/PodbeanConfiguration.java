@@ -9,8 +9,13 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.aot.hint.TypeReference;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.util.Assert;
 
 /**
@@ -21,7 +26,23 @@ import org.springframework.util.Assert;
  * {@link com.joshlong.mogul.api.Mogul }.
  */
 @Configuration
+@ImportRuntimeHints(PodbeanConfiguration.Hints.class)
 class PodbeanConfiguration {
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var clazzes = new Class<?>[] { com.joshlong.podbean.token.TokenProvider.class,
+					org.springframework.aop.SpringProxy.class, org.springframework.aop.framework.Advised.class,
+					org.springframework.core.DecoratingProxy.class };
+			var mcs = MemberCategory.values();
+			for (var c : clazzes)
+				hints.reflection().registerType(TypeReference.of(c), mcs);
+			hints.proxies().registerJdkProxy(clazzes);
+		}
+
+	}
 
 	@Bean
 	TokenProvider multitenantTokenProvider(MogulService mogulService, Settings settings) {
