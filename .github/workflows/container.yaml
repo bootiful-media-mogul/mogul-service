@@ -43,12 +43,10 @@ jobs:
           gcloud config set project $GCLOUD_PROJECT 
           gcloud --quiet auth configure-docker
 
-      - uses: joshlong/java-version-export-github-action@v20
-
       - uses: actions/setup-java@v3
         with:
           distribution: 'adopt'
-          java-version: ${{ env.JAVA_MAJOR_VERSION }}
+          java-version: 21
 
       - name: Build Container
         run: |
