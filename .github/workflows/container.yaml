@@ -51,8 +51,11 @@ jobs:
       - name: Build Container
         run: |
           cd $GITHUB_WORKSPACE
-          export ROOT_DIR=$GITHUB_WORKSPACE
-          ./mvnw -DskipTests clean package
-          echo "Built the .jar, but need to figure out how to build the container." 
           
+          APP_NAME=mogul-service
+          IMAGE_NAME=gcr.io/${GCLOUD_PROJECT}/${APP_NAME}
+          echo "the image name is $IMAGE_NAME "
+          ./mvnw -DskipTests=true spring-javaformat:apply clean package spring-boot:build-image -Dspring-boot.build-image.imageName=$IMAGE_NAME
+          docker push $IMAGE_NAME
+
 
