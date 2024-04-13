@@ -1,0 +1,99 @@
+
+
+type Setting {
+    name: String
+    value: String
+    valid: Boolean
+}
+
+type SettingsPage {
+    valid    : Boolean
+    category : String
+    settings : [Setting]
+}
+
+
+
+
+# schema for the settings
+
+type Mogul {
+ name :String
+}
+
+type Query {
+
+    # settings
+    settings: [SettingsPage]
+
+    # mogul
+    me: Mogul
+
+    # ai
+    aiChat(prompt:String): String
+
+    # podcasts first
+    podcastById(id:ID): Podcast
+    podcasts: [Podcast]
+    podcastEpisodeById(id:ID): Episode
+    podcastEpisodesByPodcast (podcastId: ID) : [Episode]
+
+    # managed files
+    managedFileById ( id : ID) : ManagedFile
+}
+
+
+
+type ManagedFile {
+    id: ID
+    bucket: String
+    folder: String
+    filename: String
+    contentType: String
+    size: Float
+    written : Boolean
+}
+
+
+
+
+type Episode {
+    availablePlugins :[String]
+    id : ID
+    title: String
+    description: String
+    valid: Boolean
+    graphic: ManagedFile
+    complete: Boolean
+    created: Float
+    segments : [Segment]
+}
+
+type Segment {
+    id : ID
+    name :String
+    audio: ManagedFile
+    producedAudio: ManagedFile
+    order : Int
+    crossFadeDuration : Int
+}
+
+type Podcast {
+    title: String
+    episodes : [Episode]
+    id: ID
+}
+
+type Mutation {
+    publishPodcastEpisode (episodeId:ID, pluginName: String ) : Boolean
+    updatePodcastEpisode( episodeId: ID, title: String, description: String ) : Episode
+    createPodcast(title:String): Podcast
+    createPodcastEpisodeDraft(podcastId: ID, title:String, description:String) : Episode
+    deletePodcast(id:ID): ID
+    deletePodcastEpisode(id:ID): ID
+    deletePodcastEpisodeSegment(id:ID): ID
+    addPodcastEpisodeSegment ( episodeId: ID  ) : Boolean
+    movePodcastEpisodeSegmentUp(episodeId:ID , episodeSegmentId:  Int  ) :  Boolean
+    movePodcastEpisodeSegmentDown(episodeId:ID , episodeSegmentId:  Int  ) : Boolean
+    updateSetting(category:String, name:String, value:String) : Boolean
+}
