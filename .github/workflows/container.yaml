@@ -21,6 +21,7 @@ env:
 #  GCLOUD_ZONE:  ${{ secrets.GCLOUD_ZONE }}
 #  NS_NAME:  ${{ secrets.NS_NAME }}
   GCLOUD_SA_KEY:  ${{ secrets.GCLOUD_SA_KEY }}
+  GCLOUD_PROJECT: joshlong
 
 on:
   push:
@@ -58,11 +59,13 @@ jobs:
           username: _json_key
           password: ${{ env.GCLOUD_SA_KEY }}
 
+
       - name: Build Container
         run: |
           cd $GITHUB_WORKSPACE
           APP_NAME=mogul-service
           IMAGE_NAME=gcr.io/${GCLOUD_PROJECT}/${APP_NAME}
+          IMAGE_NAME=us-docker.pkg.dev/${GCLOUD_PROJECT}/mogul-artifact-registry/${APP_NAME}
           echo "the image name is $IMAGE_NAME "
           ./mvnw -DskipTests=true spring-javaformat:apply clean package spring-boot:build-image -Dspring-boot.build-image.imageName=$IMAGE_NAME
           docker push $IMAGE_NAME
