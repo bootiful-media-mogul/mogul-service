@@ -6,8 +6,3 @@ RUN rm -rf /var/lib/apt/lists/*
 
 COPY  ./target/mogul-service /app
 CMD ["/app"]
-
-
-#FROM gcr.io/distroless/static
-#COPY ./my-native-app /app
-#CMD ["/app"]
