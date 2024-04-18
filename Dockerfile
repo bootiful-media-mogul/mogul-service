@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install -y ca-certificates imagemagick
 RUN rm -rf /var/lib/apt/lists/*
 
-COPY ./target/api /app
+COPY  ./target/mogul-service /app
 CMD ["/app"]
 
 
