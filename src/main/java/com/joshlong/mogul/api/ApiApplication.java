@@ -5,7 +5,6 @@ import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointR
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.annotation.Order;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,11 +23,14 @@ public class ApiApplication {
 
 	@Bean
 	SecurityFilterChain myActuatorAwareOauth2ResourceServerConfiguration(HttpSecurity http) throws Exception {
-		return http.oauth2ResourceServer((rs) -> rs.jwt(Customizer.withDefaults()))
-			.authorizeHttpRequests((authorize) -> authorize.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.permitAll()
+		return http//
+			.oauth2ResourceServer((rs) -> rs.jwt(Customizer.withDefaults()))//
+			.authorizeHttpRequests((authorize) -> authorize //
+				.requestMatchers(EndpointRequest.toAnyEndpoint())
+				.permitAll() //
 				.anyRequest()
-				.authenticated())
+				.authenticated()//
+			)//
 			.build();
 	}
 
