@@ -8,15 +8,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.servlet.function.RouterFunction;
-import org.springframework.web.servlet.function.ServerResponse;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 import static org.springframework.security.config.Customizer.withDefaults;
-import static org.springframework.web.servlet.function.RouterFunctions.route;
-import static org.springframework.web.servlet.function.ServerResponse.ok;
 
 @IntegrationComponentScan
 @EnableConfigurationProperties(ApiProperties.class)
@@ -27,10 +22,11 @@ public class ApiApplication {
 		SpringApplication.run(ApiApplication.class, args);
 	}
 
-	@Bean
-	RouterFunction<ServerResponse> httpRouterResponse() throws Exception {
-		return route().GET("/hello", request -> ok().body(Map.of("message", "Hello, world!"))).build();
-	}
+	// @Bean
+	// RouterFunction<ServerResponse> httpRouterResponse() throws Exception {
+	// return route().GET("/hello", request -> ok().body(Map.of("message", "Hello,
+	// world!"))).build();
+	// }
 
 	@Bean
 	SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
