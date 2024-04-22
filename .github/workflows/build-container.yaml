@@ -23,7 +23,7 @@ jobs:
           credentials_json: '${{ secrets.GCLOUD_SA_KEY }}'
 
       - run: |
-          gcloud config set project $GCLOUD_PROJECT 
+          gcloud config set project $GCLOUD_PROJECT
           gcloud --quiet auth configure-docker us-docker.pkg.dev
 
       - uses: graalvm/setup-graalvm@v1
@@ -40,13 +40,13 @@ jobs:
           APP_NAME=mogul-service
           cd $GITHUB_WORKSPACE
           IMAGE_NAME=us-docker.pkg.dev/${GCLOUD_PROJECT}/mogul-artifact-registry/${APP_NAME}:latest
-          ./mvnw -DskipTests -Pnative native:compile 
-          cd $GITHUB_WORKSPACE 
-          docker build . -t $IMAGE_NAME 
+          ./mvnw -DskipTests -Pnative native:compile
+          cd $GITHUB_WORKSPACE
+          docker build . -t $IMAGE_NAME
           docker push $IMAGE_NAME
 
       - name: Invoke Pipeline
         run : |
           curl -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token ${GH_PAT}" --request POST  --data '{"event_type": "update-event"}' https://api.github.com/repos/bootiful-media-mogul/pipeline/dispatches
-          echo "Invoking the pipeline to have it deploy everything..." 
+          echo "Invoking the pipeline to have it deploy everything..."
 
