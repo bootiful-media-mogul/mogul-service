@@ -7,9 +7,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -21,12 +26,6 @@ public class ApiApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ApiApplication.class, args);
 	}
-
-	// @Bean
-	// RouterFunction<ServerResponse> httpRouterResponse() throws Exception {
-	// return route().GET("/hello", request -> ok().body(Map.of("message", "Hello,
-	// world!"))).build();
-	// }
 
 	@Bean
 	SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -40,18 +39,21 @@ public class ApiApplication {
 		return http.build();
 	}
 
-	/*
-	 * // @Bean SecurityFilterChain
-	 * myActuatorAwareOauth2ResourceServerConfiguration(HttpSecurity http) throws
-	 * Exception { return http// .authorizeHttpRequests((authorize) -> authorize //
-	 * .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll() //
-	 * .anyRequest().authenticated()// )// .oauth2ResourceServer((rs) -> rs
-	 * .jwt(Customizer.withDefaults()) )// .build(); }
-	 */
-
 	@Bean
 	DateTimeFormatter dateTimeFormatter() {
 		return DateTimeFormatter.BASIC_ISO_DATE;
+	}
+
+}
+
+@Controller
+@ResponseBody
+class GreetingsController {
+
+	@GetMapping("/hello")
+	Map<String, String> hello() {
+		var name = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication().getName();
+		return Map.of("message", "hello,  " + name + "!");
 	}
 
 }
