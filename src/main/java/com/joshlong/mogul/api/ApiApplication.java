@@ -46,14 +46,3 @@ public class ApiApplication {
 
 }
 
-@Controller
-@ResponseBody
-class GreetingsController {
-
-	@GetMapping("/hello")
-	Map<String, String> hello() {
-		var name = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication().getName();
-		return Map.of("message", "hello,  " + name + "!");
-	}
-
-}
