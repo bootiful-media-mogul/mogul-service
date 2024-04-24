@@ -31,7 +31,6 @@ public class ApiApplication {
 			var mcs = MemberCategory.values();
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, mcs);
-
 		}
 
 	}
