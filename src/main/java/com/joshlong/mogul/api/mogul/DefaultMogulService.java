@@ -91,13 +91,14 @@ class DefaultMogulService implements MogulService {
 				"the requested mogul [" + aLong + "] is not currently authenticated");
 	}
 
-}
+	static class MogulRowMapper implements RowMapper<Mogul> {
 
-class MogulRowMapper implements RowMapper<Mogul> {
+		@Override
+		public Mogul mapRow(ResultSet rs, int rowNum) throws SQLException {
+			return new Mogul(rs.getLong("id"), rs.getString("username"), rs.getString("email"),
+					rs.getString("client_id"));
+		}
 
-	@Override
-	public Mogul mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new Mogul(rs.getLong("id"), rs.getString("username"), rs.getString("email"), rs.getString("client_id"));
 	}
 
 }

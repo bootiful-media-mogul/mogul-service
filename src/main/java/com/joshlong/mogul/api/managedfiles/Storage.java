@@ -90,21 +90,6 @@ class Storage {
 		}
 	}
 
-	/*
-	 * private void doWriteForSmallFiles(String bucket, String objectName, Resource
-	 * resource) { try (var inputStream = new
-	 * BufferedInputStream(resource.getInputStream())) { var putOb =
-	 * PutObjectRequest.builder().bucket(bucket).key(objectName).metadata(Map.of()).build(
-	 * );
-	 *
-	 * s3.putObject(putOb, RequestBody.fromInputStream(inputStream,
-	 * resource.contentLength())); } catch (IOException e) { var errMsg =
-	 * "got an exception writing to [" + bucket + "] for file [" + objectName + "]";
-	 * log.error(errMsg); throw new RuntimeException(errMsg); }
-	 * log.debug("finished executing an S3 PUT for [" + bucket + '/' + objectName +
-	 * "] on thread [" + Thread.currentThread() + "]"); }
-	 */
-
 	public void write(String bucket, String objectName, Resource resource) {
 		try {
 			var largeFile = DataSize.ofMegabytes(10);
@@ -153,11 +138,6 @@ class Storage {
 			return null;
 		}
 	}
-
-	/*
-	 * public Resource read(URI uri) { validUri(uri); return this.read(uri.getHost(),
-	 * uri.getPath()); }
-	 */
 
 	private static void validUri(URI uri) {
 		Assert.state(
