@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.managedfiles;
 
-import com.joshlong.mogul.api.mogul.Mogul;
+import com.joshlong.mogul.api.mogul.MogulService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -23,9 +23,11 @@ class ManagedFileController {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ManagedFileService managedFileService;
+	private final MogulService mogulService;
 
-	ManagedFileController(ManagedFileService managedFileService) {
+	ManagedFileController(ManagedFileService managedFileService, MogulService mogulService) {
 		this.managedFileService = managedFileService;
+		this.mogulService = mogulService;
 	}
 
 	@QueryMapping
@@ -52,7 +54,7 @@ class ManagedFileController {
 	@PostMapping(MF_RW_URL)
 	Map<String, Object> write(@PathVariable Long id, @RequestParam MultipartFile file) {
 		Assert.notNull(id, "the id should not be null");
-		var mogul = (Mogul) null;// this.mogulService.getCurrentMogul(); todo fix this!!
+		var mogul = this.mogulService.getCurrentMogul();// todo fix this!!
 		var managedFile = this.managedFileService.getManagedFile(id);
 		Assert.notNull(managedFile, "the managed file is null for managed file id [" + id + "]");
 		Assert.state(managedFile.mogulId().equals(mogul.id()),
