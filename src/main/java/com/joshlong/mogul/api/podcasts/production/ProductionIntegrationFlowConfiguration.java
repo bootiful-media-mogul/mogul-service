@@ -38,7 +38,7 @@ import java.util.UUID;
  * {@link com.joshlong.mogul.api.podcasts.Episode episodes} in and out of that production.
  */
 @RegisterReflectionForBinding({ ProductionIntegrationFlowConfiguration.ProducerInput.class,
-		ProductionIntegrationFlowConfiguration.ProducerInputSegment.class })
+		ProductionIntegrationFlowConfiguration.ProducerInputSegment.class, Map.class })
 @Configuration
 class ProductionIntegrationFlowConfiguration {
 
@@ -109,6 +109,7 @@ class ProductionIntegrationFlowConfiguration {
 					var payload = message.getPayload();
 					if (payload instanceof String jsonString) {
 						var map = JsonUtils.read(jsonString, Map.class);
+						System.out.println("got a JSON map " + map);
 						Assert.state(map.containsKey("outputS3Uri"),
 								"the AMQP reply must contain the header 'outputS3Uri'");
 						return map.get("outputS3Uri");
@@ -132,6 +133,7 @@ class ProductionIntegrationFlowConfiguration {
 				: ((Number) episodeIdValue).longValue();
 		var episode = podcastService.getEpisodeById(episodeId);
 		var producedAudio = episode.producedAudio();
+		System.out.println("writing [" + episode.id() + "]!!");
 		podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
 		return managedFileService.getManagedFile(producedAudio.id());
 	}
