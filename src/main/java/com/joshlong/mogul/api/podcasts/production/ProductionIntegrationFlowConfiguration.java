@@ -10,7 +10,9 @@ import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.amqp.dsl.Amqp;
@@ -35,6 +37,8 @@ import java.util.UUID;
  * into a final, produced audio form. this is the integration that gets our
  * {@link com.joshlong.mogul.api.podcasts.Episode episodes} in and out of that production.
  */
+@RegisterReflectionForBinding({ ProductionIntegrationFlowConfiguration.ProducerInput.class,
+		ProductionIntegrationFlowConfiguration.ProducerInputSegment.class })
 @Configuration
 class ProductionIntegrationFlowConfiguration {
 
@@ -68,47 +72,7 @@ class ProductionIntegrationFlowConfiguration {
 		return IntegrationFlow//
 			.from(channel)//
 			.handle(IntegrationUtils.debugHandler("got invoked by the gateway"))
-			/*
-			 * .split(new AbstractMessageSplitter() {
-			 *
-			 * @Override protected Object splitMessage(Message<?> message) {
-			 *
-			 * // todo we need to lazily produce (normalize) all the sub managed_files
-			 *
-			 * Assert.state(message.getPayload() instanceof Episode,
-			 * "the payload must be an instance of Episode"); var source = (Episode)
-			 * message.getPayload();
-			 *
-			 * var all = new ArrayList<MediaNormalizationIntegrationRequest>();
-			 * all.add(new MediaNormalizationIntegrationRequest( source.graphic(),
-			 * source.producedGraphic() )); var segments =
-			 * podcastService.getEpisodeSegmentsByEpisode(source.id()); for (var s :
-			 * segments) { all.add(new MediaNormalizationIntegrationRequest( s.audio(),
-			 * s.producedAudio() )); }
-			 *
-			 * return all .stream() .map(r ->
-			 * MessageBuilder.withPayload(r).setHeaderIfAbsent(episodeIdHeaderName,
-			 * source.id()).build()) .toList(); } })
-			 * .transform(mediaNormalizer::normalize) .aggregate(new
-			 * AbstractAggregatingMessageGroupProcessor() {
-			 *
-			 * @Override protected Object aggregatePayloads(MessageGroup group,
-			 * Map<String, Object> defaultHeaders) { var transformed =
-			 * group.getMessages();//
-			 * Collection<Message<MediaNormalizationIntegrationResponse>> var episodeId =
-			 * new AtomicLong(0); for (var m : transformed) {
-			 * Assert.state(m.getHeaders().containsKey(episodeIdHeaderName),
-			 * "you must have a header called '" + episodeIdHeaderName + "' " +
-			 * "so we know where to continue the processing."); episodeId.set((Long)
-			 * m.getHeaders().get(episodeIdHeaderName)); var reply =
-			 * ((MediaNormalizationIntegrationResponse) m.getPayload());
-			 * Assert.state(reply.output().written(), "the output file [" + reply.output()
-			 * + "] was not written"); Assert.state(reply.input().written(),
-			 * "the input file [" + reply.input() + "] was not written"); }
-			 * log.debug("finished producing episode #" + episodeId + "."); return
-			 * podcastService.getEpisodeById(episodeId.get()); } }) // todo see github
-			 * https://github.com/bootiful-media-mogul/scratch/issues/12
-			 */
+			// todo we need to lazily produce/normalize all the managed segments
 			.transform(new AbstractTransformer() {
 				@Override
 				protected Object doTransform(Message<?> message) {
