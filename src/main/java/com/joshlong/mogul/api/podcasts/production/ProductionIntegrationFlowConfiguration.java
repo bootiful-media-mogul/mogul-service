@@ -135,7 +135,10 @@ class ProductionIntegrationFlowConfiguration {
 		var producedAudio = episode.producedAudio();
 		System.out.println("writing [" + episode.id() + "]!!");
 		podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
-		return managedFileService.getManagedFile(producedAudio.id());
+		System.out.println("wrote [" + episode.id() + "]!!");
+		var mf = managedFileService.getManagedFile(producedAudio.id());
+		System.out.println("got mf: [" + mf + "]");
+		return mf;
 	}
 
 }
