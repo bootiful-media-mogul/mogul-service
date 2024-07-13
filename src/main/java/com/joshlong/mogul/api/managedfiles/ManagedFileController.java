@@ -23,6 +23,7 @@ class ManagedFileController {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ManagedFileService managedFileService;
+
 	private final MogulService mogulService;
 
 	ManagedFileController(ManagedFileService managedFileService, MogulService mogulService) {
