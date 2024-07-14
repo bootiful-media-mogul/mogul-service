@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Controller
 @RegisterReflectionForBinding(NotificationEvent.class)
@@ -65,10 +66,13 @@ class NotificationsController {
 	@GetMapping("/notifications")
 	SseEmitter sseEmitter() {
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		return this.sseSessions.computeIfAbsent(currentMogulId, mogul -> {
+		var exists = new AtomicBoolean(true);
+		var sseEmitter = this.sseSessions.computeIfAbsent(currentMogulId, mogulId -> {
+			log.info("creating SSE stream for {}", mogulId);
+			exists.set(false);
 			var sse = new SseEmitter();
 			var runnable = (Runnable) () -> {
-				log.debug("removing {} and closing the SSE stream for /notifications", currentMogulId);
+				log.info("removing {} and closing the SSE stream for /notifications", currentMogulId);
 				this.sseSessions.remove(currentMogulId);
 				// sse.complete();
 			};
@@ -77,6 +81,8 @@ class NotificationsController {
 			sse.onCompletion(runnable);
 			return sse;
 		});
+		log.info("the SSE stream for /notifications for {} exists: {}", currentMogulId, exists.get());
+		return sseEmitter;
 	}
 
 }
