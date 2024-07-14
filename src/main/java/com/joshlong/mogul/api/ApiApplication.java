@@ -45,15 +45,6 @@ public class ApiApplication {
 
 	}
 
-	// @Bean
-	// ApplicationRunner validateDatabase(DataSource db) {
-	// return args -> {
-	// var count = JdbcClient.create(db).sql("select count(*) from
-	// mogul").query(Long.class).single();
-	// log.debug("the count is {}", count);
-	// };
-	// }
-
 	public static void main(String[] args) {
 		var env = System.getenv();
 		if (env.get("DEBUG") != null && env.get("DEBUG").equals("true")) {
@@ -96,9 +87,9 @@ class AsyncRequestTimeoutExceptionHandler {
 
 	@ExceptionHandler
 	void handle(AsyncRequestTimeoutException asyncRequestTimeoutException) throws Exception {
-		log.debug("=================================================");
-		log.debug("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
-		log.debug(this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
+		log.info ("=================================================");
+		log.info ("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
+		log.info (this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
 	}
 
 }
