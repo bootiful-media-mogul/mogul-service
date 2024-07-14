@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.mogul.Mogul;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.http.MediaType;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
+@RegisterReflectionForBinding(NotificationEvent.class)
 class NotificationsController {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -64,8 +66,13 @@ class NotificationsController {
 	SseEmitter sseEmitter() {
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
 		return this.sseSessions.computeIfAbsent(currentMogulId, mogul -> {
-			var runnable = (Runnable) () -> this.sseSessions.remove(currentMogulId);
 			var sse = new SseEmitter();
+			var runnable = (Runnable) () -> {
+				log.debug("removing {} and closing the SSE stream for /notifications", currentMogulId);
+				this.sseSessions.remove(currentMogulId);
+				sse.complete();
+			};
+
 			sse.onTimeout(runnable);
 			sse.onCompletion(runnable);
 			return sse;
