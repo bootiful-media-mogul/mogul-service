@@ -87,9 +87,9 @@ class AsyncRequestTimeoutExceptionHandler {
 
 	@ExceptionHandler
 	void handle(AsyncRequestTimeoutException asyncRequestTimeoutException) throws Exception {
-		log.info ("=================================================");
-		log.info ("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
-		log.info (this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
+		log.info("=================================================");
+		log.info("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
+		log.info(this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
 	}
 
 }
