@@ -2,4 +2,4 @@
 rm -rf target
 ./mvnw spring-javaformat:apply
 ./mvnw -DskipTests -Pnative native:compile
-./target/mogul-service
+DEBUG=true ./target/mogul-service

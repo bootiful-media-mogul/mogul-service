@@ -211,7 +211,7 @@ class PodcastController {
 			log.info("removing sse listener for episode [{}]", episodeId);
 			// https://stackoverflow.com/questions/52029329/invasive-asyncrequesttimeoutexception-with-spring-boot-2
 			// todo see if this is required
-			peEmitter.sseEmitter().complete();
+			// peEmitter.sseEmitter().complete();
 		};
 		peEmitter.sseEmitter().onCompletion(cleanup);
 		peEmitter.sseEmitter().onTimeout(cleanup);

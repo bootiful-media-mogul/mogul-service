@@ -70,7 +70,7 @@ class NotificationsController {
 			var runnable = (Runnable) () -> {
 				log.debug("removing {} and closing the SSE stream for /notifications", currentMogulId);
 				this.sseSessions.remove(currentMogulId);
-				sse.complete();
+				// sse.complete();
 			};
 
 			sse.onTimeout(runnable);
