@@ -8,6 +8,7 @@ import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,6 +28,7 @@ record SettingsLookup(Long mogulId, String category) {
 }
 
 @Configuration
+@RegisterReflectionForBinding(com.joshlong.mogul.api.podcasts.Episode.class)
 class DefaultPublicationServiceConfiguration {
 
 	@Bean

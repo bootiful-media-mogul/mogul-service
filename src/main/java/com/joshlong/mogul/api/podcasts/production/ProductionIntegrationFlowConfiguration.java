@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.podcasts.production;
 
 import com.joshlong.mogul.api.ApiProperties;
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
+import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.utils.IntegrationUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.amqp.dsl.Amqp;
@@ -107,9 +106,10 @@ class ProductionIntegrationFlowConfiguration {
 				@Override
 				protected Object doTransform(Message<?> message) {
 					var payload = message.getPayload();
+					log.debug("payload response [{}]  class [{}]", payload, payload.getClass().getName());
 					if (payload instanceof String jsonString) {
 						var map = JsonUtils.read(jsonString, Map.class);
-						System.out.println("got a JSON map " + map);
+						log.debug("got a JSON map {}", "" + map);
 						Assert.state(map.containsKey("outputS3Uri"),
 								"the AMQP reply must contain the header 'outputS3Uri'");
 						return map.get("outputS3Uri");
@@ -133,11 +133,11 @@ class ProductionIntegrationFlowConfiguration {
 				: ((Number) episodeIdValue).longValue();
 		var episode = podcastService.getEpisodeById(episodeId);
 		var producedAudio = episode.producedAudio();
-		System.out.println("writing [" + episode.id() + "]!!");
+		log.debug("writing [{}]", episode.id());
 		podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
-		System.out.println("wrote [" + episode.id() + "]!!");
+		log.debug("wrote [{}]", episode.id());
 		var mf = managedFileService.getManagedFile(producedAudio.id());
-		System.out.println("got mf: [" + mf + "]");
+		log.debug("got mf: [{}]", mf);
 		return mf;
 	}
 

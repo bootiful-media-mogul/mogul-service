@@ -21,7 +21,6 @@ class AudioEncoderTest {
 		var output = encoder.encode(wav);
 		Assert.state(output.length() < wav.length(), "the new file should be a _lot_ smaller than the original!");
 		Assert.state(output.getName().endsWith(".mp3"), "the new file should be an .mp3");
-		System.out.println(output.getAbsolutePath());
 		output.delete();
 	}
 

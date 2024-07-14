@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.blogs;
 
 import com.joshlong.mogul.api.PublisherPlugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -13,6 +15,8 @@ import java.util.concurrent.atomic.AtomicReference;
 //  will work? maybe call a rest api that requires no parameters?
 @Component(GithubBlogPlugin.PLUGIN_NAME)
 class GithubBlogPlugin implements PublisherPlugin<Blog>, BeanNameAware {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	public static final String PLUGIN_NAME = "github";
 
@@ -40,12 +44,12 @@ class GithubBlogPlugin implements PublisherPlugin<Blog>, BeanNameAware {
 
 	@Override
 	public void publish(Map<String, String> context, Blog payload) {
-		System.out.println("publishing to github for payload [" + payload + "]");
+		log.debug("publishing to github for payload [{}]", payload);
 	}
 
 	@Override
 	public void unpublish(Map<String, String> context, Blog payload) {
-		System.out.println("unpublishing to github for payload [" + payload + "]");
+		log.debug("unpublishing to github for payload [{}]", payload);
 	}
 
 	@Override

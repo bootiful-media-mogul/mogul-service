@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.podcasts;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
 import com.joshlong.mogul.api.publications.PublicationService;
-import com.joshlong.mogul.api.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -209,9 +209,13 @@ class PodcastController {
 		var cleanup = (Runnable) () -> {
 			this.episodeCompleteEventSseEmitters.remove(episodeId);
 			log.info("removing sse listener for episode [{}]", episodeId);
+			// https://stackoverflow.com/questions/52029329/invasive-asyncrequesttimeoutexception-with-spring-boot-2
+			// todo see if this is required
+			peEmitter.sseEmitter().complete();
 		};
 		peEmitter.sseEmitter().onCompletion(cleanup);
 		peEmitter.sseEmitter().onTimeout(cleanup);
+
 		return peEmitter.sseEmitter();
 	}
 

@@ -2,11 +2,11 @@ package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,11 +14,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.annotation.IntegrationComponentScan;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
-import javax.sql.DataSource;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
@@ -29,6 +27,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	static class Hints implements RuntimeHintsRegistrar {
 
@@ -41,17 +41,20 @@ public class ApiApplication {
 
 	}
 
-	@Bean
-	ApplicationRunner validateDatabase(DataSource db) {
-		return args -> {
-			var count = JdbcClient.create(db).sql("select count(*) from mogul").query(Long.class).single();
-			LogFactory.getLog(ApiApplication.this.getClass()).info("the count is " + count);
-		};
-	}
+	// @Bean
+	// ApplicationRunner validateDatabase(DataSource db) {
+	// return args -> {
+	// var count = JdbcClient.create(db).sql("select count(*) from
+	// mogul").query(Long.class).single();
+	// log.debug("the count is {}", count);
+	// };
+	// }
 
 	public static void main(String[] args) {
-		if (System.getenv("DEBUG") != null && System.getenv("DEBUG").equals("true"))
-			System.getenv().forEach((k, v) -> System.out.println(k + "=" + v));
+		var env = System.getenv();
+		if (env.get("DEBUG") != null && env.get("DEBUG").equals("true")) {
+			env.forEach((k, v) -> System.out.println(k + "=" + v));
+		}
 		SpringApplication.run(ApiApplication.class, args);
 	}
 
