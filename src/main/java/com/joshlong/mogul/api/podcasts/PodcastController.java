@@ -204,9 +204,7 @@ class PodcastController {
 				"the podcast specified and the actual podcast are not the same");
 		Assert.state(episode.podcast().mogulId().equals(mogulService.getCurrentMogul().id()),
 				"these are not the same Mogul");
-		if (!this.episodeCompleteEventSseEmitters.containsKey(episodeId)) {
-			this.episodeCompleteEventSseEmitters.put(episodeId, peEmitter);
-		}
+		this.episodeCompleteEventSseEmitters.putIfAbsent(episodeId, peEmitter);
 		log.debug("installing an SseEmitter for episode [{}]", episode);
 		var cleanup = (Runnable) () -> {
 			this.episodeCompleteEventSseEmitters.remove(episodeId);
