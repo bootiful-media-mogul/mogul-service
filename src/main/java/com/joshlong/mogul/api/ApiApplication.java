@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import org.slf4j.Logger;
@@ -7,15 +8,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.http.ProblemDetail;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
@@ -27,8 +33,6 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	static class Hints implements RuntimeHintsRegistrar {
 
@@ -74,6 +78,27 @@ public class ApiApplication {
 	@Bean
 	DateTimeFormatter dateTimeFormatter() {
 		return DateTimeFormatter.BASIC_ISO_DATE;
+	}
+
+}
+
+@RegisterReflectionForBinding(ProblemDetail.class)
+@ControllerAdvice
+class AsyncRequestTimeoutExceptionHandler {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	private final ObjectMapper objectMapper;
+
+	AsyncRequestTimeoutExceptionHandler(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+	}
+
+	@ExceptionHandler
+	void handle(AsyncRequestTimeoutException asyncRequestTimeoutException) throws Exception {
+		log.debug("=================================================");
+		log.debug("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
+		log.debug(this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
 	}
 
 }
