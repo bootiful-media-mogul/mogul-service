@@ -30,8 +30,6 @@ class NotificationsController {
 		var mogulId = notification.mogulId();
 		var queue = this.events.computeIfAbsent(mogulId, aLong -> new ConcurrentLinkedQueue<>());
 		queue.add(notification);
-		System.out.println(queue);
-		System.out.println("added...");
 	}
 
 	@QueryMapping
