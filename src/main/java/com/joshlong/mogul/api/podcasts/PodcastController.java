@@ -28,9 +28,6 @@ class PodcastController {
 
 	private final ApplicationEventPublisher publisher;
 
-	// private final Map<Long, PodcastEpisodeSseEmitter> episodeCompleteEventSseEmitters =
-	// new ConcurrentHashMap<>();
-
 	private final ObjectMapper om;
 
 	private final MogulService mogulService;
