@@ -3,25 +3,22 @@ package com.joshlong.mogul.api.podcasts;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
 import com.joshlong.mogul.api.publications.PublicationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
-import org.springframework.http.MediaType;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
 @RegisterReflectionForBinding(Map.class)
@@ -29,7 +26,10 @@ class PodcastController {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Map<Long, PodcastEpisodeSseEmitter> episodeCompleteEventSseEmitters = new ConcurrentHashMap<>();
+	private final ApplicationEventPublisher publisher;
+
+	// private final Map<Long, PodcastEpisodeSseEmitter> episodeCompleteEventSseEmitters =
+	// new ConcurrentHashMap<>();
 
 	private final ObjectMapper om;
 
@@ -43,9 +43,10 @@ class PodcastController {
 
 	private final Settings settings;
 
-	PodcastController(MogulService mogulService, PodcastService podcastService,
+	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService,
 			Map<String, PodcastEpisodePublisherPlugin> plugins, PublicationService publicationService,
 			Settings settings, ObjectMapper om) {
+		this.publisher = publisher;
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
 		this.plugins = plugins;
@@ -184,63 +185,22 @@ class PodcastController {
 		return podcastService.createPodcastEpisodeDraft(currentMogulId, podcastId, title, description);
 	}
 
-	// if the user wants information about when an episode is ready to be published, we'll
-	// setup an SSE stream here they can poll
-
-	record PodcastEpisodeSseEmitter(Long podcastId, Long episodeId, SseEmitter sseEmitter) {
-
-	}
-
-	// todo remove this and make sure everything works as well with the new notifications
-	// mechanism!
-	@GetMapping("/podcasts/{podcastId}/episodes/{episodeId}/completions")
-	SseEmitter streamPodcastEpisodeCompletionEvents(@PathVariable Long podcastId, @PathVariable Long episodeId) {
-		log.debug("creating SSE watchdog for episode [{}]", episodeId);
-		var peEmitter = new PodcastEpisodeSseEmitter(podcastId, episodeId, new SseEmitter());
-		var episode = this.podcastService.getEpisodeById(episodeId);
-		Assert.notNull(episode, "the episode is null");
-		this.mogulService.assertAuthorizedMogul(episode.podcast().mogulId());
-		Assert.state(episode.podcast().id().equals(podcastId),
-				"the podcast specified and the actual podcast are not the same");
-		Assert.state(episode.podcast().mogulId().equals(mogulService.getCurrentMogul().id()),
-				"these are not the same Mogul");
-		this.episodeCompleteEventSseEmitters.putIfAbsent(episodeId, peEmitter);
-		log.debug("installing an SseEmitter for episode [{}]", episode);
-		var cleanup = (Runnable) () -> {
-			this.episodeCompleteEventSseEmitters.remove(episodeId);
-			log.info("removing sse listener for episode [{}]", episodeId);
-			// https://stackoverflow.com/questions/52029329/invasive-asyncrequesttimeoutexception-with-spring-boot-2
-			// todo see if this is required
-			// peEmitter.sseEmitter().complete();
-		};
-		peEmitter.sseEmitter().onCompletion(cleanup);
-		peEmitter.sseEmitter().onTimeout(cleanup);
-
-		return peEmitter.sseEmitter();
-	}
-
 	@ApplicationModuleListener
 	void broadcastPodcastEpisodeCompletionEventToClients(PodcastEpisodeCompletionEvent podcastEpisodeCompletionEvent) {
 		var episode = podcastEpisodeCompletionEvent.episode();
 		var id = episode.id();
 		log.debug("going to send an event to the clients listening for episode [{}]", id);
-
-		var emitter = this.episodeCompleteEventSseEmitters.get(id);
-
-		if (null == emitter) {
-			log.warn("could not find an emitter for episode [{}]", id);
-			return;
-		}
-
 		try {
-			var map = Map.of("id", id, "complete", episode.complete());
+			var map = Map.of("episodeId", id, "complete", episode.complete());
 			var json = om.writeValueAsString(map);
-			emitter.sseEmitter().send(json, MediaType.APPLICATION_JSON);
+			var evt = NotificationEvent.notificationEventFor(
+					podcastEpisodeCompletionEvent.episode().podcast().mogulId(), podcastEpisodeCompletionEvent,
+					Long.toString(episode.id()), json, false, false);
+			publisher.publishEvent(evt);
 			log.debug("sent an event to clients listening for {}", episode);
 		} //
 		catch (Exception e) {
 			log.warn("experienced an exception when trying to emit a podcast completed event via SSE for id # {}", id);
-			emitter.sseEmitter().completeWithError(e);
 		} //
 
 	}

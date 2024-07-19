@@ -8,6 +8,8 @@ import java.util.Date;
  * describes an event - any event - that should be communicated to a particular,
  * logged-in, user.
  *
+ * @param visible should the notification be shown at all, or is it meant for a client
+ * side update that might get rendered in some other way?
  * @param modal does this notification require user acknowledgment, or can it sort of
  * appear briefly and then fade away?
  * @param when when the message was published. <EM>Not</EM> when (or if) the message has
@@ -25,10 +27,11 @@ import java.util.Date;
  *                 no internationalized text, then this could be a human-readable message sent in whatever language is required.
  *
 @param mogulId  the current authenticated user for whom this context is intended or <code>NULL</code>
- * if this is meant to be a system wide notification intended for all users logged into
+ * if this is meant to be a system-wide notification intended for all users logged into
  * the system
  */
-public record NotificationEvent(Long mogulId, String category, String key, Date when, String context, boolean modal) {
+public record NotificationEvent(Long mogulId, String category, String key, Date when, String context, boolean modal,
+		boolean visible) {
 
 	/**
 	 * @param mogulId
@@ -36,12 +39,13 @@ public record NotificationEvent(Long mogulId, String category, String key, Date 
 	 * @param key
 	 * @param context
 	 * @param modal
+	 * @param visible
 	 * @return
 	 */
 	public static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
-			boolean modal) {
-		return new NotificationEvent(mogulId, categoryFromClassName(object.getClass()), key, new Date(), context,
-				modal);
+			boolean modal, boolean visible) {
+		return new NotificationEvent(mogulId, categoryFromClassName(object.getClass()), key, new Date(), context, modal,
+				visible);
 	}
 
 	private static String categoryFromClassName(Class<?> clazz) {

@@ -82,7 +82,8 @@ type NotificationEvent {
     key: String
     when :  Int
     context :String
-    modal: Boolean
+    modal: Boolean ,
+    visible: Boolean
 }
 
 type Mutation {

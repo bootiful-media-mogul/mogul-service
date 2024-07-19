@@ -118,6 +118,8 @@ class DefaultPodcastService implements PodcastService {
 		log.debug("written? {}", written);
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(written, episode.id()).update();
 		var episodeById = this.getEpisodeById(episode.id());
+		System.out.println(episodeById);
+		System.out.println(episodeById.complete());
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(episodeById)))
 			this.publisher.publishEvent(e);
@@ -203,14 +205,14 @@ class DefaultPodcastService implements PodcastService {
 	@ApplicationModuleListener
 	void podcastDeletedEventNotifyingListener(PodcastDeletedEvent event) {
 		var notificationEvent = NotificationEvent.notificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title(), false);
+				Long.toString(event.podcast().id()), event.podcast().title(), false, true);
 		this.publisher.publishEvent(notificationEvent);
 	}
 
 	@ApplicationModuleListener
 	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
 		var notificationEvent = NotificationEvent.notificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title(), false);
+				Long.toString(event.podcast().id()), event.podcast().title(), false, true);
 		this.publisher.publishEvent(notificationEvent);
 	}
 
