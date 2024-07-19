@@ -17,6 +17,9 @@ type Mogul {
 
 type Query {
 
+    # outstanding notifications
+    notifications: NotificationEvent
+
     # settings
     settings: [SettingsPage]
 
@@ -71,6 +74,15 @@ type Podcast {
     title: String
     episodes : [Episode]
     id: ID
+}
+
+type NotificationEvent {
+    mogulId: ID
+    category: String
+    key: String
+    when :  Int
+    context :String
+    modal: Boolean
 }
 
 type Mutation {

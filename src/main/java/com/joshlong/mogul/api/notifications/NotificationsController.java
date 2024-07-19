@@ -1,88 +1,44 @@
 package com.joshlong.mogul.api.notifications;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.mogul.Mogul;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.http.MediaType;
+import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Controller
 @RegisterReflectionForBinding(NotificationEvent.class)
 class NotificationsController {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	/**
-	 * mapping between {@link Mogul mogul} ID and a given SSE emitter
-	 */
-	private final Map<Long, SseEmitter> sseSessions = new ConcurrentHashMap<>();
-
-	private final ObjectMapper objectMapper;
+	private final Map<Long, Queue<NotificationEvent>> events = new ConcurrentHashMap<>();
 
 	private final MogulService mogulService;
 
-	NotificationsController(ObjectMapper objectMapper, MogulService mogulService) {
-		this.objectMapper = objectMapper;
+	NotificationsController(MogulService mogulService) {
 		this.mogulService = mogulService;
-	}
-
-	private static void deliver(ObjectMapper om, SseEmitter emitter, NotificationEvent event) {
-		try {
-			var json = om.writeValueAsString(event);
-			emitter.send(json, MediaType.APPLICATION_JSON);
-		} //
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 	@ApplicationModuleListener
 	void notificationEventListener(NotificationEvent notification) {
 		Assert.notNull(notification, "the notification must not be null");
 		var mogulId = notification.mogulId();
-
-		for (var loggedInMogulId : this.sseSessions.keySet()) {
-			var deliverToThisMogul = notification.mogulId() == null || (loggedInMogulId.equals(notification.mogulId()));
-			if (deliverToThisMogul) {
-				log.debug("got a notification for this Mogul # {}::{}", mogulId, notification);
-				var sse = this.sseSessions.get(loggedInMogulId);
-				deliver(this.objectMapper, sse, notification);
-			}
-		}
-
+		var queue = this.events.computeIfAbsent(mogulId, aLong -> new ConcurrentLinkedQueue<>());
+		queue.add(notification);
+		System.out.println(queue);
+		System.out.println("added...");
 	}
 
-	@GetMapping("/notifications")
-	SseEmitter sseEmitter() {
+	@QueryMapping
+	NotificationEvent notifications() {
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var exists = new AtomicBoolean(true);
-		var sseEmitter = this.sseSessions.computeIfAbsent(currentMogulId, mogulId -> {
-			log.info("creating SSE stream for {}", mogulId);
-			exists.set(false);
-			var sse = new SseEmitter();
-			var runnable = (Runnable) () -> {
-				log.info("removing {} and closing the SSE stream for /notifications", currentMogulId);
-				this.sseSessions.remove(currentMogulId);
-				// sse.complete();
-			};
-
-			sse.onTimeout(runnable);
-			sse.onCompletion(runnable);
-			return sse;
-		});
-		log.info("the SSE stream for /notifications for {} exists: {}", currentMogulId, exists.get());
-		return sseEmitter;
+		var notificationEvents = this.events.getOrDefault(currentMogulId, new ConcurrentLinkedQueue<>());
+		return notificationEvents.poll();
 	}
 
 }
