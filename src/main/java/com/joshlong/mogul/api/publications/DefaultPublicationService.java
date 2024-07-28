@@ -18,6 +18,8 @@ import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import java.io.Serializable;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +43,7 @@ class DefaultPublicationServiceConfiguration {
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })
 class DefaultPublicationService implements PublicationService {
 
-	public record SettingsLookup(Long mogulId, String category) {
+	record SettingsLookup(Long mogulId, String category) {
 	}
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -89,7 +91,9 @@ class DefaultPublicationService implements PublicationService {
 		plugin.publish(context, payload);
 		log.debug("finished publishing with plugin {}.", plugin.name());
 		var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-		var publicationData = this.textEncryptor.encrypt(JsonUtils.write(payload.publicationKey()));
+		// todo make this a string, that is _not_ encrypted. and make sure there's an
+		// index assigned to it. then i can query for it.
+		var publicationData = JsonUtils.write(payload.publicationKey());
 		var entityClazz = payload.getClass().getName();
 		var kh = new GeneratedKeyHolder();
 		this.db.sql(
@@ -107,6 +111,14 @@ class DefaultPublicationService implements PublicationService {
 			.params(publicationId)
 			.query(this.publicationRowMapper)
 			.single();
+	}
+
+	@Override
+	public Collection<Publication> getPublicationsByPublicationKey(Serializable pulicationKey) {
+		return this.db.sql("select * from publication where payload =? ")
+			.params(JsonUtils.write(pulicationKey))
+			.query(this.publicationRowMapper)
+			.list();
 	}
 
 }

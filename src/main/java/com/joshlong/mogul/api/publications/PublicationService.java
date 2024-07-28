@@ -2,6 +2,8 @@ package com.joshlong.mogul.api.publications;
 
 import com.joshlong.mogul.api.PublisherPlugin;
 
+import java.io.Serializable;
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -11,6 +13,8 @@ import java.util.Map;
 public interface PublicationService {
 
 	Publication getPublicationById(Long id);
+
+	Collection<Publication> getPublicationsByPublicationKey(Serializable pulicationKey);
 
 	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin);
