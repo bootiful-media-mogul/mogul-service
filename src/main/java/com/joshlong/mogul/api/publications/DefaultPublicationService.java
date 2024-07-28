@@ -113,10 +113,18 @@ class DefaultPublicationService implements PublicationService {
 			.single();
 	}
 
+	/**
+	 * returns all the {@link Publication } instances given a publication key. the key is
+	 * usually an ID of some sort, but whatever it is, it's serialized into JSON. and so
+	 * wee search for the serialized incarnation of the value
+	 * @param publicationKey the key by which to find a given publication.
+	 * @return all those that match.
+	 */
+
 	@Override
-	public Collection<Publication> getPublicationsByPublicationKey(Serializable pulicationKey) {
+	public Collection<Publication> getPublicationsByPublicationKey(Serializable publicationKey) {
 		return this.db.sql("select * from publication where payload =? ")
-			.params(JsonUtils.write(pulicationKey))
+			.params(JsonUtils.write(publicationKey))
 			.query(this.publicationRowMapper)
 			.list();
 	}
