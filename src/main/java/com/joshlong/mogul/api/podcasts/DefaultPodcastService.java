@@ -1,11 +1,11 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
+import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
+import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizationIntegrationRequest;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
@@ -79,32 +79,38 @@ class DefaultPodcastService implements PodcastService {
 
 				""";
 
-		var all = db.sql(sql).params(mf.id(), mf.id()).query((rs, rowNum) -> rs.getLong("id")).set();
-		if (!all.isEmpty()) {
-			var episodeId = all.iterator().next();
-			var episode = getEpisodeById(episodeId);
-			var segments = getEpisodeSegmentsByEpisode(episodeId);
-			if (episode.graphic().id().equals(mf.id())) { // either its the graphic
-				this.mediaNormalizer
-					.normalize(new MediaNormalizationIntegrationRequest(episode.graphic(), episode.producedGraphic()));
-			} //
-			else {
-				// or its one of the segments
-				segments.stream().filter(s -> s.audio().id().equals(mf.id())).findAny().ifPresent(segment -> {
+		var all = this.db.sql(sql).params(mf.id(), mf.id()).query((rs, rowNum) -> rs.getLong("id")).set();
+		if (all.isEmpty())
+			return;
+
+		var episodeId = all.iterator().next();
+		var episode = getEpisodeById(episodeId);
+		var segments = getEpisodeSegmentsByEpisode(episodeId);
+
+		if (episode.graphic().id().equals(mf.id())) { // either it's the graphic..
+			this.mediaNormalizer
+				.normalize(new MediaNormalizationIntegrationRequest(episode.graphic(), episode.producedGraphic()));
+		} //
+		else {
+			// or it's one of the segments..
+			segments.stream()//
+				.filter(s -> s.audio().id().equals(mf.id()))
+				.findAny()
+				.ifPresent(segment -> {
 					var response = this.mediaNormalizer
 						.normalize(new MediaNormalizationIntegrationRequest(segment.audio(), segment.producedAudio()));
 					Assert.notNull(response, "the response should not be null");
 					var updated = new Date();
 					// if this is older than the last time we have produced any audio,
 					// then we won't reproduce the audio
-					db.sql("update podcast_episode  set produced_audio_assets_updated = ? where    id = ? ")
+					this.db.sql("update podcast_episode  set produced_audio_assets_updated = ? where    id = ? ")
 						.params(updated, episodeId)
 						.update();
 				});
-			}
-			// once the file has been normalized, we can worry about completeness
-			this.refreshPodcastEpisodeCompleteness(episodeId);
 		}
+		// once the file has been normalized, we can worry about completeness
+		this.refreshPodcastEpisodeCompleteness(episodeId);
+
 	}
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
@@ -115,11 +121,9 @@ class DefaultPodcastService implements PodcastService {
 		var written = (episode.graphic().written() && episode.producedGraphic().written()) && !segments.isEmpty()
 				&& (segments.stream().allMatch(se -> se.audio().written() && se.producedAudio().written()));
 
-		log.debug("written? {}", written);
+		// log.debug("written? {}", written);
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(written, episode.id()).update();
 		var episodeById = this.getEpisodeById(episode.id());
-		System.out.println(episodeById);
-		System.out.println(episodeById.complete());
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(episodeById)))
 			this.publisher.publishEvent(e);
@@ -223,7 +227,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void updateEpisodeSegmentOrder(Long episodeSegmentId, int order) {
-		log.info("updating podcast_episode_segment [{}] to sequence_number : {}", episodeSegmentId, order);
+		log.debug("updating podcast_episode_segment [{}] to sequence_number : {}", episodeSegmentId, order);
 		this.db.sql("update podcast_episode_segment set sequence_number = ? where id = ?")
 			.params(order, episodeSegmentId)
 			.update();
@@ -239,10 +243,6 @@ class DefaultPodcastService implements PodcastService {
 		var segment = getEpisodeSegmentById(segmentId);
 		var positionOfSegment = segments.indexOf(segment);
 		var newPositionOfSegment = positionOfSegment + position;
-
-		log.debug("current:{}", positionOfSegment);
-		log.debug("new:{}", newPositionOfSegment);
-
 		if (newPositionOfSegment < 0 || newPositionOfSegment > (segments.size() - 1)) {
 			log.debug("you're trying to move out of bounds");
 			return;

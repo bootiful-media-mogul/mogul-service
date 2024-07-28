@@ -15,6 +15,7 @@ type Mogul {
     name : String
 }
 
+
 type Query {
 
     # outstanding notifications
@@ -80,10 +81,10 @@ type NotificationEvent {
     mogulId: ID
     category: String
     key: String
-    when :  Int
-    context :String
-    modal: Boolean ,
-    visible: Boolean
+    when :  Float
+    context : String
+    modal : Boolean ,
+    visible : Boolean
 }
 
 type Mutation {

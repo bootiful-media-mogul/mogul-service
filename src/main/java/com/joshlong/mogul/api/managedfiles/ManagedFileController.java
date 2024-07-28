@@ -55,16 +55,17 @@ class ManagedFileController {
 	@PostMapping(MF_RW_URL)
 	Map<String, Object> write(@PathVariable Long id, @RequestParam MultipartFile file) {
 		Assert.notNull(id, "the id should not be null");
-		var mogul = this.mogulService.getCurrentMogul();// todo fix this!!
+		var mogul = this.mogulService.getCurrentMogul();
 		var managedFile = this.managedFileService.getManagedFile(id);
 		Assert.notNull(managedFile, "the managed file is null for managed file id [" + id + "]");
 		Assert.state(managedFile.mogulId().equals(mogul.id()),
 				"you're trying to write to an invalid file to which you are not authorized!");
+		var managedFileId = managedFile.id();
 		var originalFilename = file.getOriginalFilename();
 		var mediaType = CommonMediaTypes.guess(file.getResource());
 		log.debug("guessing the media type for [{}] is  {}", file.getOriginalFilename(), mediaType);
-		this.managedFileService.write(managedFile.id(), originalFilename, mediaType, file.getResource());
-		var updated = managedFileService.getManagedFile(managedFile.id());
+		this.managedFileService.write(managedFileId, originalFilename, mediaType, file.getResource());
+		var updated = this.managedFileService.getManagedFile(managedFileId);
 		log.debug("finished writing managed file [{}] to s3: {}:{}", id, originalFilename, updated.toString());
 		return Map.of("managedFileId", id);
 	}

@@ -72,24 +72,3 @@ public class ApiApplication {
 	}
 
 }
-
-@RegisterReflectionForBinding(ProblemDetail.class)
-@ControllerAdvice
-class AsyncRequestTimeoutExceptionHandler {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private final ObjectMapper objectMapper;
-
-	AsyncRequestTimeoutExceptionHandler(ObjectMapper objectMapper) {
-		this.objectMapper = objectMapper;
-	}
-
-	@ExceptionHandler
-	void handle(AsyncRequestTimeoutException asyncRequestTimeoutException) throws Exception {
-		log.info("=================================================");
-		log.info("{}:{}", asyncRequestTimeoutException.getBody(), asyncRequestTimeoutException.getStatusCode());
-		log.info(this.objectMapper.writeValueAsString(asyncRequestTimeoutException.getBody()));
-	}
-
-}

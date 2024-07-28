@@ -130,7 +130,7 @@ class Storage {
 	public Resource read(String bucket, String objectName) {
 		try {
 			var getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(objectName).build();
-			var inputStream = s3.getObject(getObjectRequest);
+			var inputStream = this.s3.getObject(getObjectRequest);
 			return new InputStreamResource(new BufferedInputStream(inputStream));
 		}
 		catch (Throwable throwable) {
@@ -140,9 +140,7 @@ class Storage {
 	}
 
 	private static void validUri(URI uri) {
-		Assert.state(
-				uri != null && uri.getScheme().toLowerCase().equalsIgnoreCase("s3")
-						&& uri.getPath().split("/").length == 2,
+		Assert.state(uri != null && uri.getScheme().equalsIgnoreCase("s3") && uri.getPath().split("/").length == 2,
 				"this uri [" + Objects.requireNonNull(uri) + "] is not a valid s3 reference");
 	}
 
