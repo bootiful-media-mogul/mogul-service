@@ -121,9 +121,11 @@ class DefaultPublicationService implements PublicationService {
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey,
 			Class<?> clazz) {
 		var sql = " select * from publication where payload = ? and payload_class = ? ";
+		var jsonPublicationKey = JsonUtils.write(publicationKey);
 		return this.db//
 			.sql(sql)//
-			.params("\"" + publicationKey + "\"", clazz.getName())//
+			.params(jsonPublicationKey, clazz.getName())//
+			// .params("\"" + publicationKey + "\"", clazz.getName())//
 			.query(this.publicationRowMapper)//
 			.list();
 	}

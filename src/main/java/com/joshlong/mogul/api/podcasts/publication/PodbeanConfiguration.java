@@ -34,13 +34,13 @@ class PodbeanConfiguration {
 
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			var clazzes = new Class<?>[] { com.joshlong.podbean.token.TokenProvider.class,
+			var classes = new Class<?>[] { com.joshlong.podbean.token.TokenProvider.class,
 					org.springframework.aop.SpringProxy.class, org.springframework.aop.framework.Advised.class,
 					org.springframework.core.DecoratingProxy.class };
 			var mcs = MemberCategory.values();
-			for (var c : clazzes)
+			for (var c : classes)
 				hints.reflection().registerType(TypeReference.of(c), mcs);
-			hints.proxies().registerJdkProxy(clazzes);
+			hints.proxies().registerJdkProxy(classes);
 		}
 
 	}

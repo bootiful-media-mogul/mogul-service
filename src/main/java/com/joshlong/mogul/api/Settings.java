@@ -54,18 +54,14 @@ public class Settings {
 	}
 
 	public Map<String, Setting> getAllSettingsByCategory(Long mogulId, String category) {
-
 		var settings = this.db//
-			.sql("select * from settings where mogul_id = ? and category =?   ")
+			.sql(" select * from settings where mogul_id = ? and category = ? ")
 			.params(mogulId, category)
 			.query(this.rowMapper)
 			.list();
-
 		var map = new HashMap<String, Setting>();
-
 		for (var s : settings)
 			map.put(s.key(), s);
-
 		return map;
 	}
 
