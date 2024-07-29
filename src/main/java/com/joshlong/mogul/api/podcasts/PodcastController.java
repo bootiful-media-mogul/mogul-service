@@ -66,12 +66,12 @@ class PodcastController {
 			var defaultedValues = Map.of("id", p.id(), "mogulId", p.mogulId(), "plugin", p.plugin(), "created",
 					p.created().getTime());
 			var all = new HashMap<String, Object>();
-			if (p.published() != null) {
+			if (p.published() != null)
 				all.put("published", p.published().getTime());
-			}
+			if (p.url() != null)
+				all.put("url", p.url());
 			all.putAll(defaultedValues);
 			newPublications.add(all);
-			log.debug("adding " + all);
 		}
 		return newPublications;
 	}

@@ -10,6 +10,7 @@ type Publication {
     mogulId:Int
     id:ID
     plugin:String
+    url:String
     created: Float
     published: Float
 }
