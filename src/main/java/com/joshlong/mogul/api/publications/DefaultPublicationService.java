@@ -81,16 +81,16 @@ class DefaultPublicationService implements PublicationService {
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(payload, "the payload must not be null");
 		Assert.notNull(mogul, "the mogul should not be null");
+
 		var configuration = this.settingsLookup
 			.apply(new SettingsLookup(this.mogulService.getCurrentMogul().id(), plugin.name()));
 		var context = new ConcurrentHashMap<String, String>();
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
-		plugin.publish(context, payload);
-		log.debug("finished publishing with plugin {}.", plugin.name());
+
+		// lets write to the publication table first
+
 		var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-		// todo make this a string, that is _not_ encrypted. and make sure there's an
-		// index assigned to it. then i can query for it.
 		var publicationData = JsonUtils.write(payload.publicationKey());
 		var entityClazz = payload.getClass().getName();
 		var kh = new GeneratedKeyHolder();
@@ -98,7 +98,18 @@ class DefaultPublicationService implements PublicationService {
 				"insert into publication(mogul_id, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?)")
 			.params(mogulId, plugin.name(), new Date(), null, contextJson, publicationData, entityClazz)
 			.update(kh);
-		var publication = this.getPublicationById(JdbcUtils.getIdFromKeyHolder(kh).longValue());
+
+		var publicationId = JdbcUtils.getIdFromKeyHolder(kh).longValue();
+
+		plugin.publish(context, payload);
+
+		this.log.debug("finished publishing with plugin {}.", plugin.name());
+		contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
+		this.db.sql(" update publication set context =?, published = ? where id = ?")
+			.params(contextJson, new Date(), publicationId)
+			.update(kh);
+
+		var publication = this.getPublicationById(publicationId);
 		log.debug("writing publication out: {}", publication);
 		return publication;
 	}
