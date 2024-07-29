@@ -21,6 +21,7 @@ import org.springframework.util.Assert;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,7 +72,8 @@ class DefaultPublicationService implements PublicationService {
 		Assert.notNull(this.mogulService, "the mogulService must not be null");
 		Assert.notNull(this.textEncryptor, "the textEncryptor must not be null");
 		Assert.notNull(this.settingsLookup, "the settings must not be null");
-		Assert.state(!this.plugins.isEmpty(), "there are no plugins for publication");
+		if (this.plugins.isEmpty())
+			this.log.warn("there are no plugins for publication!");
 	}
 
 	@Override
@@ -87,8 +89,6 @@ class DefaultPublicationService implements PublicationService {
 		var context = new ConcurrentHashMap<String, String>();
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
-
-		// lets write to the publication table first
 
 		var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
 		var publicationData = JsonUtils.write(payload.publicationKey());
@@ -110,7 +110,7 @@ class DefaultPublicationService implements PublicationService {
 			.update(kh);
 
 		var publication = this.getPublicationById(publicationId);
-		log.debug("writing publication out: {}", publication);
+		this.log.debug("writing publication out: {}", publication);
 		return publication;
 	}
 
@@ -123,11 +123,6 @@ class DefaultPublicationService implements PublicationService {
 			.single();
 	}
 
-	/**
-	 * returns all the {@link Publication } instances given a publication key. the key is
-	 * usually an ID of some sort, but whatever it is, it's serialized into JSON. and so
-	 * we search for the serialized incarnation of the value
-	 */
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey,
 			Class<?> clazz) {
@@ -136,9 +131,10 @@ class DefaultPublicationService implements PublicationService {
 		return this.db//
 			.sql(sql)//
 			.params(jsonPublicationKey, clazz.getName())//
-			// .params("\"" + publicationKey + "\"", clazz.getName())//
 			.query(this.publicationRowMapper)//
-			.list();
+			.stream() //
+			.sorted(Comparator.comparing(Publication::created).reversed()) //
+			.toList();
 	}
 
 }
