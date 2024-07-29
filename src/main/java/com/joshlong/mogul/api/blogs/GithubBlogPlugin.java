@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.PublisherPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,9 @@ class GithubBlogPlugin implements PublisherPlugin<Blog>, BeanNameAware {
 	}
 
 	@Override
-	public void unpublish(Map<String, String> context, Blog payload) {
+	public boolean unpublish(Map<String, String> context, Publication payload) {
 		log.debug("unpublishing to github for payload [{}]", payload);
+		return true;
 	}
 
 	@Override

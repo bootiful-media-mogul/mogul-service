@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -171,6 +172,18 @@ class PodcastController {
 				"you must have at least one active, non-deleted podcast");
 		this.podcastService.deletePodcast(podcast.id());
 		return id;
+	}
+
+	@MutationMapping
+	boolean unpublishPodcastEpisodePublication(@Argument Long publicationId) {
+		log.debug("going to unpubliush the publication with id # {}", publicationId);
+		var publicationById = this.publicationService.getPublicationById(publicationId);
+		Assert.notNull(publicationById, "the publication should not be null");
+		var plugin = this.plugins.get(publicationById.plugin());
+		Assert.notNull(plugin, "you must specify an active plugin");
+		var publication = this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
+		return publication != null;
+
 	}
 
 	@MutationMapping

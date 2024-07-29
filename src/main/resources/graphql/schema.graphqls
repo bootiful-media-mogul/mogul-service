@@ -99,6 +99,7 @@ type NotificationEvent {
 }
 
 type Mutation {
+    unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean
     publishPodcastEpisode(episodeId:ID, pluginName: String): Boolean
     updatePodcastEpisode(episodeId: ID, title: String, description: String): Episode
     createPodcast(title:String): Podcast

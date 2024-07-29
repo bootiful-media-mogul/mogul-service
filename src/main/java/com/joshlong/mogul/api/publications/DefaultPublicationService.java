@@ -20,10 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -34,9 +31,9 @@ class DefaultPublicationServiceConfiguration {
 
 	@Bean
 	DefaultPublicationService defaultPublicationService(JdbcClient client, MogulService mogulService,
-			TextEncryptor textEncryptor, Settings settings, Map<String, PublisherPlugin<?>> plugins) {
+			TextEncryptor textEncryptor, Settings settings) {
 		var lookup = new SettingsLookupClient(settings);
-		return new DefaultPublicationService(client, mogulService, textEncryptor, lookup, plugins);
+		return new DefaultPublicationService(client, mogulService, textEncryptor, lookup);
 	}
 
 }
@@ -50,8 +47,6 @@ class DefaultPublicationService implements PublicationService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Map<String, PublisherPlugin<?>> plugins = new ConcurrentHashMap<>();
-
 	private final Function<SettingsLookup, Map<String, String>> settingsLookup;
 
 	private final JdbcClient db;
@@ -63,19 +58,45 @@ class DefaultPublicationService implements PublicationService {
 	private final TextEncryptor textEncryptor;
 
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
-			Function<SettingsLookup, Map<String, String>> settingsLookup, Map<String, PublisherPlugin<?>> plugins) {
+			Function<SettingsLookup, Map<String, String>> settingsLookup) {
 		this.db = db;
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
-		this.plugins.putAll(plugins);
 		this.publicationRowMapper = new PublicationRowMapper(textEncryptor);
 		Assert.notNull(this.db, "the JdbcClient must not be null");
 		Assert.notNull(this.mogulService, "the mogulService must not be null");
 		Assert.notNull(this.textEncryptor, "the textEncryptor must not be null");
 		Assert.notNull(this.settingsLookup, "the settings must not be null");
-		if (this.plugins.isEmpty())
-			this.log.warn("there are no plugins for publication!");
+
+	}
+
+	@Override
+	public <T extends Publishable> Publication unpublish(Long mogulId, Publication publication,
+			PublisherPlugin<T> plugin) {
+		var mogul = this.mogulService.getMogulById(mogulId);
+		Assert.notNull(plugin, "the plugin must not be null");
+		Assert.notNull(publication, "the publication must not be null");
+		Assert.notNull(mogul, "the mogul should not be null");
+
+		var context = publication.context();
+		var newContext = new HashMap<>(context);
+
+		try {
+			if (plugin.unpublish(newContext, publication)) {
+				var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
+				this.db.sql("update  publication set state = ?, context = ? where id =? ")
+					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
+					.update();
+			}
+
+		}
+		catch (Exception throwable) {
+			log.warn("couldn't unpublish {} with url {}", publication.id(), publication.url());
+			//
+		}
+
+		return this.getPublicationById(publication.id());
 	}
 
 	@Override
@@ -97,8 +118,9 @@ class DefaultPublicationService implements PublicationService {
 		var entityClazz = payload.getClass().getName();
 		var kh = new GeneratedKeyHolder();
 		this.db.sql(
-				"insert into publication(mogul_id, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?)")
-			.params(mogulId, plugin.name(), new Date(), null, contextJson, publicationData, entityClazz)
+				"insert into publication( state,mogul_id, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?)")
+			.params(Publication.State.DRAFT.name(), mogulId, plugin.name(), new Date(), null, contextJson,
+					publicationData, entityClazz)
 			.update(kh);
 
 		var publicationId = JdbcUtils.getIdFromKeyHolder(kh).longValue();
@@ -107,13 +129,13 @@ class DefaultPublicationService implements PublicationService {
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 		contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-		this.db.sql(" update publication set context =?, published = ?  where id = ?")
-			.params(contextJson, new Date(), publicationId)
+		this.db.sql(" update publication set state =? ,context = ?, published = ?  where id = ?")
+			.params(Publication.State.PUBLISHED.name(), contextJson, new Date(), publicationId)
 			.update(kh);
 
 		var url = context.getOrDefault(CONTEXT_URL, null);
 		if (null != url) {
-			this.db.sql(" update publication set url =?   where id = ?").params(url, publicationId).update(kh);
+			this.db.sql(" update publication set url = ? where id = ?").params(url, publicationId).update(kh);
 		}
 		var publication = this.getPublicationById(publicationId);
 		this.log.debug("writing publication out: {}", publication);

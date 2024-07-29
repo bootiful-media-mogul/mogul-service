@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
+import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
@@ -19,9 +20,9 @@ import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Component(PodbeanPodcastEpisodePublisherPlugin.PLUGIN_NAME)
@@ -114,11 +115,18 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public void unpublish(Map<String, String> context, Episode payload) {
-		log.debug("un-publishing to podbean with context [{}] and payload [{}]", context, payload);
+	public boolean unpublish(Map<String, String> context, Publication publication) {
+		var done = new AtomicBoolean(false);
 		var episodeId = context.get(CONTEXT_PODBEAN_EPISODE_ID);
-		this.podbeanClient.updateEpisode(episodeId, payload.title(), payload.description(), EpisodeStatus.DRAFT,
-				EpisodeType.PRIVATE, null, null);
+		this.podbeanClient.getAllEpisodes()
+			.stream()
+			.filter(episode -> episode.getId().equalsIgnoreCase(episodeId))
+			.forEach(episode -> {
+				this.podbeanClient.updateEpisode(episodeId, episode.getTitle(), episode.getContent(),
+						EpisodeStatus.DRAFT, EpisodeType.PRIVATE, null, null);
+				done.set(true);
+			});
+		return done.get();
 	}
 
 }

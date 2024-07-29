@@ -45,6 +45,10 @@ class PublicationRowMapper implements RowMapper<Publication> {
 		var context = this.readContext(rs.getString("context"));
 		var payload = rs.getString("payload");
 		var url = rs.getString("url");
+		var state = rs.getString("state");
+		var stateEnum = Publication.State.valueOf(state);
+		Assert.notNull(state, "state must not be null");
+		Assert.notNull(stateEnum, "stateEnum must not be null");
 		return new Publication( //
 				rs.getLong("mogul_id"), //
 				rs.getLong("id"), //
@@ -54,7 +58,7 @@ class PublicationRowMapper implements RowMapper<Publication> {
 				context, //
 				payload, //
 				classFor(rs.getString("payload_class")), //
-				url);
+				url, stateEnum);
 
 	}
 

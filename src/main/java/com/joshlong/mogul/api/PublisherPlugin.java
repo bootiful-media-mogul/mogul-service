@@ -7,6 +7,9 @@ import java.util.Set;
 
 public interface PublisherPlugin<T> {
 
+	/**
+	 * well known headers for the encrypted context data.
+	 */
 	String CONTEXT_URL = "url";
 
 	String name();
@@ -38,6 +41,6 @@ public interface PublisherPlugin<T> {
 
 	void publish(Map<String, String> context, T payload);
 
-	void unpublish(Map<String, String> context, T payload);
+	boolean unpublish(Map<String, String> context, Publication publication);
 
 }
