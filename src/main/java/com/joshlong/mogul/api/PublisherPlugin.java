@@ -7,6 +7,8 @@ import java.util.Set;
 
 public interface PublisherPlugin<T> {
 
+	String CONTEXT_URL = "url";
+
 	String name();
 
 	Set<String> getRequiredSettingKeys();

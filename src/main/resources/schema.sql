@@ -65,9 +65,12 @@ create table if not exists publication
     published     timestamp null,
     context       text      not null,
     payload       text      not null,
-    payload_class text      not null
+    payload_class text not null,
+    url           text null
 );
+create index if not exists publication_payload_index on publication (payload);
 
+--
 
 
 create table if not exists podcast_episode

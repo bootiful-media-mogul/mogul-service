@@ -44,8 +44,18 @@ class PublicationRowMapper implements RowMapper<Publication> {
 	public Publication mapRow(ResultSet rs, int rowNum) throws SQLException {
 		var context = this.readContext(rs.getString("context"));
 		var payload = rs.getString("payload");
-		return new Publication(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("plugin"), rs.getDate("created"),
-				rs.getDate("published"), context, payload, classFor(rs.getString("payload_class")));
+		var url = rs.getString("url");
+		return new Publication( //
+				rs.getLong("mogul_id"), //
+				rs.getLong("id"), //
+				rs.getString("plugin"), //
+				rs.getDate("created"), //
+				rs.getDate("published"), //
+				context, //
+				payload, //
+				classFor(rs.getString("payload_class")), //
+				url);
+
 	}
 
 	private Map<String, String> readContext(String context) {

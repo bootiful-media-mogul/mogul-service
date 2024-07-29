@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
+
 @Configuration
 class DefaultPublicationServiceConfiguration {
 
@@ -105,10 +107,14 @@ class DefaultPublicationService implements PublicationService {
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 		contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-		this.db.sql(" update publication set context =?, published = ? where id = ?")
+		this.db.sql(" update publication set context =?, published = ?  where id = ?")
 			.params(contextJson, new Date(), publicationId)
 			.update(kh);
 
+		var url = context.getOrDefault(CONTEXT_URL, null);
+		if (null != url) {
+			this.db.sql(" update publication set url =?   where id = ?").params(url, publicationId).update(kh);
+		}
 		var publication = this.getPublicationById(publicationId);
 		this.log.debug("writing publication out: {}", publication);
 		return publication;

@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
+import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
@@ -18,6 +19,7 @@ import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.net.URI;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -89,6 +91,9 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 				EpisodeStatus.DRAFT, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
 				producedGraphicAuthorization.getFileKey());
 
+		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
+		if (permalinkUrl != null)
+			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
 		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
 		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
 		context.put(CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS,
