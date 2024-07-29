@@ -1,5 +1,7 @@
 package com.joshlong.mogul.api.publications;
 
+import com.joshlong.mogul.api.Publication;
+import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
 
 import java.io.Serializable;
@@ -14,7 +16,7 @@ public interface PublicationService {
 
 	Publication getPublicationById(Long id);
 
-	Collection<Publication> getPublicationsByPublicationKey(Serializable pulicationKey);
+	Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey, Class<?> clazz);
 
 	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin);

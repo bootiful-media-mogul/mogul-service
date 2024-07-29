@@ -5,6 +5,15 @@ type Setting {
     valid: Boolean
 }
 
+
+type Publication {
+    mogulId:Int
+    id:ID
+    plugin:String
+    created: Float
+    published: Float
+}
+
 type SettingsPage {
     valid    : Boolean
     category : String
@@ -60,6 +69,7 @@ type Episode {
     complete: Boolean
     created: Float
     segments : [Segment]
+    publications : [Publication]
 }
 
 type Segment {

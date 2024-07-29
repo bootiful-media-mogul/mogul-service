@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.publications;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.joshlong.mogul.api.Publication;
+import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
@@ -26,15 +27,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @Configuration
-@RegisterReflectionForBinding(com.joshlong.mogul.api.podcasts.Episode.class)
 class DefaultPublicationServiceConfiguration {
 
 	@Bean
 	DefaultPublicationService defaultPublicationService(JdbcClient client, MogulService mogulService,
-			TextEncryptor textEncryptor, Settings settings, Map<String, PublisherPlugin<?>> plugins,
-			ObjectMapper objectMapper) {
+			TextEncryptor textEncryptor, Settings settings, Map<String, PublisherPlugin<?>> plugins) {
 		var lookup = new SettingsLookupClient(settings);
-		return new DefaultPublicationService(client, mogulService, textEncryptor, lookup, plugins, objectMapper);
+		return new DefaultPublicationService(client, mogulService, textEncryptor, lookup, plugins);
 	}
 
 }
@@ -61,14 +60,13 @@ class DefaultPublicationService implements PublicationService {
 	private final TextEncryptor textEncryptor;
 
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
-			Function<SettingsLookup, Map<String, String>> settingsLookup, Map<String, PublisherPlugin<?>> plugins,
-			ObjectMapper objectMapper) {
+			Function<SettingsLookup, Map<String, String>> settingsLookup, Map<String, PublisherPlugin<?>> plugins) {
 		this.db = db;
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
 		this.plugins.putAll(plugins);
-		this.publicationRowMapper = new PublicationRowMapper(objectMapper, textEncryptor);
+		this.publicationRowMapper = new PublicationRowMapper(textEncryptor);
 		Assert.notNull(this.db, "the JdbcClient must not be null");
 		Assert.notNull(this.mogulService, "the mogulService must not be null");
 		Assert.notNull(this.textEncryptor, "the textEncryptor must not be null");
@@ -107,25 +105,26 @@ class DefaultPublicationService implements PublicationService {
 
 	@Override
 	public Publication getPublicationById(Long publicationId) {
-		return this.db.sql("select * from publication where id =? ")
-			.params(publicationId)
-			.query(this.publicationRowMapper)
+		return this.db //
+			.sql("select * from publication where id = ? ") //
+			.params(publicationId)//
+			.query(this.publicationRowMapper)//
 			.single();
 	}
 
 	/**
 	 * returns all the {@link Publication } instances given a publication key. the key is
 	 * usually an ID of some sort, but whatever it is, it's serialized into JSON. and so
-	 * wee search for the serialized incarnation of the value
-	 * @param publicationKey the key by which to find a given publication.
-	 * @return all those that match.
+	 * we search for the serialized incarnation of the value
 	 */
-
 	@Override
-	public Collection<Publication> getPublicationsByPublicationKey(Serializable publicationKey) {
-		return this.db.sql("select * from publication where payload =? ")
-			.params(JsonUtils.write(publicationKey))
-			.query(this.publicationRowMapper)
+	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey,
+			Class<?> clazz) {
+		var sql = " select * from publication where payload = ? and payload_class = ? ";
+		return this.db//
+			.sql(sql)//
+			.params("\"" + publicationKey + "\"", clazz.getName())//
+			.query(this.publicationRowMapper)//
 			.list();
 	}
 

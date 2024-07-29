@@ -9,6 +9,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizationIntegrationRequest;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
+import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +43,17 @@ class DefaultPodcastService implements PodcastService {
 	private final ApplicationEventPublisher publisher;
 
 	DefaultPodcastService(MediaNormalizer mediaNormalizer, MogulService mogulService, JdbcClient db,
-			ManagedFileService managedFileService, ApplicationEventPublisher publisher) {
+			PublicationService publicationService, ManagedFileService managedFileService,
+			ApplicationEventPublisher publisher) {
 		this.db = db;
 		this.mediaNormalizer = mediaNormalizer;
 		this.mogulService = mogulService;
 		this.managedFileService = managedFileService;
-		this.episodeRowMapper = new EpisodeRowMapper(this::getPodcastById, this.managedFileService::getManagedFile);
+		this.episodeRowMapper = new EpisodeRowMapper(
+				// aLong ->
+				// publicationService.getPublicationsByPublicationKeyAndClass(aLong,
+				// Episode.class),
+				this::getPodcastById, this.managedFileService::getManagedFile);
 		this.publisher = publisher;
 	}
 
@@ -361,11 +367,10 @@ class DefaultPodcastService implements PodcastService {
 					 	?
 					) ;
 				""";
-		var segmentAudioManagedFile = managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
+		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
 				CommonMediaTypes.MP3);
-		var producedSegmentAudioManagedFile = managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
+		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
 				CommonMediaTypes.MP3);
-
 		var gkh = new GeneratedKeyHolder();
 		this.db.sql(sql)
 			.params(episodeId, segmentAudioManagedFile.id(), producedSegmentAudioManagedFile.id(), crossfade, name,
@@ -391,22 +396,18 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description) {
 		var uid = UUID.randomUUID().toString();
-		var podcast = getPodcastById(podcastId);
+		var podcast = this.getPodcastById(podcastId);
 		Assert.notNull(podcast, "the podcast is null!");
 		var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
-		var image = managedFileService.createManagedFile(currentMogulId, bucket, uid, "", 0, CommonMediaTypes.BINARY);
-		var producedGraphic = managedFileService.createManagedFile(currentMogulId, bucket, uid, "produced-graphic.jpg",
-				0, CommonMediaTypes.JPG);
-		var producedAudio = managedFileService.createManagedFile(currentMogulId, bucket, uid, "produced-audio.mp3", 0,
-				CommonMediaTypes.MP3);
-		var episode = createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
-
-		this.createEpisodeSegment(currentMogulId, episode.id(), "", 0); // create the one
-																		// mandatory
-																		// required
-																		// segment
-
-		return getEpisodeById(episode.id());
+		var image = this.managedFileService.createManagedFile(currentMogulId, bucket, uid, "", 0,
+				CommonMediaTypes.BINARY);
+		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId, bucket, uid,
+				"produced-graphic.jpg", 0, CommonMediaTypes.JPG);
+		var producedAudio = this.managedFileService.createManagedFile(currentMogulId, bucket, uid, "produced-audio.mp3",
+				0, CommonMediaTypes.MP3);
+		var episode = this.createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
+		this.createEpisodeSegment(currentMogulId, episode.id(), "", 0);
+		return this.getEpisodeById(episode.id());
 	}
 
 	@Override

@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.publications;
+package com.joshlong.mogul.api;
 
 import java.util.Date;
 import java.util.Map;

@@ -57,6 +57,25 @@ class PodcastController {
 		return this.podcastService.getEpisodesByPodcast(podcastId);
 	}
 
+	@SchemaMapping
+	Collection<Map<String, Object>> publications(Episode episode) {
+		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
+				episode.getClass());
+		var newPublications = new ArrayList<Map<String, Object>>();
+		for (var p : publications) {
+			var defaultedValues = Map.of("id", p.id(), "mogulId", p.mogulId(), "plugin", p.plugin(), "created",
+					p.created().getTime());
+			var all = new HashMap<String, Object>();
+			if (p.published() != null) {
+				all.put("published", p.published().getTime());
+			}
+			all.putAll(defaultedValues);
+			newPublications.add(all);
+			log.debug("adding " + all);
+		}
+		return newPublications;
+	}
+
 	@MutationMapping
 	boolean movePodcastEpisodeSegmentDown(@Argument Long episodeId, @Argument Long episodeSegmentId) {
 		this.podcastService.movePodcastEpisodeSegmentDown(episodeId, episodeSegmentId);
