@@ -38,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Transactional
 class DefaultManagedFileService implements ManagedFileService {
 
+	private final ManagedFileDeletionRequestRowMapper managedFileDeletionRequestRowMapper = new ManagedFileDeletionRequestRowMapper();
+
 	private final Map<Long, ManagedFile> cache = new ConcurrentHashMap<>();
 
 	private final JdbcClient db;
@@ -47,6 +49,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ApplicationEventPublisher publisher;
+
 
 	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher) {
 		this.db = db;
@@ -147,15 +150,16 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@Override
 	public Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests() {
+
 		return this.db//
 			.sql("select * from managed_file_deletion_request where deleted = false")//
-			.query(new ManagedFileDeletionRequestRowMapper())//
+			.query(this.managedFileDeletionRequestRowMapper)//
 			.list();
 	}
 
 	@Override
 	public void completeManagedFileDeletion(Long managedFileDeletionRequestId) {
-		var mfRequest = getManagedFileDeletionRequest(managedFileDeletionRequestId);
+		var mfRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
 		Assert.notNull(mfRequest, "the managed file deletion request should not be null");
 		storage.remove(mfRequest.bucket(), mfRequest.folder() + '/' + mfRequest.storageFilename());
 		this.db.sql(" update  managed_file_deletion_request  set deleted = true where id = ? ")
