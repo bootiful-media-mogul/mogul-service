@@ -11,9 +11,11 @@ public interface ManagedFileService {
 
 	/**
 	 * this will delete the record _and_ queue it up for deletion by a separate process in
-	 * S3.
+	 * S3 if required
 	 */
 	void refreshManagedFile(Long managedFileId);
+
+	Collection<ManagedFile> getAllManagedFiles();
 
 	Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests();
 

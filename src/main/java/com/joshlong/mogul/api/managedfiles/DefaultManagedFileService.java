@@ -3,7 +3,9 @@ package com.joshlong.mogul.api.managedfiles;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -21,12 +23,22 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * the {@link ManagedFile managedFile} abstraction is used all over the place in the
+ * system, and so this class provides caching. Lookups for a given {@link ManagedFile}
+ * <em>should</em> be served out of in-memory cache first. This can spare you thousands of
+ * one-off calls to the database for every, say, podcast loaded in the system.
+ */
 @Service
 @Transactional
 class DefaultManagedFileService implements ManagedFileService {
+
+	private final Map<Long, ManagedFile> cache = new ConcurrentHashMap<>();
 
 	private final JdbcClient db;
 
@@ -42,6 +54,33 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.publisher = publisher;
 	}
 
+	@EventListener
+	void onManagedFileUpdatedEvent(ManagedFileUpdatedEvent managedFileUpdatedEvent) {
+		synchronized (this.cache) {
+			this.cache.remove(managedFileUpdatedEvent.managedFile().id());
+		}
+	}
+
+	@EventListener
+	void onManagedFileDeletedEvent(ManagedFileDeletedEvent managedFileDeletedEvent) {
+		synchronized (this.cache) {
+			this.cache.remove(managedFileDeletedEvent.managedFile().id());
+		}
+	}
+
+	@EventListener(ApplicationReadyEvent.class)
+	void applicationReadyEvent() {
+		synchronized (this.cache) {
+			this.cache.clear();
+			var all = this.getAllManagedFiles();
+			for (var mf : all) {
+				this.cache.put(mf.id(), mf);
+			}
+		}
+		if (log.isDebugEnabled())
+			this.log.debug("there are {} ManagedFiles in the cache", this.cache.size());
+	}
+
 	@Override
 	public void write(Long managedFileId, String filename, MediaType mts, File resource) {
 		this.write(managedFileId, filename, mts, new FileSystemResource(resource));
@@ -49,7 +88,7 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@Override
 	public void write(Long managedFileId, String filename, MediaType mediaType, Resource resource) {
-		var managedFile = getManagedFile(managedFileId);
+		var managedFile = this.getManagedFile(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
 		this.storage.write(bucket, folder + '/' + managedFile.storageFilename(), resource);
@@ -94,6 +133,11 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
+	public Collection<ManagedFile> getAllManagedFiles() {
+		return this.db.sql("select * from managed_file").query(new ManagedFileRowMapper()).list();
+	}
+
+	@Override
 	public ManagedFileDeletionRequest getManagedFileDeletionRequest(Long managedFileDeletionRequestId) {
 		return db.sql("select * from managed_file_deletion_request where id =? ")
 			.param(managedFileDeletionRequestId)
@@ -103,8 +147,9 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@Override
 	public Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests() {
-		return this.db.sql("select * from managed_file_deletion_request where deleted = false")
-			.query(new ManagedFileDeletionRequestRowMapper())
+		return this.db//
+			.sql("select * from managed_file_deletion_request where deleted = false")//
+			.query(new ManagedFileDeletionRequestRowMapper())//
 			.list();
 	}
 
@@ -116,32 +161,46 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.db.sql(" update  managed_file_deletion_request  set deleted = true where id = ? ")
 			.param(managedFileDeletionRequestId)
 			.update();
-		var managedFileDeletionRequest = getManagedFileDeletionRequest(managedFileDeletionRequestId);
+		var managedFileDeletionRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
 		log.debug("completed [{}]", managedFileDeletionRequest);
 	}
 
 	@Override
 	public void deleteManagedFile(Long managedFileId) {
-		var mf = getManagedFile(managedFileId);
-		db.sql("delete from managed_file where id =?").param(managedFileId).update();
-		db.sql("insert into managed_file_deletion_request ( mogul_id, bucket, folder, filename ,storage_filename) values(?,?,? ,?,?)")
-			.params(mf.mogulId(), mf.bucket(), mf.folder(), mf.filename(), mf.storageFilename())
+		var managedFile = this.getManagedFile(managedFileId);
+		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
+		this.db.sql(
+				"insert into managed_file_deletion_request ( mogul_id, bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
+			.params(managedFile.mogulId(), managedFile.bucket(), managedFile.folder(), managedFile.filename(),
+					managedFile.storageFilename())
 			.update();
+
+		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
 
 	@Override
 	public ManagedFile getManagedFile(Long managedFileId) {
+
+		if (log.isDebugEnabled())
+			log.debug("calling getManagedFile({})", managedFileId);
+
 		if (null == managedFileId || managedFileId == 0)
 			return null;
-		return this.db.sql("select * from managed_file where id =? ")
-			.param(managedFileId)
-			.query(new ManagedFileRowMapper())
-			.single();
+
+		return this.cache.computeIfAbsent(managedFileId, managedFileIdAsKey -> {
+			if (log.isDebugEnabled())
+				this.log.debug("could not find ManagedFile #{}, sourcing it from the source table", managedFileId);
+			return this.db//
+				.sql("select * from managed_file where id =? ")//
+				.param(managedFileIdAsKey)//
+				.query(new ManagedFileRowMapper())//
+				.single();
+		});
 	}
 
 	@Override
 	public Resource read(Long managedFileId) {
-		var mf = getManagedFile(managedFileId);
+		var mf = this.getManagedFile(managedFileId);
 		return this.storage.read(mf.bucket(), mf.folder() + '/' + mf.storageFilename());
 	}
 
@@ -165,7 +224,7 @@ class DefaultManagedFileService implements ManagedFileService {
 			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString())
 			.update(kh);
 		log.info("the bucket is [{}]", bucket);
-		return getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
+		return this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
 	}
 
 }

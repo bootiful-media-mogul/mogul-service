@@ -176,7 +176,7 @@ class PodcastController {
 
 	@MutationMapping
 	boolean unpublishPodcastEpisodePublication(@Argument Long publicationId) {
-		log.debug("going to unpubliush the publication with id # {}", publicationId);
+		log.debug("going to unpublish the publication with id # {}", publicationId);
 		var publicationById = this.publicationService.getPublicationById(publicationId);
 		Assert.notNull(publicationById, "the publication should not be null");
 		var plugin = this.plugins.get(publicationById.plugin());

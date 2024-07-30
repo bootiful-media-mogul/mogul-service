@@ -9,7 +9,7 @@ import org.springframework.modulith.docs.Documenter;
 class ApiApplicationTests {
 
 	@Test
-	void contextLoads() throws Exception {
+	void contextLoads() {
 		var am = ApplicationModules.of(ApiApplication.class);
 		am.verify();
 		System.out.println(am);

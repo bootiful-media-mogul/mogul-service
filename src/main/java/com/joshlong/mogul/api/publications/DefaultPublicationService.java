@@ -3,15 +3,12 @@ package com.joshlong.mogul.api.publications;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
-import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -25,18 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
-
-@Configuration
-class DefaultPublicationServiceConfiguration {
-
-	@Bean
-	DefaultPublicationService defaultPublicationService(JdbcClient client, MogulService mogulService,
-			TextEncryptor textEncryptor, Settings settings) {
-		var lookup = new SettingsLookupClient(settings);
-		return new DefaultPublicationService(client, mogulService, textEncryptor, lookup);
-	}
-
-}
 
 @Transactional
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })

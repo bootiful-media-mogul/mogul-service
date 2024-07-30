@@ -49,11 +49,7 @@ class DefaultPodcastService implements PodcastService {
 		this.mediaNormalizer = mediaNormalizer;
 		this.mogulService = mogulService;
 		this.managedFileService = managedFileService;
-		this.episodeRowMapper = new EpisodeRowMapper(
-				// aLong ->
-				// publicationService.getPublicationsByPublicationKeyAndClass(aLong,
-				// Episode.class),
-				this::getPodcastById, this.managedFileService::getManagedFile);
+		this.episodeRowMapper = new EpisodeRowMapper(this::getPodcastById, this.managedFileService::getManagedFile);
 		this.publisher = publisher;
 	}
 
