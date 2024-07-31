@@ -50,7 +50,6 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	private final ApplicationEventPublisher publisher;
 
-
 	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher) {
 		this.db = db;
 		this.storage = storage;

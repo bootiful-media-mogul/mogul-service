@@ -95,6 +95,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
 		if (permalinkUrl != null)
 			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
+
 		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
 		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
 		context.put(CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS,
@@ -118,7 +119,9 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public boolean unpublish(Map<String, String> context, Publication publication) {
 		var done = new AtomicBoolean(false);
 		var episodeId = context.get(CONTEXT_PODBEAN_EPISODE_ID);
-		this.podbeanClient.getAllEpisodes()
+		this.podbeanClient//
+			.getAllEpisodes() // todo this is super inefficient. is there no way to get a
+								// single episode?
 			.stream()
 			.filter(episode -> episode.getId().equalsIgnoreCase(episodeId))
 			.forEach(episode -> {
