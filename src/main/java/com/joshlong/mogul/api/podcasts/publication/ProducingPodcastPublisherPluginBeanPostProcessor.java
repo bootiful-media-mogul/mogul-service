@@ -39,8 +39,10 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 				var podcastService = this.beanFactory.getBean(PodcastService.class);
 				var publishMethod = invocation.getMethod().getName().equalsIgnoreCase("publish");
 				if (publishMethod) {
+					log.debug("found the publish method on the plugin");
 					var context = (Map<String, String>) invocation.getArguments()[0];
 					var episode = (Episode) invocation.getArguments()[1];
+
 					var shouldProduceAudio = episode.producedAudioUpdated() == null
 							|| episode.producedAudioUpdated().before(episode.producedAudioAssetsUpdated());
 					log.debug("should produce the audio for episode [{}] from scratch? [{}]", episode,
@@ -63,6 +65,9 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 			proxyFactoryBean.setTargetClass(targetClass);
 			proxyFactoryBean.setTarget(plugin);
 			return proxyFactoryBean.getObject();
+		} //
+		else {
+			log.debug("{}.", "this is not an instance of a " + PodcastEpisodePublisherPlugin.class.getName());
 		}
 		return BeanPostProcessor.super.postProcessAfterInitialization(bean, beanName);
 	}

@@ -2,6 +2,9 @@ package com.joshlong.mogul.api.podcasts.production;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
+import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +26,8 @@ import java.util.function.Function;
  */
 @Configuration
 class MediaNormalizationIntegration {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	public static final String MEDIA_NORMALIZATION_FLOW = "mediaNormalizationFlow";
 
@@ -53,10 +58,14 @@ class MediaNormalizationIntegration {
 					FileCopyUtils.copy(i, o);
 				} ///
 				catch (IOException e) {
+					log.warn("couldn't copy the file to {}", localFile.getAbsolutePath());
 					throw new RuntimeException(e);
 				}
 				var newFile = encodingFunction.apply(localFile);
+				log.debug("encoded {}.", localFile.getAbsolutePath());
 				managedFileService.write(output.id(), output.filename(), ext, new FileSystemResource(newFile));
+				log.debug("wrote produced managed file having id {} and file name {} from new file {}", output.id(),
+						output.filename(), newFile.getAbsolutePath());
 				return new MediaNormalizationIntegrationResponse(input, output);
 			})
 			.get();
