@@ -113,9 +113,10 @@ class DefaultPublicationService implements PublicationService {
 		plugin.publish(context, payload);
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
-		contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
+
+		var contextJsonAfterPublish = this.textEncryptor.encrypt(JsonUtils.write(context));
 		this.db.sql(" update publication set state =? ,context = ?, published = ?  where id = ?")
-			.params(Publication.State.PUBLISHED.name(), contextJson, new Date(), publicationId)
+			.params(Publication.State.PUBLISHED.name(), contextJsonAfterPublish, new Date(), publicationId)
 			.update(kh);
 
 		var url = context.getOrDefault(CONTEXT_URL, null);
