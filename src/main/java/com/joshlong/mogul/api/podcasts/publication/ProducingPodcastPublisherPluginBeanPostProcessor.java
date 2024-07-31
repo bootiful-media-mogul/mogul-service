@@ -33,6 +33,7 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 	@SuppressWarnings("unchecked")
 	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 		if (bean instanceof PodcastEpisodePublisherPlugin plugin) {
+			log.debug("bean {} is an instance of {}", beanName, PodcastEpisodePublisherPlugin.class.getName());
 			var proxyFactoryBean = new ProxyFactoryBean();
 			proxyFactoryBean.addAdvice((MethodInterceptor) invocation -> {
 				var podcastProducer = this.beanFactory.getBean(PodcastProducer.class);
@@ -65,10 +66,8 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 			proxyFactoryBean.setTargetClass(targetClass);
 			proxyFactoryBean.setTarget(plugin);
 			return proxyFactoryBean.getObject();
-		} //
-		else {
-			log.debug("{}.", "this is not an instance of a " + PodcastEpisodePublisherPlugin.class.getName());
 		}
+
 		return BeanPostProcessor.super.postProcessAfterInitialization(bean, beanName);
 	}
 

@@ -336,7 +336,7 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Segment createEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade) {
 		var maxOrder = (db
-			.sql("select  max( sequence_number) from podcast_episode_segment where podcast_episode_id = ? ")
+			.sql("select max( sequence_number) from podcast_episode_segment where podcast_episode_id = ? ")
 			.params(episodeId)
 			.query(Number.class)
 			.optional()

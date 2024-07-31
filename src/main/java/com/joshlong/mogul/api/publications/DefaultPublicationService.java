@@ -103,7 +103,7 @@ class DefaultPublicationService implements PublicationService {
 		var entityClazz = payload.getClass().getName();
 		var kh = new GeneratedKeyHolder();
 		this.db.sql(
-				"insert into publication( state,mogul_id, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?)")
+				"insert into publication( state,mogul_id, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?,?)")
 			.params(Publication.State.DRAFT.name(), mogulId, plugin.name(), new Date(), null, contextJson,
 					publicationData, entityClazz)
 			.update(kh);
