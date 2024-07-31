@@ -81,20 +81,26 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 
 		var tempProducedAudioFile = download(this.managedFileService.read(payload.producedAudio().id()),
 				FileUtils.tempFileWithExtension("mp3"));
+		log.debug("downloaded the produced audio file for the podcast episode {}", payload.id());
 		var tempGraphicFile = download(this.managedFileService.read(payload.producedGraphic().id()),
 				FileUtils.tempFileWithExtension("jpg"));
+		log.debug("downloaded the produced graphic for the episode {}", payload.id());
 
 		var producedAudioAuthorization = this.podbeanClient.upload(CommonMediaTypes.MP3, tempProducedAudioFile);
-		log.debug("got the podcast audio authorization: {}", producedAudioAuthorization);
+		log.debug("got the podcast audio authorization from podbean: {}", producedAudioAuthorization);
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
+		log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
 		var podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
 				EpisodeStatus.DRAFT, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
 				producedGraphicAuthorization.getFileKey());
+		log.debug("published the episode to podbean {}", podbeanEpisode.toString());
 
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
-		if (permalinkUrl != null)
+		if (permalinkUrl != null) {
 			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
+			log.debug("got the published episode's url: {}", permalinkUrl);
+		}
 
 		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
 		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
@@ -103,13 +109,14 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		log.debug("published episode to podbean: [{}]", podbeanEpisode);
 	}
 
-	private static File download(Resource resource, File file) {
+	private File download(Resource resource, File file) {
 		Assert.notNull(resource, "the resource you wanted to" + " download to local file [" + file.getAbsolutePath()
 				+ "] does not exist");
 		try (var bin = resource.getInputStream(); var bout = new FileOutputStream(file)) {
 			FileCopyUtils.copy(bin, bout);
 		} //
 		catch (Throwable throwable) {
+			log.error("could not download the resource {} to file {} ", resource.getFilename(), file.getAbsolutePath());
 			throw new RuntimeException("could not download a resource ", throwable);
 		}
 		return file;
@@ -128,6 +135,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 				this.podbeanClient.updateEpisode(episodeId, episode.getTitle(), episode.getContent(),
 						EpisodeStatus.DRAFT, EpisodeType.PRIVATE, null, null);
 				done.set(true);
+				log.debug("unpublishing podbean publication for episode #{}", publication.payload());
 			});
 		return done.get();
 	}
