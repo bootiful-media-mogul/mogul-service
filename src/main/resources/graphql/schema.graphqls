@@ -108,7 +108,7 @@ type Mutation {
     deletePodcastEpisode(id:ID): ID
     deletePodcastEpisodeSegment(id:ID): ID
     addPodcastEpisodeSegment(episodeId: ID): Boolean
-    movePodcastEpisodeSegmentUp(episodeId:ID, episodeSegmentId: Int): Boolean
-    movePodcastEpisodeSegmentDown(episodeId:ID , episodeSegmentId: Int): Boolean
+    movePodcastEpisodeSegmentUp(episodeId: Int , episodeSegmentId: Int): Boolean
+    movePodcastEpisodeSegmentDown(episodeId: Int  , episodeSegmentId: Int): Boolean
     updateSetting(category:String, name:String, value:String): Boolean
 }

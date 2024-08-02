@@ -184,9 +184,6 @@ class DefaultManagedFileService implements ManagedFileService {
 	@Override
 	public ManagedFile getManagedFile(Long managedFileId) {
 
-		if (log.isDebugEnabled())
-			log.debug("calling getManagedFile({})", managedFileId);
-
 		if (null == managedFileId || managedFileId == 0)
 			return null;
 
