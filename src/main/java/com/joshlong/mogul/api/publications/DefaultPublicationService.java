@@ -4,21 +4,27 @@ import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
@@ -27,8 +33,16 @@ import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })
 class DefaultPublicationService implements PublicationService {
 
-	record SettingsLookup(Long mogulId, String category) {
+	public record PublicationStartedEvent(long publicationId) {
 	}
+
+	public record PublicationCompletedEvent(long publicationId) {
+	}
+
+	public record SettingsLookup(Long mogulId, String category) {
+	}
+
+	private final ApplicationEventPublisher publisher;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -42,18 +56,21 @@ class DefaultPublicationService implements PublicationService {
 
 	private final TextEncryptor textEncryptor;
 
-	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
+	private final Executor executorService;
+
+	private final TransactionTemplate transactionTemplate;
+
+	DefaultPublicationService(Executor executorService, ApplicationEventPublisher publisher, JdbcClient db,
+			MogulService mogulService, TextEncryptor textEncryptor, TransactionTemplate tt,
 			Function<SettingsLookup, Map<String, String>> settingsLookup) {
 		this.db = db;
+		this.transactionTemplate = tt;
+		this.executorService = executorService;
+		this.publisher = publisher;
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
 		this.publicationRowMapper = new PublicationRowMapper(textEncryptor);
-		Assert.notNull(this.db, "the JdbcClient must not be null");
-		Assert.notNull(this.mogulService, "the mogulService must not be null");
-		Assert.notNull(this.textEncryptor, "the textEncryptor must not be null");
-		Assert.notNull(this.settingsLookup, "the settings must not be null");
-
 	}
 
 	@Override
@@ -70,7 +87,7 @@ class DefaultPublicationService implements PublicationService {
 		try {
 			if (plugin.unpublish(newContext, publication)) {
 				var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-				this.db.sql("update  publication set state = ?, context = ? where id =? ")
+				this.db.sql("update publication set state = ?, context = ? where id =? ")
 					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
 					.update();
 			}
@@ -82,6 +99,14 @@ class DefaultPublicationService implements PublicationService {
 		}
 
 		return this.getPublicationById(publication.id());
+	}
+
+	// do this on a separate thread so that it's
+	// not included in the longer running parent transaction
+	private void notify(NotificationEvent event) {
+		this.executorService.execute(
+				() -> transactionTemplate.executeWithoutResult(transactionStatus -> publisher.publishEvent(event)));
+
 	}
 
 	@Override
@@ -110,7 +135,13 @@ class DefaultPublicationService implements PublicationService {
 
 		var publicationId = JdbcUtils.getIdFromKeyHolder(kh).longValue();
 
+		this.notify(NotificationEvent.notificationEventFor(mogulId, new PublicationStartedEvent(publicationId),
+				Long.toString(publicationId), null, true, true));
+
 		plugin.publish(context, payload);
+
+		this.notify(NotificationEvent.notificationEventFor(mogulId, new PublicationCompletedEvent(publicationId),
+				Long.toString(publicationId), null, true, true));
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 

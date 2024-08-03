@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -192,8 +191,8 @@ class PodcastController {
 		var mogul = episode.podcast().mogulId();
 		var publication = this.publicationService.publish(mogul, episode, new HashMap<>(),
 				this.plugins.get(pluginName));
-		log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ", episode, pluginName,
-				publication);
+		log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
+				"#" + episode.id() + "/" + episode.title(), pluginName, publication);
 		return true;
 	}
 

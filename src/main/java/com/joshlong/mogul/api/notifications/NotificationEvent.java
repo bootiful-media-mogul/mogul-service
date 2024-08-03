@@ -33,15 +33,6 @@ import java.util.Date;
 public record NotificationEvent(Long mogulId, String category, String key, Date when, String context, boolean modal,
 		boolean visible) {
 
-	/**
-	 * @param mogulId
-	 * @param object
-	 * @param key
-	 * @param context
-	 * @param modal
-	 * @param visible
-	 * @return
-	 */
 	public static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
 			boolean modal, boolean visible) {
 		return new NotificationEvent(mogulId, categoryFromClassName(object.getClass()), key, new Date(), context, modal,

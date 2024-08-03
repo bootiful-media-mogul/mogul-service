@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component(PodbeanPodcastEpisodePublisherPlugin.PLUGIN_NAME)
 class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin, BeanNameAware {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	/**
 	 * well known values written to the context after publication.
 	 */
@@ -38,8 +40,6 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public static final String CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS = "contextPodbeanEpisodePublishDateInMilliseconds";
 
 	public static final String PLUGIN_NAME = "podbean";
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<String> beanName = new AtomicReference<>();
 
@@ -79,7 +79,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		// todo some sort of thread local in which to stash the context
 		// to make it available to the multitenant TokenProvider
 
-		var tempProducedAudioFile = download(this.managedFileService.read(payload.producedAudio().id()),
+		var tempProducedAudioFile = this.download(this.managedFileService.read(payload.producedAudio().id()),
 				FileUtils.tempFileWithExtension("mp3"));
 		log.debug("downloaded the produced audio file for the podcast episode {}", payload.id());
 		var tempGraphicFile = download(this.managedFileService.read(payload.producedGraphic().id()),
@@ -91,16 +91,19 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
 		log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
+		// this used to be DRAFT/PUBLIC, but YOLO..
 		var podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
-				EpisodeStatus.DRAFT, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
+				EpisodeStatus.PUBLISH, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
 				producedGraphicAuthorization.getFileKey());
 		log.debug("published the episode to podbean {}", podbeanEpisode.toString());
 
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
 		if (permalinkUrl != null) {
 			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
-			log.debug("got the published episode's url: {}", permalinkUrl);
+			log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
 		}
+		else
+			log.debug("the published episode's (Episode#{}) podbean url is null", payload.id());
 
 		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
 		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());

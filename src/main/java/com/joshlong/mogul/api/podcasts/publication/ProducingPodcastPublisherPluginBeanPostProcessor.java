@@ -1,7 +1,8 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.podcasts.PodcastService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.Episode;
+import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.production.PodcastProducer;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.slf4j.Logger;
@@ -10,24 +11,42 @@ import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * introduces some behavior to produce - to glue together the intro, the bumper, and the
  * interview for - the audio for a given episode if and only if it hasn't already been
  * produced. this production happens lazily, just before a publication plugin is run
  */
-class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProcessor {
+class ProducingPodcastPublisherPluginBeanPostProcessor implements ApplicationEventPublisherAware, BeanPostProcessor {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	public record PodcastEpisodeRenderStartedEvent(long episodeId) {
+	}
 
-	private final BeanFactory beanFactory;
+	public record PodcastEpisodeRenderFinishedEvent(long episodeId) {
+	}
+
+	private final AtomicReference<ApplicationEventPublisher> publisher = new AtomicReference<>(null);
 
 	ProducingPodcastPublisherPluginBeanPostProcessor(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
 	}
+
+	@Override
+	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+		this.publisher.set(applicationEventPublisher);
+	}
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	private final BeanFactory beanFactory;
 
 	@Override
 	@SuppressWarnings("unchecked")
@@ -36,28 +55,43 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 			log.debug("bean {} is an instance of {}", beanName, PodcastEpisodePublisherPlugin.class.getName());
 			var proxyFactoryBean = new ProxyFactoryBean();
 			proxyFactoryBean.addAdvice((MethodInterceptor) invocation -> {
-				var podcastProducer = this.beanFactory.getBean(PodcastProducer.class);
-				var podcastService = this.beanFactory.getBean(PodcastService.class);
 				var publishMethod = invocation.getMethod().getName().equalsIgnoreCase("publish");
 				if (publishMethod) {
-					log.debug("found the publish method on the plugin");
+
+					var publisher = this.publisher.get();
+					var podcastProducer = beanFactory.getBean(PodcastProducer.class);
+					var podcastService = beanFactory.getBean(PodcastService.class);
+					var transactionTemplate = beanFactory.getBean(TransactionTemplate.class);
+
+					log.debug("found the publish method on the plugin bean named {}", beanName);
 					var context = (Map<String, String>) invocation.getArguments()[0];
 					var episode = (Episode) invocation.getArguments()[1];
 
 					var shouldProduceAudio = episode.producedAudioUpdated() == null
 							|| episode.producedAudioUpdated().before(episode.producedAudioAssetsUpdated());
-					log.debug("should produce the audio for episode [{}] from scratch? [{}]", episode,
-							shouldProduceAudio);
-					if (shouldProduceAudio) {
-						var producedManagedFile = podcastProducer.produce(episode);
-						log.debug(
-								"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
-								episode, producedManagedFile, podcastProducer);
-					}
-					var updatedEpisode = podcastService.getEpisodeById(episode.id());
-					Assert.notNull(updatedEpisode.producedAudioUpdated(), "the producedAudioUpdated field is null");
-					plugin.publish(context, updatedEpisode);
-					return null;
+					log.debug("should produce the audio for episode [{}] from scratch? [{}]",
+							"#" + episode.id() + " / " + episode.title(), shouldProduceAudio);
+					var mogulId = episode.podcast().mogulId();
+					return transactionTemplate.execute(status -> {
+
+						if (shouldProduceAudio) {
+							publisher.publishEvent(NotificationEvent.notificationEventFor(mogulId,
+									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
+									null, true, true));
+							var producedManagedFile = podcastProducer.produce(episode);
+							log.debug(
+									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
+									episode, producedManagedFile, podcastProducer);
+							publisher.publishEvent(NotificationEvent.notificationEventFor(mogulId,
+									new PodcastEpisodeRenderFinishedEvent(episode.id()), Long.toString(episode.id()),
+									null, true, true));
+						}
+						var updatedEpisode = podcastService.getEpisodeById(episode.id());
+						Assert.notNull(updatedEpisode.producedAudioUpdated(), "the producedAudioUpdated field is null");
+						plugin.publish(context, updatedEpisode);
+						return null;
+					});
+
 				}
 				return invocation.proceed();
 			});
@@ -69,6 +103,12 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanPostProces
 		}
 
 		return BeanPostProcessor.super.postProcessAfterInitialization(bean, beanName);
+	}
+
+	public record PublicationStartedEvent(long publicationId) {
+	}
+
+	public record PublicationCompletedEvent(long publicationId) {
 	}
 
 }

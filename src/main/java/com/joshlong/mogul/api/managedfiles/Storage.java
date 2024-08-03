@@ -56,14 +56,14 @@ class Storage {
 				.bucket(bucketName)
 				.key(keyName)
 				.build();
-			var response = s3.createMultipartUpload(createMultipartUploadRequest);
+			var response = this.s3.createMultipartUpload(createMultipartUploadRequest);
 			var uploadId = response.uploadId();
 			var completedParts = new ArrayList<CompletedPart>();
 			var partNumber = 1;
 			var buffer = new byte[chunkSize];
 			var bytesRead = -1;
 			while ((bytesRead = inputStream.read(buffer)) > 0) {
-				log.debug("uploading to part [{}]", partNumber);
+				this.log.debug("uploading to part [{}]", partNumber);
 				var actualBytes = bytesRead == chunkSize ? buffer : Arrays.copyOf(buffer, bytesRead);
 				var uploadPartRequest = UploadPartRequest.builder()
 					.bucket(bucketName)
@@ -71,7 +71,7 @@ class Storage {
 					.uploadId(uploadId)
 					.partNumber(partNumber)
 					.build();
-				var etag = s3.uploadPart(uploadPartRequest, RequestBody.fromBytes(actualBytes)).eTag();
+				var etag = this.s3.uploadPart(uploadPartRequest, RequestBody.fromBytes(actualBytes)).eTag();
 				completedParts.add(CompletedPart.builder().partNumber(partNumber).eTag(etag).build());
 				partNumber++;
 				if (actualBytes != buffer) {
@@ -85,8 +85,7 @@ class Storage {
 				.uploadId(uploadId)
 				.multipartUpload(completedMultipartUpload)
 				.build();
-
-			s3.completeMultipartUpload(completeMultipartUploadRequest);
+			this.s3.completeMultipartUpload(completeMultipartUploadRequest);
 		}
 	}
 
