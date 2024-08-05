@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -15,7 +16,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
@@ -24,7 +24,6 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
@@ -103,11 +102,6 @@ class DefaultPublicationService implements PublicationService {
 
 	// do this on a separate thread so that it's
 	// not included in the longer running parent transaction
-	private void notify(NotificationEvent event) {
-		this.executorService.execute(
-				() -> transactionTemplate.executeWithoutResult(transactionStatus -> publisher.publishEvent(event)));
-
-	}
 
 	@Override
 	public <T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
@@ -135,13 +129,13 @@ class DefaultPublicationService implements PublicationService {
 
 		var publicationId = JdbcUtils.getIdFromKeyHolder(kh).longValue();
 
-		this.notify(NotificationEvent.notificationEventFor(mogulId, new PublicationStartedEvent(publicationId),
-				Long.toString(publicationId), null, true, true));
+		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+				new PublicationStartedEvent(publicationId), Long.toString(publicationId), null, true, true));
 
 		plugin.publish(context, payload);
 
-		this.notify(NotificationEvent.notificationEventFor(mogulId, new PublicationCompletedEvent(publicationId),
-				Long.toString(publicationId), null, true, true));
+		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+				new PublicationCompletedEvent(publicationId), Long.toString(publicationId), null, true, true));
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 

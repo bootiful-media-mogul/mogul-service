@@ -32,7 +32,7 @@ class PodcastEpisodePublisherPluginConfiguration {
 
 	@Bean
 	static ProducingPodcastPublisherPluginBeanPostProcessor podcastProducingBeanPostProcessor(BeanFactory beanFactory) {
-		return new ProducingPodcastPublisherPluginBeanPostProcessor(beanFactory);
+		return new ProducingPodcastPublisherPluginBeanPostProcessor();
 	}
 
 }

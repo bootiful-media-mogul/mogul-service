@@ -82,7 +82,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var tempProducedAudioFile = this.download(this.managedFileService.read(payload.producedAudio().id()),
 				FileUtils.tempFileWithExtension("mp3"));
 		log.debug("downloaded the produced audio file for the podcast episode {}", payload.id());
-		var tempGraphicFile = download(this.managedFileService.read(payload.producedGraphic().id()),
+		var tempGraphicFile = this.download(this.managedFileService.read(payload.producedGraphic().id()),
 				FileUtils.tempFileWithExtension("jpg"));
 		log.debug("downloaded the produced graphic for the episode {}", payload.id());
 

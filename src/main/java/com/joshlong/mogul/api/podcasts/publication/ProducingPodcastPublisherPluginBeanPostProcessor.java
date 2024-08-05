@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
 import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.production.PodcastProducer;
@@ -10,10 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
@@ -25,28 +24,25 @@ import java.util.concurrent.atomic.AtomicReference;
  * interview for - the audio for a given episode if and only if it hasn't already been
  * produced. this production happens lazily, just before a publication plugin is run
  */
-class ProducingPodcastPublisherPluginBeanPostProcessor implements ApplicationEventPublisherAware, BeanPostProcessor {
+class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAware, BeanPostProcessor {
 
-	public record PodcastEpisodeRenderStartedEvent(long episodeId) {
-	}
-
-	public record PodcastEpisodeRenderFinishedEvent(long episodeId) {
-	}
-
-	private final AtomicReference<ApplicationEventPublisher> publisher = new AtomicReference<>(null);
-
-	ProducingPodcastPublisherPluginBeanPostProcessor(BeanFactory beanFactory) {
-		this.beanFactory = beanFactory;
-	}
-
-	@Override
-	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
-		this.publisher.set(applicationEventPublisher);
-	}
+	private final AtomicReference<BeanFactory> beanFactoryAtomicReference = new AtomicReference<>();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final BeanFactory beanFactory;
+	@Override
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		this.beanFactoryAtomicReference.set(beanFactory);
+		log.debug("obtained reference to BeanFactory in {}", getClass().getName());
+	}
+
+	public record PodcastEpisodeRenderStartedEvent(long episodeId) {
+
+	}
+
+	public record PodcastEpisodeRenderFinishedEvent(long episodeId) {
+
+	}
 
 	@Override
 	@SuppressWarnings("unchecked")
@@ -58,7 +54,8 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements ApplicationEve
 				var publishMethod = invocation.getMethod().getName().equalsIgnoreCase("publish");
 				if (publishMethod) {
 
-					var publisher = this.publisher.get();
+					var beanFactory = beanFactoryAtomicReference.get();
+
 					var podcastProducer = beanFactory.getBean(PodcastProducer.class);
 					var podcastService = beanFactory.getBean(PodcastService.class);
 					var transactionTemplate = beanFactory.getBean(TransactionTemplate.class);
@@ -75,14 +72,14 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements ApplicationEve
 					return transactionTemplate.execute(status -> {
 
 						if (shouldProduceAudio) {
-							publisher.publishEvent(NotificationEvent.notificationEventFor(mogulId,
+							NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
 									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
 									null, true, true));
 							var producedManagedFile = podcastProducer.produce(episode);
 							log.debug(
 									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
 									episode, producedManagedFile, podcastProducer);
-							publisher.publishEvent(NotificationEvent.notificationEventFor(mogulId,
+							NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
 									new PodcastEpisodeRenderFinishedEvent(episode.id()), Long.toString(episode.id()),
 									null, true, true));
 						}
@@ -103,12 +100,6 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements ApplicationEve
 		}
 
 		return BeanPostProcessor.super.postProcessAfterInitialization(bean, beanName);
-	}
-
-	public record PublicationStartedEvent(long publicationId) {
-	}
-
-	public record PublicationCompletedEvent(long publicationId) {
 	}
 
 }
