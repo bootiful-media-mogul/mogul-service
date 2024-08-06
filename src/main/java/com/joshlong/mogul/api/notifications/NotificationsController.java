@@ -8,7 +8,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -29,17 +28,16 @@ class NotificationsController {
 	void notificationEventListener(NotificationEvent notification) {
 		Assert.notNull(notification, "the notification must not be null");
 		var mogulId = notification.mogulId();
-		var queue = this.events.computeIfAbsent(mogulId, aLong -> new ConcurrentLinkedQueue<>());
-		queue.add(notification);
+		this.events.computeIfAbsent(mogulId, aLong -> new ConcurrentLinkedQueue<>()).add(notification);
 	}
 
 	@QueryMapping
 	Map<String, Object> notifications() {
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var notificationEvents = this.events.getOrDefault(currentMogulId, new ConcurrentLinkedQueue<>());
+		var notificationEvents = this.events.computeIfAbsent(currentMogulId, mogulId -> new ConcurrentLinkedQueue<>());
 		var notification = notificationEvents.poll();
 		if (null != notification)
-			return Map.of("mogulId", Objects.requireNonNull(notification).mogulId(), //
+			return Map.of("mogulId", notification.mogulId(), //
 					"when", notification.when().getTime(), //
 					"key", notification.key(), "category", notification.category(), "modal", notification.modal());
 		return null;
