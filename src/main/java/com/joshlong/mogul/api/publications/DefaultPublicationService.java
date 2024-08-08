@@ -24,7 +24,6 @@ import org.springframework.util.Assert;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
 
 import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
@@ -36,6 +35,10 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	// mapping of an element (podcast episode, youtube video, blog, etc.)'s id to the
+	// publications associated with that element
+	private final Map<String, Collection<Publication>> publicationsCache = new ConcurrentHashMap<>();
 
 	private final Function<SettingsLookup, Map<String, String>> settingsLookup;
 
@@ -93,9 +96,9 @@ class DefaultPublicationService implements PublicationService {
 
 		return this.getPublicationById(publication.id());
 	}
-
 	// do this on a separate thread so that it's
 	// not included in the longer running parent transaction
+
 	@Override
 	public <T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin) {
@@ -108,7 +111,7 @@ class DefaultPublicationService implements PublicationService {
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
 
-		var publicationId = this.transactionTemplate.execute(transactionStatus -> {
+		var publicationId = (long) Objects.requireNonNull(this.transactionTemplate.execute(transactionStatus -> {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
 			var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
@@ -121,13 +124,17 @@ class DefaultPublicationService implements PublicationService {
 						publicationData, entityClazz)
 				.update(kh);
 			return JdbcUtils.getIdFromKeyHolder(kh).longValue();
+		}));
 
-		});
+		// make sure the client sees the new state immediately.
+		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
 		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
 				new PublicationStartedEvent(publicationId), Long.toString(publicationId), null, true, true));
 
 		plugin.publish(context, payload);
+
+		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
 		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
 				new PublicationCompletedEvent(publicationId), Long.toString(publicationId), null, true, true));
@@ -164,22 +171,19 @@ class DefaultPublicationService implements PublicationService {
 						+ ") doesn't match? ");
 	}
 
-	private final Map<String, Collection<Publication>> publicationsCache = new ConcurrentHashMap<>();
-
 	private void refreshCache() {
 
 		if (this.log.isDebugEnabled())
 			this.log.debug("refreshing the publication cache");
 
-		var publicationComparator = Comparator.comparing((Publication p) -> p.payloadClass() + ":" + p.payload());
+		this.publicationsCache.clear();
+
 		this.db.sql("select * from publication") //
 			.query(this.publicationRowMapper) //
 			.stream()//
 			.forEach(publication -> {
-				var key = key(publication.payloadClass(), publication.payload());
-				this.publicationsCache
-					.computeIfAbsent(key, cacheKey -> new ConcurrentSkipListSet<>(publicationComparator))
-					.add(publication);
+				var key = this.key(publication.payloadClass(), publication.payload());
+				this.publicationsCache.computeIfAbsent(key, cacheKey -> new ArrayList<>()).add(publication);
 				log.debug("adding publication {} to publications cache for cache key {} ", publication, key);
 			});
 	}

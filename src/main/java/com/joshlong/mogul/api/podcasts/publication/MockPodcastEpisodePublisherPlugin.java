@@ -58,6 +58,10 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 		catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
+
+		if (log.isDebugEnabled())
+			log.debug("middle: publishing episode {} with context {}", payload.id(), context);
+
 		context.put(PublisherPlugin.CONTEXT_URL, "https://spring.io/");
 
 		if (log.isDebugEnabled())
