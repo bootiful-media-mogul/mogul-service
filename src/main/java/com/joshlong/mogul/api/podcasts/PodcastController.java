@@ -10,13 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.graphql.data.method.annotation.Argument;
-import org.springframework.graphql.data.method.annotation.MutationMapping;
-import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
+import org.springframework.graphql.data.method.annotation.*;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -59,20 +57,25 @@ class PodcastController {
 
 	@SchemaMapping
 	Collection<Map<String, Object>> publications(Episode episode) {
+		var episodeKeyForLogging = episode.id() + "/" + episode.title();
 		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
 				episode.getClass());
+		if (!publications.isEmpty()) {
+			this.log.debug("good news! there are " + "publications for episode {}", episodeKeyForLogging);
+		}
 		var newPublications = new ArrayList<Map<String, Object>>();
 		for (var p : publications) {
 			var defaultedValues = Map.of("id", p.id(), "mogulId", p.mogulId(), "plugin", p.plugin(), "created",
 					p.created().getTime());
-			var all = new HashMap<String, Object>();
+			var all = new HashMap<String, Object>(defaultedValues);
 			if (p.published() != null)
 				all.put("published", p.published().getTime());
-			if (p.url() != null)
+			if (StringUtils.hasText(p.url()))
 				all.put("url", p.url());
-			all.putAll(defaultedValues);
 			newPublications.add(all);
 		}
+		if (!newPublications.isEmpty())
+			this.log.debug("returning {} publications for episode {}", newPublications.size(), episodeKeyForLogging);
 		return newPublications;
 	}
 
@@ -105,24 +108,27 @@ class PodcastController {
 		return true;
 	}
 
-	@SchemaMapping
-	Collection<String> availablePlugins(Episode episode) {
+	@BatchMapping
+	Map<Episode, Collection<String>> availablePlugins(List<Episode> episodes) {
 		var mogul = this.mogulService.getCurrentMogul();
-		var plugins = new HashSet<String>();
-		for (var pluginName : this.plugins.keySet()) {
+		var mapOfEpisodesToValidPlugins = new HashMap<Episode, Collection<String>>();
+		for (var pluginEntry : this.plugins.entrySet()) {
+			var pluginName = pluginEntry.getKey();
+			var plugin = pluginEntry.getValue();
 			var configuration = this.settings.getAllValuesByCategory(mogul.id(), pluginName);
-			var plugin = this.plugins.get(pluginName);
-			if (plugin.canPublish(configuration, episode)) {
-				plugins.add(plugin.name());
+			for (var episode : episodes) {
+				var pluginNamesForEpisode = mapOfEpisodesToValidPlugins.computeIfAbsent(episode,
+						e -> new ArrayList<>());
+				if (plugin.canPublish(configuration, episode))
+					pluginNamesForEpisode.add(plugin.name());
 			}
 		}
-
-		return plugins;
+		return mapOfEpisodesToValidPlugins;
 	}
 
-	@SchemaMapping
-	List<Segment> segments(Episode episode) {
-		return this.podcastService.getEpisodeSegmentsByEpisode(episode.id());
+	@BatchMapping
+	Map<Episode, List<Segment>> segments(List<Episode> episodes) {
+		return this.podcastService.getEpisodeSegmentsByEpisodes(episodes);
 	}
 
 	@SchemaMapping
@@ -137,19 +143,25 @@ class PodcastController {
 
 	@QueryMapping
 	Collection<Podcast> podcasts() {
-		return this.podcastService.getAllPodcastsByMogul(mogulService.getCurrentMogul().id());
+		var currentMogul = mogulService.getCurrentMogul();
+		if (log.isDebugEnabled())
+			log.debug("attempting to read the podcasts associated with mogul #{} - {}", currentMogul.id(),
+					currentMogul.username());
+		return this.podcastService.getAllPodcastsByMogul(currentMogul.id());
 	}
 
 	@SchemaMapping
 	Collection<Episode> episodes(Podcast podcast) {
 		this.mogulService.assertAuthorizedMogul(podcast.mogulId());
-		return this.podcastService.getEpisodesByPodcast(podcast.id());
+		var episodesByPodcast = this.podcastService.getEpisodesByPodcast(podcast.id());
+		log.debug("episodes by podcast #{} {}", podcast.id(), podcast.title());
+		return episodesByPodcast;
 	}
 
 	@MutationMapping
 	Long deletePodcastEpisode(@Argument Long id) {
-		var ep = this.podcastService.getEpisodeById(id);
-		this.mogulService.assertAuthorizedMogul(ep.podcast().mogulId());
+		// var ep = this.podcastService.getEpisodeById(id);
+		// this.mogulService.assertAuthorizedMogul(ep.podcast().mogulId());
 		this.podcastService.deletePodcastEpisode(id);
 		return id;
 	}
@@ -188,7 +200,7 @@ class PodcastController {
 	@MutationMapping
 	boolean publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
 		var episode = this.podcastService.getEpisodeById(episodeId);
-		var mogul = episode.podcast().mogulId();
+		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
 		var publication = this.publicationService.publish(mogul, episode, new HashMap<>(),
 				this.plugins.get(pluginName));
 		log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
@@ -220,8 +232,8 @@ class PodcastController {
 			var map = Map.of("episodeId", id, "complete", episode.complete());
 			var json = this.om.writeValueAsString(map);
 			var evt = NotificationEvent.notificationEventFor(
-					podcastEpisodeCompletionEvent.episode().podcast().mogulId(), podcastEpisodeCompletionEvent,
-					Long.toString(episode.id()), json, false, false);
+					podcastService.getPodcastById(podcastEpisodeCompletionEvent.episode().podcastId()).mogulId(),
+					podcastEpisodeCompletionEvent, Long.toString(episode.id()), json, false, false);
 			this.publisher.publishEvent(evt);
 			this.log.debug("sent an event to clients listening for {}", episode);
 		} //
