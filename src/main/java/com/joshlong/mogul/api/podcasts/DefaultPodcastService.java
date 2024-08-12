@@ -467,13 +467,24 @@ class DefaultPodcastService implements PodcastService {
 	@EventListener
 	void podcastEpisodeDeletedEvent(PodcastEpisodeDeletedEvent pde) {
 		this.log.debug("refreshMogulPodcasts: podcastEpisodeDeletedEvent");
-		this.refreshMogulPodcasts(this.getPodcastById(pde.episode().podcastId()).mogulId());
+		var podcastId = pde.episode().podcastId();
+		var podcast = this.getPodcastById(podcastId);
+		var mogul = podcast.mogulId();
+		var mogulPodcasts = this.podcasts.get(mogul);
+		for (var p : mogulPodcasts) {
+			if (p.id().equals(podcastId)) {
+				var updated = p.episodes().stream().filter(e -> !e.id().equals(pde.episode().id())).toList();
+				p.episodes().clear();
+				p.episodes().addAll(updated);
+			}
+		}
+		// this.refreshMogulPodcasts(this.getPodcastById(pde.episode().podcastId()).mogulId());
 	}
 
 	@EventListener
 	void podcastDeletedEvent(PodcastDeletedEvent pde) {
 		this.log.debug("refreshMogulPodcasts: podcastDeletedEvent");
-		this.refreshMogulPodcasts(pde.podcast().mogulId());
+		this.podcasts.remove(pde.podcast().id());
 	}
 
 	@EventListener
@@ -517,6 +528,12 @@ class DefaultPodcastService implements PodcastService {
 			.stream()
 			.collect(Collectors.toMap(Podcast::id, p -> p));
 
+		if (podcasts.isEmpty()) {
+			log.debug("there are no podcasts associated" + " with the mogul #{}, so nothing to cache. returning.",
+					mogulId);
+			return;
+		}
+
 		var managedFiles = this.managedFileService.getAllManagedFilesForMogul(mogulId)
 			.stream()
 			.collect(Collectors.toMap(ManagedFile::id, mf -> mf));
@@ -524,8 +541,8 @@ class DefaultPodcastService implements PodcastService {
 		var segments = new HashMap<Long, List<Segment>>();
 		var sql = """
 					select pes.*
-					from podcast p, podcast_episode pe , podcast_episode_segment pes
-					where p.mogul_id = ? and p.id=pe.podcast_id and pe.id = pes.podcast_episode_id
+					from podcast p, podcast_episode pe, podcast_episode_segment pes
+					where p.mogul_id = ? and p.id = pe.podcast_id and pe.id = pes.podcast_episode_id
 				""";
 		this.db //
 			.sql(sql)

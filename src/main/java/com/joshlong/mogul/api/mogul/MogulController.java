@@ -11,16 +11,6 @@ import java.util.Map;
 @Controller
 class MogulController {
 
-	/*
-	 * @QueryMapping String token(Principal principal) {
-	 *
-	 * if (principal instanceof JwtAuthenticationToken jwt) { return
-	 * jwt.getToken().getTokenValue(); }
-	 *
-	 * Assert.state(false, "the principal should be a JWT-carrier");
-	 *
-	 * return null ; }
-	 */
 	@QueryMapping
 	Map<String, String> me(Principal principal) {
 		return Map.of("name", principal.getName());
