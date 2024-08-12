@@ -2,6 +2,7 @@ package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
+import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -34,6 +35,12 @@ public class ApiApplication {
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 			var mcs = MemberCategory.values();
+
+			hints.proxies()
+				.registerJdkProxy(PodcastEpisodePublisherPlugin.class, org.springframework.aop.SpringProxy.class,
+						org.springframework.aop.framework.Advised.class,
+						org.springframework.core.DecoratingProxy.class);
+
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, mcs);
 		}
