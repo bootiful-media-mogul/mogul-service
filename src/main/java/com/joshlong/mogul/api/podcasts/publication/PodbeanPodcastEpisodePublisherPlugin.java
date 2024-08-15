@@ -64,7 +64,9 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 
 	@Override
 	public boolean canPublish(Map<String, String> context, Episode payload) {
-		return this.isConfigurationValid(context) && payload != null && payload.complete();
+		var cp = this.isConfigurationValid(context) && payload != null && payload.complete();
+
+		return cp;
 	}
 
 	@Override

@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This service uses a caching scheme that you need to be aware of when effecting changes.
@@ -104,18 +105,12 @@ class DefaultPodcastService implements PodcastService {
 
 		// read through the DB.
 		return this.getEpisodeSegmentsByEpisodeFromDatabase(episodeId);
-
-		/*
-		 * var sql =
-		 * " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC "
-		 * ; return
-		 * this.jdbcClient.sql(sql).params(episodeId).query(episodeSegmentRowMapper).list(
-		 * );
-		 */
 	}
 
-	@ApplicationModuleListener
+	@EventListener
 	void podcastManagedFileUpdated(ManagedFileUpdatedEvent managedFileUpdatedEvent) {
+		this.log.debug("good news everyone! we're invoking for managed file #{}",
+				managedFileUpdatedEvent.managedFile().id());
 		var mf = managedFileUpdatedEvent.managedFile();
 		var sql = """
 				select pes.podcast_episode_id as id
@@ -165,10 +160,37 @@ class DefaultPodcastService implements PodcastService {
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
 		var episode = this.getEpisodeById(episodeId);
 		var segments = this.getEpisodeSegmentsByEpisode(episodeId);
-		var written = (episode.graphic().written() && episode.producedGraphic().written()) && !segments.isEmpty()
+		var graphicsWritten = episode.graphic().written() && episode.producedGraphic().written();
+		var complete = graphicsWritten && !segments.isEmpty()
 				&& (segments.stream().allMatch(se -> se.audio().written() && se.producedAudio().written()));
-		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(written, episode.id()).update();
+
+		if (this.log.isDebugEnabled()) {
+			var message = new StringBuilder();
+			message.append("-------------------------------------------------------")
+				.append(System.lineSeparator())
+				.append(String.format("episode #%s complete? %s", episode.id(), complete))
+				.append(System.lineSeparator());
+			var managedFileStream = segments.stream()
+				.flatMap(seg -> Stream.of(seg.audio(), seg.producedAudio()))
+				.filter(mf -> !mf.written())
+				.map(ManagedFile::id)
+				.map(id -> Long.toString(id))
+				.collect(Collectors.toSet());
+
+			if (!managedFileStream.isEmpty()) {
+				message.append(String.format("according to this method, the managed files"
+						+ " for segments for episode #%s are not written. " + "here are the managed file IDs: %s",
+						episodeId, String.join(", ", managedFileStream)))
+					.append(System.lineSeparator());
+			}
+			this.log.debug(message.toString());
+		}
+
+		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
+		this.refreshMogulPodcasts(getPodcastById(episode.podcastId()).mogulId());
 		var episodeById = this.getEpisodeById(episode.id());
+		Assert.state(episodeById.complete() == complete, "the complete value in the episode in the cache "
+				+ "should match the value we just wrote to the database");
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(episodeById)))
 			this.publisher.publishEvent(e);

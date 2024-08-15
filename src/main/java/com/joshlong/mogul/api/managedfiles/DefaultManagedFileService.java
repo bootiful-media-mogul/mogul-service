@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
@@ -56,11 +57,13 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@EventListener
 	void onManagedFileUpdatedEvent(ManagedFileUpdatedEvent managedFileUpdatedEvent) {
+		this.log.debug("removing managed file {} from cache", managedFileUpdatedEvent.managedFile().id());
 		this.cache.remove(managedFileUpdatedEvent.managedFile().id());
 	}
 
 	@EventListener
 	void onManagedFileDeletedEvent(ManagedFileDeletedEvent managedFileDeletedEvent) {
+		this.log.debug("removing managed file {} from cache", managedFileDeletedEvent.managedFile().id());
 		this.cache.remove(managedFileDeletedEvent.managedFile().id());
 	}
 
@@ -77,11 +80,13 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
+	@Transactional
 	public void write(Long managedFileId, String filename, MediaType mts, File resource) {
 		this.write(managedFileId, filename, mts, new FileSystemResource(resource));
 	}
 
 	@Override
+	@Transactional
 	public void write(Long managedFileId, String filename, MediaType mediaType, Resource resource) {
 		var managedFile = this.getManagedFile(managedFileId);
 		var bucket = managedFile.bucket();
@@ -92,7 +97,8 @@ class DefaultManagedFileService implements ManagedFileService {
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
 			.update();
 		log.debug("are we uploading on a virtual thread? {}", Thread.currentThread().isVirtual());
-		var freshManagedFile = getManagedFile(managedFileId);
+		this.cache.remove(managedFileId); // very important!
+		var freshManagedFile = this.getManagedFile(managedFileId);
 		log.debug("managed file has been written? {}", freshManagedFile.written());
 		this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
 	}
@@ -103,7 +109,9 @@ class DefaultManagedFileService implements ManagedFileService {
 	 * state of the S3 object.
 	 */
 	@Override
+	@Transactional
 	public void refreshManagedFile(Long managedFileId) {
+		this.cache.remove(managedFileId);
 		var managedFile = this.getManagedFile(managedFileId);
 		var resource = this.read(managedFile.id());
 		var tmp = FileUtils.tempFileWithExtension();

@@ -119,8 +119,13 @@ class PodcastController {
 			for (var episode : episodes) {
 				var pluginNamesForEpisode = mapOfEpisodesToValidPlugins.computeIfAbsent(episode,
 						e -> new ArrayList<>());
-				if (plugin.canPublish(configuration, episode))
+				if (plugin.canPublish(configuration, episode)) {
 					pluginNamesForEpisode.add(plugin.name());
+				} //
+				else {
+					log.warn("can not publish with plugin {} for episode #{} with title {}", plugin.name(),
+							episode.id(), episode.title());
+				}
 			}
 		}
 		return mapOfEpisodesToValidPlugins;

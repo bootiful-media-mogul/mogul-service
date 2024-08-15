@@ -1,8 +1,7 @@
 package com.joshlong.mogul.api.podcasts.production;
 
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
-import org.apache.commons.logging.Log;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
