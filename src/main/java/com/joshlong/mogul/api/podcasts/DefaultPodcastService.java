@@ -84,14 +84,27 @@ class DefaultPodcastService implements PodcastService {
 		return map;
 	}
 
+	private List<Segment> getEpisodeSegmentsByEpisodeFromDatabase(Long episodeId) {
+		this.log.debug("trying to resolve episode segments for episode #{} from the DB", episodeId);
+		var sql = " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC ";
+		var episodeSegmentsFromDb = this.db.sql(sql).params(episodeId).query(this.episodeSegmentRowMapper).list();
+		this.log.debug("episodeSegmentsFromDb: {}", episodeSegmentsFromDb);
+		return episodeSegmentsFromDb;
+	}
+
 	@Override
 	public List<Segment> getEpisodeSegmentsByEpisode(Long episodeId) {
 		for (var cp : this.podcasts.values())
 			for (var p : cp)
 				for (var e : p.episodes())
 					if (e.id().equals(episodeId))
-						return e.segments();
-		throw new IllegalStateException("we should never reach this state! could not find episode #" + episodeId + ".");
+						return e.segments() != null && !e.segments().isEmpty() ? //
+								e.segments() : //
+								this.getEpisodeSegmentsByEpisodeFromDatabase(episodeId);
+
+		// read through the DB.
+		return this.getEpisodeSegmentsByEpisodeFromDatabase(episodeId);
+
 		/*
 		 * var sql =
 		 * " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC "
@@ -219,9 +232,11 @@ class DefaultPodcastService implements PodcastService {
 			.params(podcastId, title, description, graphic.id(), producedGraphic.id(), producedAudio.id())
 			.update(kh);
 		var id = JdbcUtils.getIdFromKeyHolder(kh);
-		var ep = this.getEpisodeById(id.longValue());
-		this.publisher.publishEvent(new PodcastEpisodeCreatedEvent(ep));
-		return ep;
+		var episodeId = id.longValue();
+		var episode = this.getEpisodeById(episodeId); // yuck.
+		this.publisher.publishEvent(new PodcastEpisodeCreatedEvent(episode));// reset
+																				// cache
+		return episode;
 	}
 
 	@Override
@@ -232,13 +247,30 @@ class DefaultPodcastService implements PodcastService {
 				for (var e : podcast.episodes())
 					if (e.id().equals(episodeId))
 						return e;
+		// fine it's not in cache. let's try sql.
+		var episodeByIdFromDatabase = this.getEpisodeByIdFromDatabase(episodeId);
+		if (episodeByIdFromDatabase != null)
+			return episodeByIdFromDatabase;
+
 		throw new IllegalStateException("could not find the episode #" + episodeId);
 
-		/*
-		 * var res = this.jdbcClient.sql("select * from podcast_episode where id =?")
-		 * .param(episodeId) .query(this.episodeRowMapper) .list(); return res.isEmpty() ?
-		 * null : res.getFirst();
-		 */
+	}
+
+	/**
+	 * special case handling of retrieving an episode from the SQL DB before it's been
+	 * cached. we can only cache it by publishing an event which in turn takes - you
+	 * guessed it - an episode. chicken and egg. so this loads everythign from the DB
+	 * (just once) so that we can then invalidate the cache and then in a subsequent call
+	 * use the cached version of the episode.
+	 */
+	private Episode getEpisodeByIdFromDatabase(Long episodeId) {
+		var erm = new EpisodeRowMapper(managedFileService::getManagedFile, this::getEpisodeSegmentsByEpisode);//
+		var res = this.db //
+			.sql("select * from podcast_episode where id =?")//
+			.param(episodeId)//
+			.query(erm) //
+			.list();
+		return res.isEmpty() ? null : res.getFirst();
 	}
 
 	private void updateEpisodeSegmentOrder(Long episodeSegmentId, int order) {
@@ -390,13 +422,16 @@ class DefaultPodcastService implements PodcastService {
 		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
 				CommonMediaTypes.MP3);
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql(sql)
+		this.db //
+			.sql(sql)
 			.params(episodeId, segmentAudioManagedFile.id(), producedSegmentAudioManagedFile.id(), crossfade, name,
 					maxOrder)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh);
-		reorderSegments(this.getEpisodeSegmentsByEpisode(episodeId));
-		refreshPodcastEpisodeCompleteness(episodeId);
+		var episodeSegmentsByEpisode = this.getEpisodeSegmentsByEpisode(episodeId);
+		this.log.debug("episode segments: {}", episodeSegmentsByEpisode);
+		this.reorderSegments(episodeSegmentsByEpisode);
+		this.refreshPodcastEpisodeCompleteness(episodeId);
 		return this.getEpisodeSegmentById(id.longValue());
 	}
 
@@ -506,6 +541,14 @@ class DefaultPodcastService implements PodcastService {
 		var notificationEvent = NotificationEvent.notificationEventFor(event.podcast().mogulId(), event,
 				Long.toString(event.podcast().id()), event.podcast().title(), false, true);
 		NotificationEvents.notify(notificationEvent);
+	}
+
+	@EventListener
+	void podcastEpisodeCreatedEvent(PodcastEpisodeCreatedEvent podcastEpisodeCreatedEvent) {
+		this.log.debug("podcastEpisodeCreatedEvent");
+		var mogulId = this.getPodcastById(podcastEpisodeCreatedEvent.episode().podcastId()).mogulId();
+		this.log.debug("going to refresh the podcasts associated with mogul #{}", mogulId);
+		this.refreshMogulPodcasts(mogulId);
 	}
 
 	@EventListener
