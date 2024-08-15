@@ -112,6 +112,9 @@ class DefaultPodcastService implements PodcastService {
 		this.log.debug("good news everyone! we're invoking for managed file #{}",
 				managedFileUpdatedEvent.managedFile().id());
 		var mf = managedFileUpdatedEvent.managedFile();
+		this.log.debug("the managed file content type for id #{} is {}", managedFileUpdatedEvent.managedFile().id(),
+				managedFileUpdatedEvent.managedFile().contentType());
+
 		var sql = """
 				select pes.podcast_episode_id as id
 				from podcast_episode_segment pes
@@ -127,6 +130,9 @@ class DefaultPodcastService implements PodcastService {
 			return;
 
 		var episodeId = all.iterator().next();
+		var mogul = getPodcastById(this.getEpisodeById(episodeId).podcastId()).mogulId();
+		this.podcasts.remove(mogul);
+
 		var episode = this.getEpisodeById(episodeId);
 		var segments = this.getEpisodeSegmentsByEpisode(episodeId);
 
@@ -191,6 +197,7 @@ class DefaultPodcastService implements PodcastService {
 		var episodeById = this.getEpisodeById(episode.id());
 		Assert.state(episodeById.complete() == complete, "the complete value in the episode in the cache "
 				+ "should match the value we just wrote to the database");
+		this.log.debug("the episode #{} is complete complete? {}", episode.id(), complete);
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(episodeById)))
 			this.publisher.publishEvent(e);

@@ -46,7 +46,9 @@ class MediaNormalizationIntegration {
 			.handle((GenericHandler<MediaNormalizationIntegrationRequest>) (io, headers) -> {
 				var input = io.input();
 				var output = io.output();
-				var isImage = imgMediaType.isCompatibleWith(MediaType.parseMediaType(input.contentType()));
+				var parseMediaType = MediaType.parseMediaType(input.contentType());
+				this.log.debug("the parsed media type is {}", parseMediaType);
+				var isImage = imgMediaType.isCompatibleWith(parseMediaType);
 				var ext = isImage ? CommonMediaTypes.JPG : CommonMediaTypes.MP3;
 				var encodingFunction = isImage ? (Function<File, File>) imageEncoder::encode
 						: (Function<File, File>) audioEncoder::encode;
