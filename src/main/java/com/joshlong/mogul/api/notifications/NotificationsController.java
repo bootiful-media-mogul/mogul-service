@@ -39,7 +39,8 @@ class NotificationsController {
 		if (null != notification)
 			return Map.of("mogulId", notification.mogulId(), //
 					"when", notification.when().getTime(), //
-					"key", notification.key(), "category", notification.category(), "modal", notification.modal());
+					"context", notification.context(), "key", notification.key(), "category", notification.category(),
+					"modal", notification.modal());
 		return null;
 	}
 

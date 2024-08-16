@@ -6,6 +6,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
 import com.joshlong.mogul.api.publications.PublicationService;
+import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
@@ -17,6 +18,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RegisterReflectionForBinding(Map.class)
@@ -133,7 +135,13 @@ class PodcastController {
 
 	@BatchMapping
 	Map<Episode, List<Segment>> segments(List<Episode> episodes) {
-		return this.podcastService.getEpisodeSegmentsByEpisodes(episodes);
+		var byId = this.podcastService
+			.getEpisodeSegmentsByEpisodes(episodes.stream().map(Episode::id).collect(Collectors.toSet()));
+		var allEpisodes = this.podcastService.getAllEpisodesByIds(episodes.stream().map(Episode::id).toList());
+		var map = new HashMap<Episode, List<Segment>>();
+		for (var e : allEpisodes)
+			map.put(e, byId.get(e.id()));
+		return map;
 	}
 
 	@SchemaMapping
@@ -149,9 +157,8 @@ class PodcastController {
 	@QueryMapping
 	Collection<Podcast> podcasts() {
 		var currentMogul = mogulService.getCurrentMogul();
-		if (log.isDebugEnabled())
-			log.debug("attempting to read the podcasts associated with mogul #{} - {}", currentMogul.id(),
-					currentMogul.username());
+		this.log.debug("attempting to read the podcasts associated with mogul #{} - {}", currentMogul.id(),
+				currentMogul.username());
 		return this.podcastService.getAllPodcastsByMogul(currentMogul.id());
 	}
 
@@ -159,7 +166,7 @@ class PodcastController {
 	Collection<Episode> episodes(Podcast podcast) {
 		this.mogulService.assertAuthorizedMogul(podcast.mogulId());
 		var episodesByPodcast = this.podcastService.getEpisodesByPodcast(podcast.id());
-		log.debug("episodes by podcast #{} {}", podcast.id(), podcast.title());
+		this.log.debug("episodes by podcast #{} {}", podcast.id(), podcast.title());
 		return episodesByPodcast;
 	}
 
@@ -235,9 +242,9 @@ class PodcastController {
 		this.log.debug("going to send an event to the clients listening for episode [{}]", id);
 		try {
 			var map = Map.of("episodeId", id, "complete", episode.complete());
-			var json = this.om.writeValueAsString(map);
-			var evt = NotificationEvent.notificationEventFor(
-					podcastService.getPodcastById(podcastEpisodeCompletionEvent.episode().podcastId()).mogulId(),
+			var json = JsonUtils.write(map);
+			this.log.debug("json: {}", json);
+			var evt = NotificationEvent.notificationEventFor(podcastEpisodeCompletionEvent.mogulId(),
 					podcastEpisodeCompletionEvent, Long.toString(episode.id()), json, false, false);
 			this.publisher.publishEvent(evt);
 			this.log.debug("sent an event to clients listening for {}", episode);

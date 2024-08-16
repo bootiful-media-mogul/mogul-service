@@ -20,7 +20,7 @@ public interface PodcastService {
 
 	Segment getEpisodeSegmentById(Long episodeSegmentId);
 
-	Map<Episode, List<Segment>> getEpisodeSegmentsByEpisodes(List<Episode> episodes);
+	Map<Long, List<Segment>> getEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);
 
 	List<Segment> getEpisodeSegmentsByEpisode(Long id);
 
@@ -46,5 +46,7 @@ public interface PodcastService {
 	Episode updatePodcastEpisodeDraft(Long episodeId, String title, String description);
 
 	Episode writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
+
+	Collection<Episode> getAllEpisodesByIds(List<Long> episodeIds);
 
 }
