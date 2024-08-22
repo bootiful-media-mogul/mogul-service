@@ -282,7 +282,7 @@ class DefaultManagedFileService implements ManagedFileService {
 							attributes on the ManagedFile (before the transaction has returned).
 							This sort of thing happens, but ideally it'd happen rarely, or at least just for a
 							handful of objects.
-						""");
+						""", managedFileId);
 				initializeManagedFile(rs, managedFile);
 			});
 
