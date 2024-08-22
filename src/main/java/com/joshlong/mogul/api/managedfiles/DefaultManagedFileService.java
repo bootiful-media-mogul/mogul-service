@@ -272,14 +272,18 @@ class DefaultManagedFileService implements ManagedFileService {
 		var hydration = (Consumer<ManagedFile>) managedFile -> db.sql("select * from managed_file where id = ?")
 			.param(managedFileId)
 			.query(rs -> {
-				var error = Arrays.stream("""
-							manually hydrating ManagedFile #{} which means we couldn't find this managedFile in
-							the transaction synchronization cache. this typically happens when the transaction
-							synchronization hook, afterCommit, hasn't run yet and something is reading
-							attributes on the ManagedFile (before the transaction has returned).
-							This sort of thing happens, but ideally it'd happen rarely, or at least just for a
-							handful of objects.
-						""".split(System.lineSeparator())).map(String::strip).collect(Collectors.joining(" ")).trim();
+				var error = Arrays //
+					.stream("""
+								manually hydrating ManagedFile #{} which means we couldn't find this managedFile in
+								the transaction synchronization cache. this typically happens when the transaction
+								synchronization hook, afterCommit, hasn't run yet and something is reading
+								attributes on the ManagedFile (before the transaction has returned).
+								This sort of thing happens, but ideally it'd happen rarely, or at least just for a
+								handful of objects.
+							""".split(System.lineSeparator()))//
+					.map(String::strip) //
+					.collect(Collectors.joining(" ")) //
+					.trim();
 				log.debug(error, managedFileId);
 				initializeManagedFile(rs, managedFile);
 			});
