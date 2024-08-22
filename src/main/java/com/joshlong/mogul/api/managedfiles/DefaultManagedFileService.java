@@ -24,10 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -275,14 +272,15 @@ class DefaultManagedFileService implements ManagedFileService {
 		var hydration = (Consumer<ManagedFile>) managedFile -> db.sql("select * from managed_file where id = ?")
 			.param(managedFileId)
 			.query(rs -> {
-				log.debug("""
+				var error = Arrays.stream("""
 							manually hydrating ManagedFile #{} which means we couldn't find this managedFile in
 							the transaction synchronization cache. this typically happens when the transaction
 							synchronization hook, afterCommit, hasn't run yet and something is reading
 							attributes on the ManagedFile (before the transaction has returned).
 							This sort of thing happens, but ideally it'd happen rarely, or at least just for a
 							handful of objects.
-						""", managedFileId);
+						""".split(System.lineSeparator())).map(String::strip).collect(Collectors.joining(" ")).trim();
+				log.debug(error, managedFileId);
 				initializeManagedFile(rs, managedFile);
 			});
 
