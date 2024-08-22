@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.managedfiles;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -10,6 +11,7 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * represents a persistent, managed file stored on cloud storage
@@ -39,9 +41,13 @@ public class ManagedFile {
 
 	private final AtomicBoolean initialized = new AtomicBoolean();
 
-	ManagedFile(Long managedFileId) {
+	private final Consumer<ManagedFile> hydration;
+
+	ManagedFile(Long managedFileId, Consumer<ManagedFile> hydration) {
 		this.id.set(managedFileId);
 		this.initialized.set(false);
+		this.hydration = hydration;
+		Assert.notNull(this.hydration, "the hydration function should not be null");
 	}
 
 	// private implementation detail
@@ -65,55 +71,67 @@ public class ManagedFile {
 		if (!initialized.get()) {
 			// todo should this failure result in a read through to the DB? is there some
 			// way to make this lazily load its own data? can we give it a callback?
+			this.hydration.accept(this);
 			Assert.state(this.initialized.get(),
 					"managed file #" + this.id() + " should be initialized by this point.");
 		}
 	}
 
+	@JsonProperty("mogulId")
 	public Long mogulId() {
 		this.ensureInitialized();
 		return mogulId.get();
 	}
 
+	@JsonProperty("id")
 	public Long id() {
 		return id.get();
 	}
 
+	@JsonProperty("bucket")
 	public String bucket() {
 		this.ensureInitialized();
 		return bucket.get();
 	}
+
+	@JsonProperty("storageFilename")
 
 	public String storageFilename() {
 		this.ensureInitialized();
 		return storageFilename.get();
 	}
 
+	@JsonProperty("folder")
 	public String folder() {
 		this.ensureInitialized();
 		return folder.get();
 	}
 
+	@JsonProperty("filename")
 	public String filename() {
 		this.ensureInitialized();
 		return filename.get();
 	}
 
+	@JsonProperty("created")
 	public Date created() {
 		this.ensureInitialized();
 		return created.get();
 	}
 
+	@JsonProperty("written")
 	public boolean written() {
 		this.ensureInitialized();
 		return written.get();
 	}
 
+	@JsonProperty("size")
 	public long size() {
 		this.ensureInitialized();
 		return size.get();
 	}
 
+	@JsonProperty("contentType")
 	public String contentType() {
 		this.ensureInitialized();
 		return contentType.get();
@@ -133,7 +151,7 @@ public class ManagedFile {
 			return true;
 		if (o == null || getClass() != o.getClass())
 			return false;
-		ManagedFile that = (ManagedFile) o;
+		var that = (ManagedFile) o;
 		return that.id().equals(this.id());
 	}
 

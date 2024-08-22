@@ -12,9 +12,12 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
@@ -28,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -60,10 +64,14 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	private final ApplicationEventPublisher publisher;
 
-	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher) {
+	private final TransactionTemplate transactionTemplate;
+
+	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate) {
 		this.db = db;
 		this.storage = storage;
 		this.publisher = publisher;
+		this.transactionTemplate = transactionTemplate;
 	}
 
 	@EventListener
@@ -180,7 +188,9 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@Override
 	public Resource read(Long managedFileId) {
-		var mf = this.getManagedFile(managedFileId);
+		// the call to getManagedFile needs to be in a transaction. the reading of bytes
+		// most assuredly does not.
+		var mf = this.transactionTemplate.execute(status -> getManagedFile(managedFileId));
 		return this.storage.read(mf.bucket(), mf.folder() + '/' + mf.storageFilename());
 	}
 
@@ -193,6 +203,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		}
 	}
 
+	@Transactional
 	@Override
 	public ManagedFile createManagedFile(Long mogulId, String bucket, String folder, String fileName, long size,
 			MediaType mediaType) {
@@ -217,13 +228,6 @@ class DefaultManagedFileService implements ManagedFileService {
 	private final ThreadLocal<Map<Long, ManagedFile>> managedFiles = new ThreadLocal<>();
 
 	private final TransactionSynchronization transactionSynchronization = new TransactionSynchronization() {
-
-		@Override
-		public void afterCompletion(int status) {
-			log.debug("{})", "afterCompletion(" + status);
-			if (TransactionSynchronizationManager.isSynchronizationActive())
-				TransactionSynchronizationManager.clearSynchronization();
-		}
 
 		@Override
 		public void beforeCompletion() {
@@ -253,15 +257,29 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	};
 
+	/*
+	 * don't return fully initialized Managedfiles. Instead, we want to cache the results
+	 * here.
+	 */
 	@Override
 	@Transactional
 	public ManagedFile getManagedFile(Long managedFileId) {
-		if (TransactionSynchronizationManager.isActualTransactionActive()) {
-			TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
-		}
+
+		TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
+
 		if (this.managedFiles.get() == null)
 			this.managedFiles.set(new ConcurrentSkipListMap<>());
-		return this.managedFiles.get().computeIfAbsent(managedFileId, ManagedFile::new); //
+
+		// this allows any managed file that for whatever reason we're manipulating and
+		// <EM>not</EM> able to wait for the transaction to commit to hydrate its own
+		// state in place.
+		var hydration = (Consumer<ManagedFile>) managedFile -> db.sql("select * from managed_file where id = ?")
+			.param(managedFileId)
+			.query(rs -> {
+				initializeManagedFile(rs, managedFile);
+			});
+
+		return this.managedFiles.get().computeIfAbsent(managedFileId, mid -> new ManagedFile(mid, hydration)); //
 	}
 
 }

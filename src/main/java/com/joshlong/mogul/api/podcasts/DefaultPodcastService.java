@@ -76,7 +76,7 @@ class DefaultPodcastService implements PodcastService {
 		var idsAsString = episodes.stream().map(e -> Long.toString(e)).collect(Collectors.joining(", "));
 		var segments = db
 			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id in (" + idsAsString + ") ")
-			.query(episodeSegmentRowMapper)
+			.query(this.episodeSegmentRowMapper)
 			.list();
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
 		for (var s : segments) {
