@@ -12,9 +12,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -170,6 +168,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
+	@Transactional
 	public void deleteManagedFile(Long managedFileId) {
 		var managedFile = this.getManagedFile(managedFileId);
 		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
