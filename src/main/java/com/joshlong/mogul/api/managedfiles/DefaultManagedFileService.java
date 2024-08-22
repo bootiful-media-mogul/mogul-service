@@ -168,7 +168,10 @@ class DefaultManagedFileService implements ManagedFileService {
 	@Transactional
 	public void deleteManagedFile(Long managedFileId) {
 		var managedFile = this.getManagedFile(managedFileId);
-		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
+
+		// very important that we do this part FIRST since the calls to mogulId will
+		// lazily trigger the loading of the managed_file, which will be deleted if we
+		// waited unti after the next line
 		this.db.sql(
 				"insert into managed_file_deletion_request ( mogul_id, bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
 			.params(managedFile.mogulId(), //
@@ -178,7 +181,7 @@ class DefaultManagedFileService implements ManagedFileService {
 					managedFile.storageFilename() //
 			)
 			.update();
-
+		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
 		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
 
