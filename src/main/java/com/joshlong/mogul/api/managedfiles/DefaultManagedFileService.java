@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
@@ -22,29 +24,39 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
  * system, and so this class provides caching. Lookups for a given {@link ManagedFile}
  * <em>should</em> be served out of in-memory cache first. This can spare you thousands of
  * one-off calls to the database for every, say, podcast loaded in the system.
+ *
+ * <h2>Performance Optimizations to be Aware of for Managed Files</h2> <EM>Important!</EM>
+ * the {@link ManagedFile managed file} abstraction is used everywhere, and we can't
+ * afford a million calls to the SQL table for each single {@link ManagedFile} required in
+ * some object in a deep object graph of results. So, we use transaction synchronization
+ * to wait until the end of a given transaction, including read-only transactions, to make
+ * note of all the ids of the managed files and then to hand the user code back a
+ * placeholder {@link ManagedFile} which knows only its ID. It has the shape of a managed
+ * file, but not the data of one. that is until the transaction finishes. at this point,
+ * right before committing , we do one big query for all the managed files and then give
+ * the data to each placeholder object, fleshing them out, in effect.
  */
 @Service
 class DefaultManagedFileService implements ManagedFileService {
 
 	private final ManagedFileDeletionRequestRowMapper managedFileDeletionRequestRowMapper = new ManagedFileDeletionRequestRowMapper();
 
-	// private final Map<Long, ManagedFile> cache = new ConcurrentHashMap<>();
-
 	private final JdbcClient db;
 
 	private final Storage storage;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private final ManagedFileRowMapper managedFileRowMapper = new ManagedFileRowMapper();
 
 	private final ApplicationEventPublisher publisher;
 
@@ -65,14 +77,6 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.log.debug("removing managed file {} from cache", managedFileDeletedEvent.managedFile().id());
 		// this.cache.remove(managedFileDeletedEvent.managedFile().id());
 	}
-	/*
-	 * @EventListener(ApplicationReadyEvent.class) void applicationReadyEvent() {
-	 * this.cache.clear(); var all = this.getAllManagedFiles(); for (var managedFile :
-	 * all) { this.cache.put(managedFile.id(), managedFile); }
-	 *
-	 * if (this.log.isDebugEnabled())
-	 * this.log.debug("there are {} ManagedFiles in the cache", this.cache.size()); }
-	 */
 
 	@Override
 	@Transactional
@@ -92,7 +96,6 @@ class DefaultManagedFileService implements ManagedFileService {
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
 			.update();
 		log.debug("are we uploading on a virtual thread? {}", Thread.currentThread().isVirtual());
-		// this.cache.remove(managedFileId); // very important!
 		var freshManagedFile = this.getManagedFile(managedFileId);
 		log.debug("managed file has been written? {}", freshManagedFile.written());
 		this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
@@ -106,7 +109,6 @@ class DefaultManagedFileService implements ManagedFileService {
 	@Override
 	@Transactional
 	public void refreshManagedFile(Long managedFileId) {
-		// this.cache.remove(managedFileId);
 		var managedFile = this.getManagedFile(managedFileId);
 		var resource = this.read(managedFile.id());
 		var tmp = FileUtils.tempFileWithExtension();
@@ -128,13 +130,6 @@ class DefaultManagedFileService implements ManagedFileService {
 		}
 		var mf = this.getManagedFile(managedFileId);
 		log.debug("refreshed managed file {}", mf);
-	}
-
-	@Override
-	public Collection<ManagedFile> getAllManagedFiles() {
-		return this.db.sql("select * from managed_file")//
-			.query(this.managedFileRowMapper)//
-			.list();
 	}
 
 	@Override
@@ -184,15 +179,6 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
-	public ManagedFile getManagedFile(Long managedFileId) {
-		return this.db//
-			.sql("select * from managed_file where id =? ")//
-			.param(managedFileId)//
-			.query(new ManagedFileRowMapper())//
-			.single();
-	}
-
-	@Override
 	public Resource read(Long managedFileId) {
 		var mf = this.getManagedFile(managedFileId);
 		return this.storage.read(mf.bucket(), mf.folder() + '/' + mf.storageFilename());
@@ -221,13 +207,61 @@ class DefaultManagedFileService implements ManagedFileService {
 		return this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
 	}
 
+	private void initializeManagedFile(ResultSet rs, ManagedFile managedFile) throws SQLException {
+
+		managedFile.hydrate(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("bucket"),
+				rs.getString("storage_filename"), rs.getString("folder"), rs.getString("filename"),
+				rs.getDate("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"));
+	}
+
+	private final ThreadLocal<Map<Long, ManagedFile>> managedFiles = new ThreadLocal<>();
+
+	private final TransactionSynchronization transactionSynchronization = new TransactionSynchronization() {
+
+		@Override
+		public void afterCompletion(int status) {
+			log.debug("{})", "afterCompletion(" + status);
+			if (TransactionSynchronizationManager.isSynchronizationActive())
+				TransactionSynchronizationManager.clearSynchronization();
+		}
+
+		@Override
+		public void beforeCompletion() {
+			var managedFileMap = managedFiles.get();
+			if (managedFileMap != null && !managedFileMap.isEmpty()) {
+				log.debug("beforeCompletion(): for the current thread there are {} managed files ",
+						managedFileMap.size());
+				// lets get all the ids, then visit each managed file and call its hydrate
+				// method with the right parameters
+				var ids = managedFileMap.values()
+					.stream()
+					.map(ManagedFile::id)
+					.map(i -> Long.toString(i))
+					.collect(Collectors.joining(", "));
+
+				db //
+					.sql("select * from managed_file where id in ( " + ids + ")") //
+					.query(rs -> {
+						var mfId = rs.getLong("id");
+						var managedFile = managedFileMap.get(mfId);
+						initializeManagedFile(rs, managedFile);
+					});
+
+			} //
+
+		}
+
+	};
+
 	@Override
-	public Collection<ManagedFile> getAllManagedFilesForMogul(Long mogulId) {
-		Assert.notNull(mogulId, "the mogulId should not be null");
-		return this.db.sql("select * from managed_file where mogul_id = ?")//
-			.param(mogulId)//
-			.query(this.managedFileRowMapper)//
-			.list();
+	@Transactional
+	public ManagedFile getManagedFile(Long managedFileId) {
+		if (TransactionSynchronizationManager.isActualTransactionActive()) {
+			TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
+		}
+		if (this.managedFiles.get() == null)
+			this.managedFiles.set(new ConcurrentSkipListMap<>());
+		return this.managedFiles.get().computeIfAbsent(managedFileId, ManagedFile::new); //
 	}
 
 }
@@ -239,17 +273,6 @@ class ManagedFileDeletionRequestRowMapper implements RowMapper<ManagedFileDeleti
 		return new ManagedFileDeletionRequest(rs.getLong("id"), rs.getLong("mogul_id"), rs.getString("bucket"),
 				rs.getString("folder"), rs.getString("filename"), rs.getString("storage_filename"),
 				rs.getBoolean("deleted"), rs.getDate("created"));
-	}
-
-}
-
-class ManagedFileRowMapper implements RowMapper<ManagedFile> {
-
-	@Override
-	public ManagedFile mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new ManagedFile(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("bucket"),
-				rs.getString("storage_filename"), rs.getString("folder"), rs.getString("filename"),
-				rs.getDate("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"));
 	}
 
 }
