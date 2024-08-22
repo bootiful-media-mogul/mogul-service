@@ -43,3 +43,7 @@ where id not in (select pid
                  order by pid);
 
 ```
+
+## Google Cloud SQL 
+
+I'm using Google Cloud's Cloud SQL for PostgreSQL. It's pretty neat, but it has some weird nuances around how to connect to it. They almost don't want you to connect to it. I set it up with both a private and a public IP. If you want to connect to it locally use `prod_db_2.sh`. It's using the _public_ IP. However, for production purposes, I need to use the _private_ IP. I also had to add the netowkr   
