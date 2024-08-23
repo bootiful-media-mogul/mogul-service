@@ -4,6 +4,8 @@ create table if not exists mogul
     username text not null ,
     client_id  text not null ,
     email text null,
+    given_name text null,
+    family_name text null,
     created timestamp not null default now(),
     unique (client_id, username)
 );
