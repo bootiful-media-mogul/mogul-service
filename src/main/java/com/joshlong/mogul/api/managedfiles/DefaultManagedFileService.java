@@ -82,15 +82,22 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
-	@Transactional
+
 	public void write(Long managedFileId, String filename, MediaType mts, File resource) {
 		this.write(managedFileId, filename, mts, new FileSystemResource(resource));
 	}
 
-	@Override
-	@Transactional
-	public void write(Long managedFileId, String filename, MediaType mediaType, Resource resource) {
+	private ManagedFile forceReadManagedFile(Long managedFileId) {
 		var managedFile = this.getManagedFile(managedFileId);
+		this.managedFiles.get().remove(managedFileId); // this should have the effect of
+														// forcing the
+		managedFile.contentType();// force it to evaluate
+		return managedFile;
+	}
+
+	@Override
+	public void write(Long managedFileId, String filename, MediaType mediaType, Resource resource) {
+		var managedFile = this.forceReadManagedFile(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
 		this.storage.write(bucket, folder + '/' + managedFile.storageFilename(), resource);
@@ -98,9 +105,9 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
 			.update();
-		log.debug("are we uploading on a virtual thread? {}", Thread.currentThread().isVirtual());
-		var freshManagedFile = this.getManagedFile(managedFileId);
-		log.debug("managed file has been written? {}", freshManagedFile.written());
+		this.log.debug("are we uploading on a virtual thread? {}", Thread.currentThread().isVirtual());
+		var freshManagedFile = this.forceReadManagedFile(managedFileId);
+		this.log.debug("managed file has been written? {}", freshManagedFile.written());
 		this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
 	}
 
@@ -261,37 +268,40 @@ class DefaultManagedFileService implements ManagedFileService {
 	 * here.
 	 */
 	@Override
-	@Transactional
 	public ManagedFile getManagedFile(Long managedFileId) {
 
-		TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
+		return this.transactionTemplate.execute(tx -> {
+			TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
 
-		if (this.managedFiles.get() == null)
-			this.managedFiles.set(new ConcurrentSkipListMap<>());
+			if (this.managedFiles.get() == null)
+				this.managedFiles.set(new ConcurrentSkipListMap<>());
 
-		// this allows any managed file that for whatever reason we're manipulating and
-		// <EM>not</EM> able to wait for the transaction to commit to hydrate its own
-		// state in place.
-		var hydration = (Consumer<ManagedFile>) managedFile -> db.sql("select * from managed_file where id = ?")
-			.param(managedFileId)
-			.query(rs -> {
-				var error = Arrays //
-					.stream("""
-								manually hydrating ManagedFile #{} which means we couldn't find this managedFile in
-								the transaction synchronization cache. this typically happens when the transaction
-								synchronization hook, afterCommit, hasn't run yet and something is reading
-								attributes on the ManagedFile (before the transaction has returned).
-								This sort of thing happens, but ideally it'd happen rarely, or at least just for a
-								handful of objects.
-							""".split(System.lineSeparator()))//
-					.map(String::strip) //
-					.collect(Collectors.joining(" ")) //
-					.trim();
-				log.debug(error, managedFileId);
-				initializeManagedFile(rs, managedFile);
-			});
+			// this allows any managed file that for whatever reason we're manipulating
+			// and
+			// <EM>not</EM> able to wait for the transaction to commit to hydrate its own
+			// state in place.
+			var hydration = (Consumer<ManagedFile>) managedFile -> db.sql("select * from managed_file where id = ?")
+				.param(managedFileId)
+				.query(rs -> {
+					var error = Arrays //
+						.stream("""
+									manually hydrating ManagedFile #{} which means we couldn't find this managedFile in
+									the transaction synchronization cache. this typically happens when the transaction
+									synchronization hook, afterCommit, hasn't run yet and something is reading
+									attributes on the ManagedFile (before the transaction has returned).
+									This sort of thing happens, but ideally it'd happen rarely, or at least just for a
+									handful of objects.
+								""".split(System.lineSeparator()))//
+						.map(String::strip) //
+						.collect(Collectors.joining(" ")) //
+						.trim();
+					log.debug(error, managedFileId);
+					initializeManagedFile(rs, managedFile);
+				});
 
-		return this.managedFiles.get().computeIfAbsent(managedFileId, mid -> new ManagedFile(mid, hydration)); //
+			return this.managedFiles.get().computeIfAbsent(managedFileId, mid -> new ManagedFile(mid, hydration)); //
+
+		});
 	}
 
 }
