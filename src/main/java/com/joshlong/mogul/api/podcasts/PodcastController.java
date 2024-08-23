@@ -125,7 +125,7 @@ class PodcastController {
 					pluginNamesForEpisode.add(plugin.name());
 				} //
 				else {
-					log.warn("can not publish with plugin {} for episode #{} with title {}", plugin.name(),
+					log.trace("can not publish with plugin {} for episode #{} with title {}", plugin.name(),
 							episode.id(), episode.title());
 				}
 			}

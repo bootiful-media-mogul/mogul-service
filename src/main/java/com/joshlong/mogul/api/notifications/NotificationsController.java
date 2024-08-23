@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,13 +41,14 @@ class NotificationsController {
 		if (null != notification) {
 			Assert.notNull(currentMogulId, "the current mogul id should not be null");
 			Assert.state(notification.when().getTime() > 0, "the time must not be null");
-			Assert.state(StringUtils.hasText(notification.context()), "the context must not be null");
 			Assert.state(StringUtils.hasText(notification.key()), "the key must not be null");
 			Assert.state(StringUtils.hasText(notification.category()), "the category must not be null");
-			return Map.of("mogulId", currentMogulId, //
+			var m = new HashMap<String, Object>(Map.of("mogulId", currentMogulId, //
 					"when", notification.when().getTime(), //
-					"context", notification.context(), "key", notification.key(), "category", notification.category(),
-					"modal", notification.modal());
+					"key", notification.key(), "category", notification.category(), "modal", notification.modal()));
+			if (StringUtils.hasText(notification.context()))
+				m.put("context", notification.context());
+			return m;
 		}
 		return null;
 	}
