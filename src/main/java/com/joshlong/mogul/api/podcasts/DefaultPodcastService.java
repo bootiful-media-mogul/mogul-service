@@ -41,9 +41,6 @@ class DefaultPodcastService implements PodcastService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	// this will be our main cache mogul(1) => podcasts(N)
-	// private final Map<Long, Collection<Podcast>> podcasts = new ConcurrentHashMap<>();
-
 	private final PodcastRowMapper podcastRowMapper;
 
 	private final EpisodeSegmentRowMapper episodeSegmentRowMapper;
@@ -554,15 +551,6 @@ class DefaultPodcastService implements PodcastService {
 		NotificationEvents.notify(notificationEvent);
 	}
 
-	/*
-	 * @EventListener void podcastEpisodeCreatedEvent(PodcastEpisodeCreatedEvent
-	 * podcastEpisodeCreatedEvent) { this.log.debug("podcastEpisodeCreatedEvent"); var
-	 * mogulId =
-	 * this.getPodcastById(podcastEpisodeCreatedEvent.episode().podcastId()).mogulId();
-	 * this.log.debug("going to refresh the podcasts associated with mogul #{}", mogulId);
-	 * }
-	 */
-
 	@EventListener
 	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
 		this.log.debug("podcastCreatedEventNotifyingListener");
@@ -571,49 +559,14 @@ class DefaultPodcastService implements PodcastService {
 		NotificationEvents.notify(notificationEvent);
 	}
 
-	/*
-	 * private void refreshMogulPodcasts(Long mogulId) { if (this.log.isDebugEnabled()) {
-	 * this.log.debug("resetting the entire podcast object graph for mogulId #{}",
-	 * mogulId); }
-	 *
-	 * var podcasts = this.db//
-	 * .sql("select * from podcast where mogul_id = ? order by created") .param(mogulId)
-	 * .query(this.podcastRowMapper) .stream() .collect(Collectors.toMap(Podcast::id, p ->
-	 * p));
-	 *
-	 * if (podcasts.isEmpty()) { log.debug("there are no podcasts associated" +
-	 * " with the mogul #{}, so nothing to cache. returning.", mogulId); return; }
-	 *
-	 * var managedFiles = this.managedFileService.getAllManagedFilesForMogul(mogulId)
-	 * .stream() .collect(Collectors.toMap(ManagedFile::id, mf -> mf));
-	 *
-	 * var segments = new HashMap<Long, List<Segment>>(); var sql = """ select pes.* from
-	 * podcast p, podcast_episode pe, podcast_episode_segment pes where p.mogul_id = ? and
-	 * p.id = pe.podcast_id and pe.id = pes.podcast_episode_id """; this.db // .sql(sql)
-	 * .param(mogulId) .query(new EpisodeSegmentRowMapper(managedFiles::get)) .stream()
-	 * .forEach(seg -> segments.computeIfAbsent(seg.episodeId(), s -> new
-	 * ArrayList<>()).add(seg));
-	 *
-	 * segments.values().forEach(list -> list.sort(Comparator.comparing(Segment::order)));
-	 * var ids = this.db.sql("select id from  podcast where mogul_id = ? ")
-	 * .param(mogulId) .query((rs, rowNum) -> rs.getLong("id")) .stream() .map(i ->
-	 * Long.toString(i)) .collect(Collectors.joining(",")); this.db//
-	 * .sql("select * from podcast_episode where podcast_id in (" + ids + ")")//
-	 * .query(new EpisodeRowMapper(managedFiles::get, segments::get))// .stream()//
-	 * .forEach(episode -> { var podcastId = episode.podcastId();
-	 * podcasts.get(podcastId).episodes().add(episode); });
-	 *
-	 * // var podcastCollection = podcasts.values(); // podcastCollection.forEach(p ->
-	 * p.episodes().sort(Comparator.comparing(Episode::created).reversed())); //
-	 * this.podcasts.put(mogulId, podcastCollection); }
-	 */
-
 	@Override
 	public Collection<Podcast> getAllPodcastsByMogul(Long mogulId) {
-		return this.db.sql("select * from podcast p where p.mogul_id = ?")
-			.param(mogulId)
-			.query(this.podcastRowMapper)
+		var pds = this.db //
+			.sql("select * from podcast p where p.mogul_id = ?")//
+			.param(mogulId)//
+			.query(this.podcastRowMapper)//
 			.list();
+		return pds;
 	}
 
 }

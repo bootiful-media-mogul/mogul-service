@@ -86,9 +86,10 @@ type Segment {
 }
 
 type Podcast {
+    id: ID
     title: String
     episodes : [Episode]
-    id: ID
+    created: Float
 }
 
 type NotificationEvent {

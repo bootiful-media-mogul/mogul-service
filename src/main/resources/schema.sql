@@ -2,10 +2,10 @@ create table if not exists mogul
 (
     id serial primary key,
     username text not null ,
-    client_id  text not null ,
+    client_id text not null ,
     email text null,
-    given_name text null,
-    family_name text null,
+    given_name text not null,
+    family_name text not null,
     created timestamp not null default now(),
     unique (client_id, username)
 );

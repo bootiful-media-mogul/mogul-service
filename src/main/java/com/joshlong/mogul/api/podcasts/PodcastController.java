@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -28,8 +27,6 @@ class PodcastController {
 
 	private final ApplicationEventPublisher publisher;
 
-	private final ObjectMapper om;
-
 	private final MogulService mogulService;
 
 	private final PodcastService podcastService;
@@ -42,14 +39,13 @@ class PodcastController {
 
 	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService,
 			Map<String, PodcastEpisodePublisherPlugin> plugins, PublicationService publicationService,
-			Settings settings, ObjectMapper om) {
+			Settings settings) {
 		this.publisher = publisher;
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
 		this.plugins = plugins;
 		this.publicationService = publicationService;
 		this.settings = settings;
-		this.om = om;
 	}
 
 	@QueryMapping
@@ -142,6 +138,11 @@ class PodcastController {
 		for (var e : allEpisodes)
 			map.put(e, byId.get(e.id()));
 		return map;
+	}
+
+	@SchemaMapping
+	long created(Podcast podcast) {
+		return podcast.created().getTime();
 	}
 
 	@SchemaMapping
