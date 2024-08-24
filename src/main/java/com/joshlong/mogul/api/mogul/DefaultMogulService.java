@@ -15,7 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -40,18 +39,15 @@ class DefaultMogulService implements MogulService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final TransactionTemplate tt;
-
 	private final JdbcClient db;
 
 	private final ApplicationEventPublisher publisher;
 
 	private final MogulRowMapper mogulRowMapper = new MogulRowMapper();
 
-	DefaultMogulService(JdbcClient jdbcClient, TransactionTemplate tt, ApplicationEventPublisher publisher) {
+	DefaultMogulService(JdbcClient jdbcClient, ApplicationEventPublisher publisher) {
 		this.db = jdbcClient;
 		this.publisher = publisher;
-		this.tt = tt;
 		Assert.notNull(this.db, "the db is null");
 		try (var scheduledExecutorService = Executors.newScheduledThreadPool(1);) {
 			scheduledExecutorService.scheduleAtFixedRate(() -> {
@@ -81,18 +77,20 @@ class DefaultMogulService implements MogulService {
 			if (principal instanceof MogulJwtAuthenticationToken mogulJwtAuthenticationToken
 					&& principal.getPrincipal() instanceof Jwt jwt && jwt.getClaims().get("aud") instanceof List list
 					&& list.getFirst() instanceof String aud) {
-
 				var sql = """
 						insert into mogul(username,  client_id , email, given_name, family_name) values (?, ?,?, ?,?)
 						on conflict on constraint mogul_client_id_username_key do  nothing
 						""";
 				var mogulJwtAuthenticationTokenDetails = mogulJwtAuthenticationToken.details();
 				this.db.sql(sql)
-					.params(principalName, aud, mogulJwtAuthenticationTokenDetails.email(),
-							mogulJwtAuthenticationTokenDetails.givenName(),
-							mogulJwtAuthenticationTokenDetails.familyName())
+					.params(principalName, //
+							aud, //
+							mogulJwtAuthenticationTokenDetails.email(), //
+							mogulJwtAuthenticationTokenDetails.givenName(), //
+							mogulJwtAuthenticationTokenDetails.familyName() //
+					)//
 					.update();
-			}
+			} //
 			else {
 				log.debug("not a valid authentication!");
 			}
@@ -170,6 +168,8 @@ class DefaultMogulService implements MogulService {
 				"there is supposed to be enriching data about the mogul in the request.");
 		var details = JsonUtils.read(headerValue, MogulJwtAuthenticationTokenDetails.class);
 		var authentication = new MogulJwtAuthenticationToken((JwtAuthenticationToken) ase.getAuthentication(), details);
+		// todo change the context
+		SecurityContextHolder.getContext().setAuthentication(authentication);
 		this.login(authentication);
 	}
 
