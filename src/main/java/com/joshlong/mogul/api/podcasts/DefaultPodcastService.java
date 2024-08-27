@@ -507,42 +507,6 @@ class DefaultPodcastService implements PodcastService {
 			.list();
 	}
 
-	/*
-	 * @EventListener synchronized void primeMogulPodcastCache(MogulAuthenticatedEvent
-	 * mogulAuthenticatedEvent) { this.log.debug("primeThePodcastCache"); var mogulId =
-	 * mogulAuthenticatedEvent.mogul().id(); if (!this.podcasts.containsKey(mogulId))
-	 * this.refreshMogulPodcasts(mogulId); }
-	 */
-
-	/*
-	 * @EventListener void podcastEpisodeDeletedEvent(PodcastEpisodeDeletedEvent pde) {
-	 * this.log.debug("refreshMogulPodcasts: podcastEpisodeDeletedEvent"); var podcastId =
-	 * pde.episode().podcastId(); var podcast = this.getPodcastById(podcastId); var mogul
-	 * = podcast.mogulId(); var mogulPodcasts = this.podcasts.get(mogul); for (var p :
-	 * mogulPodcasts) { if (p.id().equals(podcastId)) { var updated =
-	 * p.episodes().stream().filter(e -> !e.id().equals(pde.episode().id())).toList();
-	 * p.episodes().clear(); p.episodes().addAll(updated); } } //
-	 * this.refreshMogulPodcasts(this.getPodcastById(pde.episode().podcastId()).mogulId())
-	 * ; }
-	 */
-
-	/*
-	 * @EventListener void podcastDeletedEvent(PodcastDeletedEvent pde) {
-	 * this.log.debug("refreshMogulPodcasts: podcastDeletedEvent");
-	 * this.podcasts.remove(pde.podcast().id()); }
-	 *
-	 *
-	 * @EventListener void podcastCreatedEvent(PodcastCreatedEvent pde) {
-	 * this.log.debug("refreshMogulPodcasts: podcastCreatedEvent");
-	 * this.refreshMogulPodcasts(pde.podcast().mogulId()); }
-	 *
-	 * @EventListener // want this to be synchronized void
-	 * podcastEpisodeUpdatedEvent(PodcastEpisodeUpdatedEvent peue) {
-	 * this.log.debug("refreshMogulPodcasts: podcastEpisodeUpdatedEvent");
-	 * this.refreshMogulPodcasts(this.getPodcastById(peue.episode().podcastId()).mogulId()
-	 * ); }
-	 */
-
 	@EventListener
 	void podcastDeletedEventNotifyingListener(PodcastDeletedEvent event) {
 		this.log.debug("podcastDeletedEventNotifyingListener");

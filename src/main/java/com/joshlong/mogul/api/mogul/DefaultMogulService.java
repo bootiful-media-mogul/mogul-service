@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
@@ -16,15 +16,12 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.client.RestClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RegisterReflectionForBinding(DefaultMogulService.MogulJwtAuthenticationTokenDetails.class)
 class DefaultMogulService implements MogulService {
+
+	private final String auth0Domain;
 
 	private final Map<String, Mogul> mogulsByName = new ConcurrentHashMap<>();
 
@@ -45,7 +44,9 @@ class DefaultMogulService implements MogulService {
 
 	private final MogulRowMapper mogulRowMapper = new MogulRowMapper();
 
-	DefaultMogulService(JdbcClient jdbcClient, ApplicationEventPublisher publisher) {
+	DefaultMogulService(@Value("${auth0.domain}") String auth0Domain, JdbcClient jdbcClient,
+			ApplicationEventPublisher publisher) {
+		this.auth0Domain = auth0Domain;
 		this.db = jdbcClient;
 		this.publisher = publisher;
 		Assert.notNull(this.db, "the db is null");
@@ -64,30 +65,39 @@ class DefaultMogulService implements MogulService {
 		return this.getMogulByName(name);
 	}
 
-	// todo fgure out how to make sure i read the values in the http request associated
-	// with the info about the user
-	// todo and then make sure to write it to the sql db. right now i dont think its even
-	// reaching the upsert. class cast issues?
+	// just for the first time login
+	private record UserInfo(String sub, @JsonProperty("given_name") String givenName,
+			@JsonProperty("family_name") String familyName, String nickname, String picture, String email) {
+	}
 
 	@Override
 	public Mogul login(Authentication principal) {
 		var principalName = principal.getName();
 		var mogulByName = (Mogul) null;
 		if ((mogulByName = this.getMogulByName(principalName)) == null) {
-			if (principal instanceof MogulJwtAuthenticationToken mogulJwtAuthenticationToken
-					&& principal.getPrincipal() instanceof Jwt jwt && jwt.getClaims().get("aud") instanceof List list
+			if (principal.getPrincipal() instanceof Jwt jwt && jwt.getClaims().get("aud") instanceof List list
 					&& list.getFirst() instanceof String aud) {
+				var accessToken = ((JwtAuthenticationToken) principal).getToken().getTokenValue();
+				var uri = this.auth0Domain + "/userinfo";
+				var rc = RestClient.builder().build();
+				var userinfo = rc.get()
+					.uri(uri)
+					.headers(httpHeaders -> httpHeaders.setBearerAuth(accessToken))
+					.retrieve()
+					.body(UserInfo.class);
+				if (log.isDebugEnabled())
+					log.debug("userinfo: {}", userinfo.email());
+
 				var sql = """
 						insert into mogul(username,  client_id , email, given_name, family_name) values (?, ?,?, ?,?)
 						on conflict on constraint mogul_client_id_username_key do  nothing
 						""";
-				var mogulJwtAuthenticationTokenDetails = mogulJwtAuthenticationToken.details();
 				this.db.sql(sql)
 					.params(principalName, //
 							aud, //
-							mogulJwtAuthenticationTokenDetails.email(), //
-							mogulJwtAuthenticationTokenDetails.givenName(), //
-							mogulJwtAuthenticationTokenDetails.familyName() //
+							userinfo.email(), //
+							userinfo.givenName(), //
+							userinfo.familyName() //
 					)//
 					.update();
 			} //
@@ -161,15 +171,9 @@ class DefaultMogulService implements MogulService {
 
 	@EventListener
 	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
-		var requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-		var request = Objects.requireNonNull(requestAttributes).getRequest();
-		var headerValue = request.getHeader("X-Auth-Details");
-		Assert.state(StringUtils.hasText(headerValue),
-				"there is supposed to be enriching data about the mogul in the request.");
-		var details = JsonUtils.read(headerValue, MogulJwtAuthenticationTokenDetails.class);
-		var authentication = new MogulJwtAuthenticationToken((JwtAuthenticationToken) ase.getAuthentication(), details);
-		// todo change the context
-		SecurityContextHolder.getContext().setAuthentication(authentication);
+
+		var authentication = (JwtAuthenticationToken) ase.getAuthentication();
+
 		this.login(authentication);
 	}
 
