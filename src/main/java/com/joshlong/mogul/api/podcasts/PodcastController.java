@@ -214,7 +214,12 @@ class PodcastController {
 	boolean publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
 		var episode = this.podcastService.getEpisodeById(episodeId);
 		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
-		var publication = this.publicationService.publish(mogul, episode, new HashMap<>(),
+		var contextAndSettings = new HashMap<String, String>();
+		
+		// this won't work. too closely ties the event infrastructure to a particular thing, like podcast episodes.
+		// 	contextAndSettings.put("episodeId", Long.toString(episodeId));
+		
+		var publication = this.publicationService.publish(mogul, episode, contextAndSettings,
 				this.plugins.get(pluginName));
 		log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
 				"#" + episode.id() + "/" + episode.title(), pluginName, publication);
