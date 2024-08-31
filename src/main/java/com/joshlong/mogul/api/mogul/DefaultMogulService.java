@@ -118,15 +118,13 @@ class DefaultMogulService implements MogulService {
 	@Override
 	public Mogul getMogulById(Long id) {
 		var msg = new StringBuilder();
-		msg.append("trying to resolve mogul by id " + id + "");
+		msg.append("trying to resolve mogul by id ").append(id);
 		var res = this.mogulsById.computeIfAbsent(id, mogulId -> {
 			var mogul = this.db.sql("select * from mogul where id =? ").param(id).query(this.mogulRowMapper).single();
 			msg.append(", cache missed, resolving by db query [").append(mogulId).append("]");
 			return mogul;
 		});
-		if (log.isDebugEnabled()) {
-			log.debug(msg.toString());
-		}
+		this.log.debug(msg.toString());
 		return res;
 	}
 

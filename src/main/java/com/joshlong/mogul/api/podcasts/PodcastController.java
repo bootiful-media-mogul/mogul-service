@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -54,27 +55,30 @@ class PodcastController {
 	}
 
 	@SchemaMapping
-	Collection<Map<String, Object>> publications(Episode episode) {
+	Collection<Publication> publications(Episode episode) {
 		var episodeKeyForLogging = episode.id() + "/" + episode.title();
 		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
 				episode.getClass());
 		if (!publications.isEmpty()) {
 			this.log.debug("good news! there are " + "publications for episode {}", episodeKeyForLogging);
 		}
-		var newPublications = new ArrayList<Map<String, Object>>();
-		for (var p : publications) {
-			var defaultedValues = Map.of("id", p.id(), "mogulId", p.mogulId(), "plugin", p.plugin(), "created",
-					p.created().getTime());
-			var all = new HashMap<String, Object>(defaultedValues);
-			if (p.published() != null)
-				all.put("published", p.published().getTime());
-			if (StringUtils.hasText(p.url()))
-				all.put("url", p.url());
-			newPublications.add(all);
-		}
-		if (!newPublications.isEmpty())
-			this.log.debug("returning {} publications for episode {}", newPublications.size(), episodeKeyForLogging);
-		return newPublications;
+		return publications;
+		// var newPublications = new ArrayList<Map<String, Object>>();
+		// for (var p : publications) {
+		// var defaultedValues = Map.of("id", p.id(), "mogulId", p.mogulId(), "plugin",
+		// p.plugin(), "created",
+		// p.created().getTime());
+		// var all = new HashMap<String, Object>(defaultedValues);
+		// if (p.published() != null)
+		// all.put("published", p.published().getTime());
+		// if (StringUtils.hasText(p.url()))
+		// all.put("url", p.url());
+		// newPublications.add(all);
+		// }
+		// if (!newPublications.isEmpty())
+		// this.log.debug("returning {} publications for episode {}",
+		// newPublications.size(), episodeKeyForLogging);
+		// return newPublications;
 	}
 
 	@MutationMapping
@@ -199,31 +203,40 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	boolean unpublishPodcastEpisodePublication(@Argument Long publicationId) {
+	Publication unpublishPodcastEpisodePublication(@Argument Long publicationId) {
 		log.debug("going to unpublish the publication with id # {}", publicationId);
 		var publicationById = this.publicationService.getPublicationById(publicationId);
 		Assert.notNull(publicationById, "the publication should not be null");
 		var plugin = this.plugins.get(publicationById.plugin());
 		Assert.notNull(plugin, "you must specify an active plugin");
-		var publication = this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
-		return publication != null;
-
+		return this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
 	}
 
+	@SchemaMapping
+	long created(Publication publication) {
+		return publication.created().getTime();
+	}
+
+	@SchemaMapping
+	Long published(Publication publication) {
+		return publication.published() != null ? publication.published().getTime() : null;
+	}
+
+	// created: Float
+	// published: Float
+
+	// todo return a Publication from this endpoint
+
 	@MutationMapping
-	boolean publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
+	Publication publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
 		var episode = this.podcastService.getEpisodeById(episodeId);
 		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
 		var contextAndSettings = new HashMap<String, String>();
-		
-		// this won't work. too closely ties the event infrastructure to a particular thing, like podcast episodes.
-		// 	contextAndSettings.put("episodeId", Long.toString(episodeId));
-		
 		var publication = this.publicationService.publish(mogul, episode, contextAndSettings,
 				this.plugins.get(pluginName));
 		log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
 				"#" + episode.id() + "/" + episode.title(), pluginName, publication);
-		return true;
+		return publication;
 	}
 
 	@MutationMapping
