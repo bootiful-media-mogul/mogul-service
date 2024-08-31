@@ -48,10 +48,8 @@ public class ApiApplication {
 	}
 
 	public static void main(String[] args) {
-		var env = System.getenv();
-		if (env.get("DEBUG") != null && env.get("DEBUG").equals("true")) {
-			env.forEach((k, v) -> System.out.println(k + "=" + v));
-		}
+		// if (System.getenv("DEBUG") != null && System.getenv("DEBUG").equals("true"))
+		// System.getenv().forEach((k, v) -> System.out.println(k + "=" + v));
 		SpringApplication.run(ApiApplication.class, args);
 	}
 

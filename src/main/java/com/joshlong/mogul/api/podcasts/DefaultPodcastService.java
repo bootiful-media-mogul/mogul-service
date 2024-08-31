@@ -87,8 +87,15 @@ class DefaultPodcastService implements PodcastService {
 	public List<Segment> getEpisodeSegmentsByEpisode(Long episodeId) {
 		this.log.debug("trying to resolve episode segments for episode #{} from the DB", episodeId);
 		var sql = " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC ";
-		var episodeSegmentsFromDb = this.db.sql(sql).params(episodeId).query(this.episodeSegmentRowMapper).list();
-		this.log.debug("episodeSegmentsFromDb: {}", episodeSegmentsFromDb);
+		var episodeSegmentsFromDb = this.db //
+			.sql(sql) //
+			.params(episodeId) //
+			.query(this.episodeSegmentRowMapper) //
+			.stream()//
+			.sorted(Comparator.comparingInt(Segment::order))//
+			.toList();
+		this.log.debug("episodeSegmentsFromDb length: {} data: {}", episodeSegmentsFromDb.size(),
+				episodeSegmentsFromDb);
 		return episodeSegmentsFromDb;
 	}
 
@@ -180,14 +187,19 @@ class DefaultPodcastService implements PodcastService {
 			}
 			this.log.debug(message.toString());
 		}
+
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		this.log.debug("updating podcast episode #{} to complete = {}", episode.id(), complete);
-
 		var episodeById = this.getEpisodeById(episode.id());
-		this.log.debug("the episode #{} is complete complete? {}", episode.id(), episodeById.complete());
+
+		if (this.log.isDebugEnabled())
+			this.log.debug("the episode #{} is complete complete? {}", episode.id(), episodeById.complete());
+
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
-				new PodcastEpisodeCompletionEvent(mogulId, episodeById)))
+				new PodcastEpisodeCompletionEvent(mogulId, episodeById))) {
 			this.publisher.publishEvent(e);
+			this.log.debug("refreshPodcastEpisodeCompleteness: {}; publishing [{}]", complete, e);
+		}
 	}
 
 	@ApplicationModuleListener
