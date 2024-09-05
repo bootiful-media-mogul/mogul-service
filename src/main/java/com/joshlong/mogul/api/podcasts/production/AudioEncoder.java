@@ -31,7 +31,7 @@ class AudioEncoder implements Encoder {
 				.waitFor();
 			Assert.state(exit == 0, "the ffmpeg command ran successfully");
 			return mp3;
-		}//
+		} //
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
