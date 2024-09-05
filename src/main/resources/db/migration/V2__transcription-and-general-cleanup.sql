@@ -5,7 +5,7 @@ alter table settings
     rename column mogul_id to mogul;
 
 alter table managed_file
-    rename column mogul_id to mogul;
+    rename column mogul_id to mogul ;
 
 alter table managed_file_deletion_request
     rename column mogul_id to mogul;

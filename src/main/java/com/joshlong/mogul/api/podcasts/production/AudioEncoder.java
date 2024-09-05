@@ -3,30 +3,15 @@ package com.joshlong.mogul.api.podcasts.production;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
-import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
-import java.io.InputStreamReader;
 
 @Component
-class AudioEncoder implements Encoder, ApplicationListener<ApplicationReadyEvent> {
+class AudioEncoder implements Encoder {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private void version() {
-		try (var inputStream = new ProcessBuilder().command("ffmpeg", "-version").start().getInputStream();
-				var inputStreamReader = new InputStreamReader(inputStream)) {
-			var cmdOutput = FileCopyUtils.copyToString(inputStreamReader);
-			log.debug(cmdOutput);
-		}
-		catch (Throwable throwable) {
-			log.debug("couldn't get the ffmpeg version");
-		}
-	}
 
 	@Override
 	public File encode(File input) {
@@ -51,11 +36,6 @@ class AudioEncoder implements Encoder, ApplicationListener<ApplicationReadyEvent
 			throw new RuntimeException(e);
 		}
 
-	}
-
-	@Override
-	public void onApplicationEvent(ApplicationReadyEvent event) {
-		this.version();
 	}
 
 }
