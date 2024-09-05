@@ -66,7 +66,6 @@ class ProductionIntegrationFlowConfiguration {
 	IntegrationFlow episodeProductionIntegrationFlow(ApiProperties properties, PodcastService podcastService,
 			AmqpTemplate amqpTemplate, @Qualifier(PRODUCTION_FLOW_REQUESTS) MessageChannel channel) {
 		var episodeIdHeaderName = "episodeId";
-
 		var q = properties.podcasts().production().amqp().requests();
 		return IntegrationFlow//
 			.from(channel)//
@@ -81,7 +80,7 @@ class ProductionIntegrationFlowConfiguration {
 					var outputS3Uri = source.producedAudio().s3Uri().toString();
 					var episodeId = source.id();
 					var listOfInputSegments = new ArrayList<ProducerInputSegment>();
-					var segments = podcastService.getEpisodeSegmentsByEpisode(episodeId);
+					var segments = podcastService.getPodcastEpisodeSegmentsByEpisode(episodeId);
 					for (var i = 0; i < segments.size(); i++) {
 						var seg = segments.get(i);
 						listOfInputSegments.add(new ProducerInputSegment(i, seg.producedAudio().s3Uri().toString(),
@@ -126,18 +125,18 @@ class ProductionIntegrationFlowConfiguration {
 
 	private ManagedFile doWrite(String episodeIdHeaderName, PodcastService podcastService,
 			ManagedFileService managedFileService, Map<String, Object> headers, String s3Uri) {
-		log.debug("got the following S3 URI from the AMQP processor: {}", s3Uri);
+		this.log.debug("got the following S3 URI from the AMQP processor: {}", s3Uri);
 		var episodeIdValue = headers.get(episodeIdHeaderName);
 		var episodeId = episodeIdValue instanceof String episodeIdString ? //
 				Long.parseLong(episodeIdString)//
 				: ((Number) episodeIdValue).longValue();
-		var episode = podcastService.getEpisodeById(episodeId);
+		var episode = podcastService.getPodcastEpisodeById(episodeId);
 		var producedAudio = episode.producedAudio();
-		log.debug("writing [{}]", episode.id());
+		this.log.debug("writing [{}]", episode.id());
 		podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
-		log.debug("wrote [{}]", episode.id());
+		this.log.debug("wrote [{}]", episode.id());
 		var mf = managedFileService.getManagedFile(producedAudio.id());
-		log.debug("got mf: [{}]", mf);
+		this.log.debug("got mf: [{}]", mf);
 		return mf;
 	}
 

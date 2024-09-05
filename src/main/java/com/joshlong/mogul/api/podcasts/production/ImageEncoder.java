@@ -5,7 +5,7 @@ import com.joshlong.mogul.api.utils.ProcessUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
-class ImageEncoder implements Encoder, ApplicationListener<ApplicationReadyEvent> {
+class ImageEncoder implements Encoder {
 
 	private final Logger log = LoggerFactory.getLogger(ImageEncoder.class);
 
@@ -43,7 +43,7 @@ class ImageEncoder implements Encoder, ApplicationListener<ApplicationReadyEvent
 				.copy(path.toPath(), new File(path.getParentFile(), "copy-" + UUID.randomUUID() + ".jpg").toPath())
 				.toFile() : scale(convertFileToJpeg(path));
 			Assert.state(isValidSize(output),
-					"the output image [" + path.getAbsolutePath() + "] must be of the right file size");
+					"the stdout image [" + path.getAbsolutePath() + "] must be of the right file size");
 			log.debug("in: {}{}out: {}{}", path.getAbsolutePath(), System.lineSeparator(), output.getAbsolutePath(),
 					System.lineSeparator());
 			return output;
@@ -92,8 +92,8 @@ class ImageEncoder implements Encoder, ApplicationListener<ApplicationReadyEvent
 		return isValidSize(f) && isValidType(f);
 	}
 
-	@Override
-	public void onApplicationEvent(ApplicationReadyEvent event) {
+	@EventListener(ApplicationReadyEvent.class)
+	void ready() {
 		try {
 			this.version();
 		}

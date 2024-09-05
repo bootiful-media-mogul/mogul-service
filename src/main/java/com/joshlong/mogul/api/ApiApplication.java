@@ -2,7 +2,6 @@ package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -18,9 +17,6 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -35,12 +31,6 @@ public class ApiApplication {
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 			var mcs = MemberCategory.values();
-
-			hints.proxies()
-				.registerJdkProxy(PodcastEpisodePublisherPlugin.class, org.springframework.aop.SpringProxy.class,
-						org.springframework.aop.framework.Advised.class,
-						org.springframework.core.DecoratingProxy.class);
-
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, mcs);
 		}
@@ -48,8 +38,6 @@ public class ApiApplication {
 	}
 
 	public static void main(String[] args) {
-		// if (System.getenv("DEBUG") != null && System.getenv("DEBUG").equals("true"))
-		// System.getenv().forEach((k, v) -> System.out.println(k + "=" + v));
 		SpringApplication.run(ApiApplication.class, args);
 	}
 

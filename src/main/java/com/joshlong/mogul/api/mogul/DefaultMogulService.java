@@ -3,9 +3,12 @@ package com.joshlong.mogul.api.mogul;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -15,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestClient;
 
@@ -22,13 +27,27 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@RegisterReflectionForBinding(DefaultMogulService.MogulJwtAuthenticationTokenDetails.class)
+@Transactional
+@ImportRuntimeHints(DefaultMogulService.Hints.class)
 class DefaultMogulService implements MogulService {
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var values = MemberCategory.values();
+			for (var c : Set.of(UserInfo.class)) {
+				hints.reflection().registerType(c, values);
+			}
+		}
+
+	}
 
 	private final String auth0Domain;
 
@@ -44,9 +63,12 @@ class DefaultMogulService implements MogulService {
 
 	private final MogulRowMapper mogulRowMapper = new MogulRowMapper();
 
+	private final TransactionTemplate transactionTemplate;
+
 	DefaultMogulService(@Value("${auth0.domain}") String auth0Domain, JdbcClient jdbcClient,
-			ApplicationEventPublisher publisher) {
+			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate) {
 		this.auth0Domain = auth0Domain;
+		this.transactionTemplate = transactionTemplate;
 		this.db = jdbcClient;
 		this.publisher = publisher;
 		Assert.notNull(this.db, "the db is null");
@@ -71,6 +93,7 @@ class DefaultMogulService implements MogulService {
 	}
 
 	@Override
+
 	public Mogul login(Authentication principal) {
 		var principalName = principal.getName();
 		var mogulByName = (Mogul) null;
@@ -107,11 +130,7 @@ class DefaultMogulService implements MogulService {
 			mogulByName = this.getMogulByName(principalName);
 			this.publisher.publishEvent(new MogulCreatedEvent(mogulByName));
 		}
-
 		this.publisher.publishEvent(new MogulAuthenticatedEvent(mogulByName));
-		// todo publish some sort of MogulAuthenticatedEvent so that we can use that as a
-		// cue in the PodcastService to load the
-		// particular mogul's data into memory.
 		return mogulByName;
 	}
 
@@ -124,7 +143,8 @@ class DefaultMogulService implements MogulService {
 			msg.append(", cache missed, resolving by db query [").append(mogulId).append("]");
 			return mogul;
 		});
-		this.log.debug(msg.toString());
+		if (this.log.isTraceEnabled())
+			this.log.trace(msg.toString());
 		return res;
 	}
 
@@ -143,8 +163,8 @@ class DefaultMogulService implements MogulService {
 			msg.append(", but had to hit the DB to find a mogul by name [").append(name).append("]");
 			return mogul;
 		});
-		if (log.isDebugEnabled())
-			log.debug(msg.toString());
+		if (log.isTraceEnabled())
+			log.trace(msg.toString());
 		return res;
 	}
 
@@ -165,34 +185,14 @@ class DefaultMogulService implements MogulService {
 
 	}
 
-	///
-
 	@EventListener
 	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
+		this.transactionTemplate.execute(status -> {
+			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
+			this.login(authentication);
+			return null;
+		});
 
-		var authentication = (JwtAuthenticationToken) ase.getAuthentication();
-
-		this.login(authentication);
-	}
-
-	static class MogulJwtAuthenticationToken extends JwtAuthenticationToken {
-
-		private final MogulJwtAuthenticationTokenDetails details;
-
-		MogulJwtAuthenticationTokenDetails details() {
-			return details;
-		}
-
-		public MogulJwtAuthenticationToken(JwtAuthenticationToken delegate,
-				MogulJwtAuthenticationTokenDetails details) {
-			super(delegate.getToken(), delegate.getAuthorities(), delegate.getName());
-			this.details = details;
-		}
-
-	}
-
-	record MogulJwtAuthenticationTokenDetails(@JsonProperty("family_name") String familyName,
-			@JsonProperty("given_name") String givenName, String picture, String email) {
 	}
 
 }

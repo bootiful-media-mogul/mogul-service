@@ -34,11 +34,11 @@ public abstract class CommonMediaTypes {
 	public static final MediaType GIF = MediaType.IMAGE_GIF; // yuck
 
 	// movies
-	public static final MediaType MP3 = MediaType.parseMediaType("audio/mpeg");
-
 	public static final MediaType MP4 = MediaType.parseMediaType("application/mp4");
 
 	// audio
 	public static final MediaType WAV = MediaType.parseMediaType("audio/wav");
+
+	public static final MediaType MP3 = MediaType.parseMediaType("audio/mpeg");
 
 }
