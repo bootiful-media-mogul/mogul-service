@@ -281,13 +281,23 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Episode getPodcastEpisodeById(Long episodeId) {
-		var erm = new EpisodeRowMapper(managedFileService::getManagedFile, this::getPodcastEpisodeSegmentsByEpisode);//
+		var erm = new EpisodeRowMapper(this.managedFileService::getManagedFile,
+				this::getPodcastEpisodeSegmentsByEpisode);//
 		var res = this.db //
 			.sql("select * from podcast_episode where id =?")//
 			.param(episodeId)//
 			.query(erm) //
 			.list();
-		return res.isEmpty() ? null : res.getFirst();
+		var ep = res.isEmpty() ? null : res.getFirst();
+		if (ep != null) {
+			ep.segments().forEach(s -> eagerlyInitialize(s.producedAudio(), s.audio()));
+			eagerlyInitialize(ep.graphic(), ep.producedGraphic());
+		}
+		return ep;
+	}
+
+	private void eagerlyInitialize(ManagedFile... managedFile) {
+		// for (var mf : managedFile) mf.id();
 	}
 
 	private void updateEpisodeSegmentOrder(Long episodeSegmentId, int order) {
@@ -509,8 +519,8 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public Collection<Episode> getAllPodcastEpisodesByIds(List<Long> episodeIds) {
-		var episodesToSegments = this.getPodcastEpisodeSegmentsByEpisodes(episodeIds);
+	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
+		var episodesToSegments = new HashMap<Long, List<Segment>>(); // this.getPodcastEpisodeSegmentsByEpisodes(episodeIds);
 		var ids = episodeIds.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
 		return this.db.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )")
 			.query(new EpisodeRowMapper(managedFileService::getManagedFile, episodesToSegments::get))

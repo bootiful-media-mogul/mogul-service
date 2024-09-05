@@ -49,6 +49,6 @@ public interface PodcastService {
 
 	void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
 
-	Collection<Episode> getAllPodcastEpisodesByIds(List<Long> episodeIds);
+	Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds);
 
 }

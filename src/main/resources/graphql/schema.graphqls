@@ -76,10 +76,13 @@ type Episode {
     publications : [Publication]
 }
 
+#Long episodeId, Long id, ManagedFile audio, ManagedFile producedAudio, long crossFadeDuration,
+#String name, int order, boolean transcribable, String transcript
 type Segment {
     id : ID
     name : String
     transcript : String
+    transcribable : Boolean
     audio: ManagedFile
     producedAudio : ManagedFile
     order : Int

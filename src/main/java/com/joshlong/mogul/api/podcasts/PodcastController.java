@@ -78,7 +78,8 @@ class PodcastController {
 
 	@QueryMapping
 	Episode podcastEpisodeById(@Argument Long id) {
-		return this.podcastService.getPodcastEpisodeById(id);
+		var e = this.podcastService.getPodcastEpisodeById(id);
+		return e;
 	}
 
 	@MutationMapping
@@ -111,16 +112,20 @@ class PodcastController {
 		return mapOfEpisodesToValidPlugins;
 	}
 
-	@BatchMapping
-	Map<Episode, List<Segment>> segments(List<Episode> episodes) {
-		var byId = this.podcastService
-			.getPodcastEpisodeSegmentsByEpisodes(episodes.stream().map(Episode::id).collect(Collectors.toSet()));
-		var allEpisodes = this.podcastService.getAllPodcastEpisodesByIds(episodes.stream().map(Episode::id).toList());
-		var map = new HashMap<Episode, List<Segment>>();
-		for (var e : allEpisodes)
-			map.put(e, byId.get(e.id()));
-		return map;
-	}
+	/*
+	 * @BatchMapping Map<Episode, List<Segment>> segments(List<Episode> episodes) { var
+	 * epIds = episodes.stream().map(Episode::id).collect(Collectors.toSet()); var
+	 * allEpisodes = this.podcastService.getAllPodcastEpisodesByIds(epIds); var
+	 * allEpisodeSegments =
+	 * this.podcastService.getPodcastEpisodeSegmentsByEpisodes(epIds); var map = new
+	 * HashMap<Episode, List<Segment>>(); for (var e : allEpisodes) map.put(e,
+	 * allEpisodeSegments.get(e.id()));
+	 *
+	 * for (var ep : map.entrySet())
+	 * ep.getValue().sort(Comparator.comparingInt(Segment::order));
+	 *
+	 * return map; }
+	 */
 
 	@SchemaMapping
 	long created(Podcast podcast) {
