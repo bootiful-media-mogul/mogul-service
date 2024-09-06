@@ -22,7 +22,7 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 	@Override
 	public Episode mapRow(ResultSet resultSet, int rowNum) throws SQLException {
 		var episodeId = resultSet.getLong("id");
-		var segments = this.segmentFunction.apply(episodeId);
+		// var segments = this.segmentFunction.apply(episodeId);
 		return new Episode(//
 				episodeId, //
 				resultSet.getLong("podcast"), //
@@ -34,8 +34,9 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 				this.managedFileFunction.apply(resultSet.getLong("produced_audio")), //
 				resultSet.getBoolean("complete"), //
 				resultSet.getDate("produced_audio_updated"), //
-				resultSet.getDate("produced_audio_assets_updated"), //
-				segments);
+				resultSet.getDate("produced_audio_assets_updated") // ,
+		// segments
+		);
 	}
 
 }

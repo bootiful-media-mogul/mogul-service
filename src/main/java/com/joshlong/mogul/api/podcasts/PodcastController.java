@@ -17,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RegisterReflectionForBinding(Map.class)
@@ -180,6 +181,22 @@ class PodcastController {
 	@SchemaMapping
 	Long published(Publication publication) {
 		return publication.published() != null ? publication.published().getTime() : null;
+	}
+
+	@BatchMapping
+	Map<Episode, List<Segment>> segments(List<Episode> episodes) {
+		var epIds = episodes.stream().map(Episode::id).collect(Collectors.toSet());
+		var allEpisodes = this.podcastService.getAllPodcastEpisodesByIds(epIds);
+		var allEpisodeSegments = this.podcastService.getPodcastEpisodeSegmentsByEpisodes(epIds);
+		var map = new HashMap<Episode, List<Segment>>();
+
+		for (var ep : allEpisodes)
+			map.put(ep, allEpisodeSegments.get(ep.id()));
+
+		for (var ep : map.entrySet())
+			ep.getValue().sort(Comparator.comparingInt(Segment::order));
+
+		return map;
 	}
 
 	@MutationMapping

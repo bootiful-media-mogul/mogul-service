@@ -176,7 +176,6 @@ class DefaultPodcastService implements PodcastService {
 			var id = number.longValue();
 			this.setPodcastEpisodesSegmentTranscript(id, true, txt);
 		}
-
 	}
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
@@ -215,17 +214,17 @@ class DefaultPodcastService implements PodcastService {
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
-		var episodeHashMap = new HashMap<Long, Episode>();
-		for (var episode : episodes)
-			episodeHashMap.put(episode.id(), episode);
+		// var episodeHashMap = new HashMap<Long, Episode>();
+		// for (var episode : episodes)
+		// episodeHashMap.put(episode.id(), episode);
 
-		var ids = episodes.stream().map(Episode::id).toList();
-		var segmentsByEpisodes = this.getPodcastEpisodeSegmentsByEpisodes(ids);
-		for (var e : segmentsByEpisodes.entrySet()) {
-			var episodeId = e.getKey();
-			var segments = e.getValue();
-			episodeHashMap.get(episodeId).segments().addAll(segments);
-		}
+		// var ids = episodes.stream().map(Episode::id).toList();
+		// var segmentsByEpisodes = this.getPodcastEpisodeSegmentsByEpisodes(ids);
+		/*
+		 * for (var e : segmentsByEpisodes.entrySet()) { var episodeId = e.getKey(); var
+		 * segments = e.getValue();
+		 * episodeHashMap.get(episodeId).segments().addAll(segments); }
+		 */
 		return episodes;
 	}
 
@@ -288,16 +287,7 @@ class DefaultPodcastService implements PodcastService {
 			.param(episodeId)//
 			.query(erm) //
 			.list();
-		var ep = res.isEmpty() ? null : res.getFirst();
-		if (ep != null) {
-			ep.segments().forEach(s -> eagerlyInitialize(s.producedAudio(), s.audio()));
-			eagerlyInitialize(ep.graphic(), ep.producedGraphic());
-		}
-		return ep;
-	}
-
-	private void eagerlyInitialize(ManagedFile... managedFile) {
-		// for (var mf : managedFile) mf.id();
+		return res.isEmpty() ? null : res.getFirst();
 	}
 
 	private void updateEpisodeSegmentOrder(Long episodeSegmentId, int order) {
