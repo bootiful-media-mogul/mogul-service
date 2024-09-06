@@ -4,11 +4,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-class HealthIndicators {
+class CliHealthIndicators {
 
 	@Bean
 	CliHealthIndicator magick() {
-		return new CliHealthIndicator(new String[] { "magick", "--version" }, "magic");
+		return new CliHealthIndicator(new String[] { "magick", "--version" }, "imagemagick");
 	}
 
 	@Bean

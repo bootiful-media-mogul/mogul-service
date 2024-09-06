@@ -201,10 +201,10 @@ class PodcastController {
 
 	@MutationMapping
 	Publication publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
+		var currentMogulId = this.mogulService.getCurrentMogul().id();
 		var episode = this.podcastService.getPodcastEpisodeById(episodeId);
-		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
 		var contextAndSettings = new HashMap<String, String>();
-		var publication = this.publicationService.publish(mogul, episode, contextAndSettings,
+		var publication = this.publicationService.publish(currentMogulId, episode, contextAndSettings,
 				this.plugins.get(pluginName));
 		this.log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
 				"#" + episode.id() + "/" + episode.title(), pluginName, publication);
@@ -219,11 +219,8 @@ class PodcastController {
 
 	@MutationMapping
 	Episode createPodcastEpisodeDraft(@Argument Long podcastId, @Argument String title, @Argument String description) {
-		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var podcast = this.podcastService.getPodcastById(podcastId);
-		Assert.notNull(podcast, "the podcast is null!");
-		this.mogulService.assertAuthorizedMogul(podcast.mogulId());
-		return this.podcastService.createPodcastEpisodeDraft(currentMogulId, podcastId, title, description);
+		return this.podcastService.createPodcastEpisodeDraft(this.mogulService.getCurrentMogul().id(), podcastId, title,
+				description);
 	}
 
 	@ApplicationModuleListener

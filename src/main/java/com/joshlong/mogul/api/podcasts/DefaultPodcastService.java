@@ -205,27 +205,13 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId) {
-		var podcast = this.getPodcastById(podcastId);
-		Assert.notNull(podcast, "the podcast with id [" + podcastId + "] is null");
-		var episodeRowMapper = new EpisodeRowMapper(this.managedFileService::getManagedFile,
-				episodeId -> new ArrayList<>());
-		var episodes = this.db//
+		this.ensurePodcastBelongsToMogul(this.mogulService.getCurrentMogul().id(), podcastId);
+		var episodeRowMapper = new EpisodeRowMapper(this.managedFileService::getManagedFile);
+		return this.db//
 			.sql(" select * from podcast_episode pe where pe.podcast  = ? ") //
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
-		// var episodeHashMap = new HashMap<Long, Episode>();
-		// for (var episode : episodes)
-		// episodeHashMap.put(episode.id(), episode);
-
-		// var ids = episodes.stream().map(Episode::id).toList();
-		// var segmentsByEpisodes = this.getPodcastEpisodeSegmentsByEpisodes(ids);
-		/*
-		 * for (var e : segmentsByEpisodes.entrySet()) { var episodeId = e.getKey(); var
-		 * segments = e.getValue();
-		 * episodeHashMap.get(episodeId).segments().addAll(segments); }
-		 */
-		return episodes;
 	}
 
 	@Override
@@ -280,8 +266,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Episode getPodcastEpisodeById(Long episodeId) {
-		var erm = new EpisodeRowMapper(this.managedFileService::getManagedFile,
-				this::getPodcastEpisodeSegmentsByEpisode);//
+		var erm = new EpisodeRowMapper(this.managedFileService::getManagedFile);//
 		var res = this.db //
 			.sql("select * from podcast_episode where id =?")//
 			.param(episodeId)//
@@ -463,9 +448,8 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description) {
+		this.ensurePodcastBelongsToMogul(currentMogulId, podcastId);
 		var uid = UUID.randomUUID().toString();
-		var podcast = this.getPodcastById(podcastId);
-		Assert.notNull(podcast, "the podcast is null!");
 		var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		var image = this.managedFileService.createManagedFile(currentMogulId, bucket, uid, "", 0,
 				CommonMediaTypes.BINARY);
@@ -477,6 +461,14 @@ class DefaultPodcastService implements PodcastService {
 		var seg = this.createPodcastEpisodeSegment(currentMogulId, episode.id(), "", 0);
 		Assert.notNull(seg, "could not create a podcast episode segment for episode " + episode.id());
 		return this.getPodcastEpisodeById(episode.id());
+	}
+
+	private void ensurePodcastBelongsToMogul(Long currentMogulId, Long podcastId) {
+		var match = this.db.sql("select p.id as id  from podcast p where p.id =  ? and p.mogul = ?  ")
+			.params(podcastId, currentMogulId)
+			.query((rs, rowNum) -> rs.getInt("id"))
+			.list();
+		Assert.state(!match.isEmpty(), "there is indeed a podcast with this id and this mogul");
 	}
 
 	@Override
@@ -510,10 +502,9 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
-		var episodesToSegments = new HashMap<Long, List<Segment>>(); // this.getPodcastEpisodeSegmentsByEpisodes(episodeIds);
 		var ids = episodeIds.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
 		return this.db.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )")
-			.query(new EpisodeRowMapper(managedFileService::getManagedFile, episodesToSegments::get))
+			.query(new EpisodeRowMapper(managedFileService::getManagedFile))
 			.list();
 	}
 
