@@ -77,7 +77,7 @@ class PodcastController {
 
 	@QueryMapping
 	Episode podcastEpisodeById(@Argument Long id) {
-        return this.podcastService.getPodcastEpisodeById(id);
+		return this.podcastService.getPodcastEpisodeById(id);
 	}
 
 	@MutationMapping
