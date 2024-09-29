@@ -10,7 +10,7 @@ class PodcastRowMapper implements RowMapper<Podcast> {
 
 	@Override
 	public Podcast mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new Podcast(rs.getLong("mogul"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
+		return new Podcast(rs.getLong("mogul"), rs.getLong("id"), rs.getString("title"), rs.getTimestamp("created"),
 				new ArrayList<>());
 	}
 

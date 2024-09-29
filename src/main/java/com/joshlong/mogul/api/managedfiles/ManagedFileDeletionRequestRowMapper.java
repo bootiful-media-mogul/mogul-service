@@ -11,7 +11,7 @@ class ManagedFileDeletionRequestRowMapper implements RowMapper<ManagedFileDeleti
 	public ManagedFileDeletionRequest mapRow(ResultSet rs, int rowNum) throws SQLException {
 		return new ManagedFileDeletionRequest(rs.getLong("id"), rs.getLong("mogul"), rs.getString("bucket"),
 				rs.getString("folder"), rs.getString("filename"), rs.getString("storage_filename"),
-				rs.getBoolean("deleted"), rs.getDate("created"));
+				rs.getBoolean("deleted"), rs.getTimestamp("created"));
 	}
 
 }

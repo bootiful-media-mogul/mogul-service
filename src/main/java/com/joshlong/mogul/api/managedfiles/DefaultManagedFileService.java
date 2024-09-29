@@ -215,7 +215,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	private void initializeManagedFile(ResultSet rs, ManagedFile managedFile) throws SQLException {
 		managedFile.hydrate(rs.getLong("mogul"), rs.getLong("id"), rs.getString("bucket"),
 				rs.getString("storage_filename"), rs.getString("folder"), rs.getString("filename"),
-				rs.getDate("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"));
+				rs.getTimestamp("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"));
 	}
 
 	private final TransactionSynchronization transactionSynchronization = new TransactionSynchronization() {
