@@ -23,13 +23,13 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 				resultSet.getLong("podcast"), //
 				resultSet.getString("title"), //
 				resultSet.getString("description"), //
-				resultSet.getDate("created"), //
+				resultSet.getTimestamp("created"), //
 				this.managedFileFunction.apply(resultSet.getLong("graphic")), //
 				this.managedFileFunction.apply(resultSet.getLong("produced_graphic")), //
 				this.managedFileFunction.apply(resultSet.getLong("produced_audio")), //
 				resultSet.getBoolean("complete"), //
-				resultSet.getDate("produced_audio_updated"), //
-				resultSet.getDate("produced_audio_assets_updated") // ,
+				resultSet.getTimestamp("produced_audio_updated"), //
+				resultSet.getTimestamp("produced_audio_assets_updated") // ,
 		);
 	}
 

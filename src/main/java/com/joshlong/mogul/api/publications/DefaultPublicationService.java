@@ -90,15 +90,12 @@ class DefaultPublicationService implements PublicationService {
 					.update();
 
 				this.publisher.publishEvent(new PublicationUpdatedEvent(publication.id()));
-
 			}
-
 		}
 		catch (Exception throwable) {
 			log.warn("couldn't unpublish {} with url {}", publication.id(), publication.url());
 			//
 		}
-
 		return this.getPublicationById(publication.id());
 	}
 	// do this on a separate thread so that it's
@@ -109,12 +106,10 @@ class DefaultPublicationService implements PublicationService {
 			PublisherPlugin<T> plugin) {
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(payload, "the payload must not be null");
-
 		var configuration = this.settingsLookup.apply(new SettingsLookup(mogulId, plugin.name()));
 		var context = new ConcurrentHashMap<String, String>();
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
-
 		var publicationId = (long) Objects.requireNonNull(this.transactionTemplate.execute(transactionStatus -> {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
@@ -123,7 +118,7 @@ class DefaultPublicationService implements PublicationService {
 			var entityClazz = payload.getClass().getName();
 			var kh = new GeneratedKeyHolder();
 			this.db.sql(
-					"insert into publication( state, mogul, plugin, created, published, context, payload , payload_class) VALUES (?,?,?,?,?,?,?,?)")
+					"insert into publication( state, mogul, plugin, created, published, context, payload , payload_class ) VALUES (?,?,?,?,?,?,?,?)")
 				.params(Publication.State.DRAFT.name(), mogulId, plugin.name(), new Date(), null, contextJson,
 						publicationData, entityClazz)
 				.update(kh);
@@ -146,13 +141,13 @@ class DefaultPublicationService implements PublicationService {
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 
 		var contextJsonAfterPublish = this.textEncryptor.encrypt(JsonUtils.write(context));
-		this.db.sql(" update publication set state =? ,context = ?, published = ?  where id = ?")
+		this.db.sql(" update publication set state = ? , context = ?, published = ? where id = ?")
 			.params(Publication.State.PUBLISHED.name(), contextJsonAfterPublish, new Date(), publicationId)
 			.update();
 
 		var url = context.getOrDefault(CONTEXT_URL, null);
 		if (null != url) {
-			this.db.sql(" update publication set url = ? where id = ?").params(url, publicationId).update();
+			this.db.sql(" update publication set url = ? where id = ? ").params(url, publicationId).update();
 		}
 
 		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
@@ -183,20 +178,20 @@ class DefaultPublicationService implements PublicationService {
 			.query(this.publicationRowMapper) //
 			.stream()//
 			.forEach(publication -> {
-				var key = this.key(publication.payloadClass(), publication.payload());
+				var key = this.buildPublicationCacheKey(publication.payloadClass(), publication.payload());
 				this.publicationsCache.computeIfAbsent(key, cacheKey -> new ArrayList<>()).add(publication);
-				log.debug("adding publication {} to publications cache for cache key {} ", publication, key);
+				this.log.debug("adding publication {} to publications cache for cache key {} ", publication, key);
 			});
 	}
 
-	private String key(Class<?> c, Serializable s) {
+	private String buildPublicationCacheKey(Class<?> c, Serializable s) {
 		return c.getName() + ":" + s.toString();
 	}
 
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey,
 			Class<?> clazz) {
-		var key = key(clazz, publicationKey);
+		var key = this.buildPublicationCacheKey(clazz, publicationKey);
 		if (this.publicationsCache.containsKey(key)) {
 			return this.publicationsCache//
 				.get(key)//

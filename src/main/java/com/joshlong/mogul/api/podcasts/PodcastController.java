@@ -18,7 +18,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -170,15 +169,37 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	CompletableFuture<Publication> unpublishPodcastEpisodePublication(@Argument Long publicationId) {
-		return CompletableFuture.supplyAsync(() -> {
+	boolean publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
+		var currentMogulId = this.mogulService.getCurrentMogul().id();
+		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
+		var runnable = (Runnable) () -> {
+			SecurityContextHolder.getContext().setAuthentication(auth);
+			// todo make sure we set the currently authorized mogul as of this point based
+			// on the token there
+			this.mogulService.assertAuthorizedMogul(currentMogulId);
+			var episode = this.podcastService.getPodcastEpisodeById(episodeId);
+			var contextAndSettings = new HashMap<String, String>();
+			var publication = this.publicationService.publish(currentMogulId, episode, contextAndSettings,
+					this.plugins.get(pluginName));
+			this.log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
+					"#" + episode.id() + "/" + episode.title(), pluginName, publication);
+		};
+		this.executor.execute(runnable);
+		return true;
+	}
+
+	@MutationMapping
+	boolean unpublishPodcastEpisodePublication(@Argument Long publicationId) {
+		var runnable = (Runnable) () -> {
 			log.debug("going to unpublish the publication with id # {}", publicationId);
 			var publicationById = this.publicationService.getPublicationById(publicationId);
 			Assert.notNull(publicationById, "the publication should not be null");
 			var plugin = this.plugins.get(publicationById.plugin());
 			Assert.notNull(plugin, "you must specify an active plugin");
-			return this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
-		}, this.executor);
+			this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
+		};
+		this.executor.execute(runnable);
+		return true;
 	}
 
 	@SchemaMapping
@@ -205,25 +226,6 @@ class PodcastController {
 			ep.getValue().sort(Comparator.comparingInt(Segment::order));
 
 		return map;
-	}
-
-	@MutationMapping
-	CompletableFuture<Publication> publishPodcastEpisode(@Argument Long episodeId, @Argument String pluginName) {
-		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
-		return CompletableFuture.supplyAsync(() -> {
-			SecurityContextHolder.getContext().setAuthentication(auth);
-			// todo make sure we set the currently authorized mogul as of this point based
-			// on the token there
-			this.mogulService.assertAuthorizedMogul(currentMogulId);
-			var episode = this.podcastService.getPodcastEpisodeById(episodeId);
-			var contextAndSettings = new HashMap<String, String>();
-			var publication = this.publicationService.publish(currentMogulId, episode, contextAndSettings,
-					this.plugins.get(pluginName));
-			this.log.debug("finished publishing [{}] with plugin [{}] and got publication [{}] ",
-					"#" + episode.id() + "/" + episode.title(), pluginName, publication);
-			return publication;
-		}, this.executor);
 	}
 
 	@MutationMapping
