@@ -74,13 +74,11 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
-
 		if (episodes.isEmpty())
 			return new HashMap<>();
-
 		var idsAsString = episodes.stream().map(e -> Long.toString(e)).collect(Collectors.joining(", "));
 		var segments = db
-			.sql("select * from podcast_episode_segment pes where pes.podcast_episode  in (" + idsAsString + ") ")
+			.sql("select * from podcast_episode_segment pes where pes.podcast_episode in (" + idsAsString + ") ")
 			.query(this.episodeSegmentRowMapper)
 			.list();
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
@@ -88,13 +86,11 @@ class DefaultPodcastService implements PodcastService {
 			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), sk -> new ArrayList<>()).add(s);
 		}
 		return episodeToSegmentsMap;
-
 	}
 
 	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
-
-		var sql = " select * from podcast_episode_segment where podcast_episode  = ? order by sequence_number ASC ";
+		var sql = " select * from podcast_episode_segment where podcast_episode = ? order by sequence_number ASC ";
 		var episodeSegmentsFromDb = this.db //
 			.sql(sql) //
 			.params(episodeId) //
@@ -104,6 +100,7 @@ class DefaultPodcastService implements PodcastService {
 			.toList();
 		return new ArrayList<>(episodeSegmentsFromDb);
 	}
+
 	// todo should i also be doing transcription in this method?
 	// this method knows when a file has been written and is in an ideal position
 	// to update the record.
@@ -120,11 +117,10 @@ class DefaultPodcastService implements PodcastService {
 				from podcast_episode pe
 				where pe.graphic = ?
 				""";
-
 		var all = this.db.sql(sql).params(mf.id(), mf.id()).query((rs, rowNum) -> rs.getLong("id")).set();
 		if (all.isEmpty()) {
 			this.log.trace(
-					"got a {}but it doesn't seem to affect any of our podcasts. so, kicking the can down the road",
+					"got a {}, but it doesn't seem to affect any of our podcasts. so, kicking the can down the road",
 					managedFileUpdatedEvent.getClass().getName());
 			return;
 		}
@@ -199,8 +195,10 @@ class DefaultPodcastService implements PodcastService {
 		var episodeById = this.getPodcastEpisodeById(episode.id());
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(mogulId, episodeById))) {
+			this.log.info("publishing {}.", e.getClass().getName());
 			this.publisher.publishEvent(e);
 		}
+
 	}
 
 	@ApplicationModuleListener
