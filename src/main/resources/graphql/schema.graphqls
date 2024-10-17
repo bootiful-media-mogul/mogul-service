@@ -31,6 +31,8 @@ type Mogul {
 
 type Query {
 
+    renderMarkdown( markdown : String) : String 
+
     # outstanding notifications
     notifications: NotificationEvent
 
