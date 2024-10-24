@@ -93,7 +93,6 @@ class DefaultMogulService implements MogulService {
 	}
 
 	@Override
-
 	public Mogul login(Authentication principal) {
 		var principalName = principal.getName();
 		var mogulByName = (Mogul) null;
