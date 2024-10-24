@@ -192,7 +192,6 @@ class DefaultMogulService implements MogulService {
 			this.login(authentication);
 			return null;
 		});
-
 	}
 
 }
