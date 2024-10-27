@@ -93,6 +93,13 @@ class PodcastController {
 		return true;
 	}
 
+	@MutationMapping
+	boolean setPodcastEpisodesSegmentTranscript(@Argument Long episodeSegmentId, @Argument boolean transcribable,
+			@Argument String transcript) {
+		this.podcastService.setPodcastEpisodesSegmentTranscript(episodeSegmentId, transcribable, transcript);
+		return true;
+	}
+
 	@BatchMapping
 	Map<Episode, Collection<String>> availablePlugins(List<Episode> episodes) {
 		var mogul = this.mogulService.getCurrentMogul();
