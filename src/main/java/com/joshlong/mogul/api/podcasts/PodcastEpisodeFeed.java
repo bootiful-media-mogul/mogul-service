@@ -76,8 +76,15 @@ class PodcastEpisodeFeed {
 		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(ep.publicationKey(),
 				Episode.class);
 		if (ep.complete() && !publications.isEmpty())
-			return publications.stream()
-				.sorted(Comparator.comparing(Publication::published).reversed())
+			return publications//
+				.stream()//
+				.sorted(((Comparator<Publication>) (o1, o2) -> {
+					if (o1 != null && o2 != null && o1.published() != null && o2.published() != null)
+						return o1.published().compareTo(o2.published());
+					return 0;
+				})//
+					.reversed()//
+				)//
 				.toList()
 				.getFirst()
 				.url();
