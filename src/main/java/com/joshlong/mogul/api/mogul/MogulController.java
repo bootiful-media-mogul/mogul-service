@@ -17,12 +17,13 @@ class MogulController {
 	}
 
 	@QueryMapping
-	Map<String, String> me(Principal principal) {
+	Map<String, Object> me(Principal principal) {
 		var mogulByName = mogulService.getMogulByName(principal.getName());
-		var map = new HashMap<String, String>();
+		var map = new HashMap<String, Object>();
 		map.put("name", mogulByName.username());
 		map.put("email", mogulByName.email());
 		map.put("givenName", mogulByName.givenName());
+		map.put("id", mogulByName.id());
 		map.put("familyName", mogulByName.familyName());
 		return map;
 	}
