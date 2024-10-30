@@ -4,9 +4,12 @@ import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.feeds.FeedTemplate;
 import com.joshlong.mogul.api.feeds.SyndEntryMapper;
 import com.joshlong.mogul.api.publications.PublicationService;
+import com.joshlong.templates.MarkdownService;
 import com.rometools.rome.feed.synd.SyndContentImpl;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndEntryImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,23 +28,29 @@ import java.util.Map;
 @ResponseBody
 class PodcastEpisodeFeed {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	private final FeedTemplate template;
 
 	private final PodcastService podcastService;
 
 	private final PublicationService publicationService;
 
-	PodcastEpisodeFeed(FeedTemplate template, PodcastService podcastService, PublicationService publicationService) {
+	private final MarkdownService markdownService;
+
+	PodcastEpisodeFeed(FeedTemplate template, PodcastService podcastService, PublicationService publicationService,
+			MarkdownService markdownService) {
 		this.template = template;
 		this.podcastService = podcastService;
 		this.publicationService = publicationService;
+		this.markdownService = markdownService;
 	}
 
 	@GetMapping("/feeds/moguls/{mogulId}/podcasts/{podcastId}/episodes.atom")
 	ResponseEntity<String> podcastsFeed(@PathVariable long mogulId, @PathVariable long podcastId) {
 		var podcast = this.podcastService.getPodcastById(podcastId);
+		var episodes = this.podcastService.getPodcastEpisodesByPodcast(podcastId);
 		Assert.state(podcast.mogulId().equals(mogulId), "the mogulId must match");
-		var episodes = podcast.episodes();
 		var url = "/feeds/moguls/" + mogulId + "/podcasts/" + podcastId + "/episodes.atom";
 		var title = podcast.title();
 		var map = new HashMap<Long, String>();
@@ -51,13 +60,14 @@ class PodcastEpisodeFeed {
 				map.put(e.id(), publicationUrl);
 			}
 		}
-		var pubishedEpisodes = episodes.stream().filter(ep -> map.containsKey(ep.id())).toList();
+		var publishedEpisodes = episodes.stream().filter(ep -> map.containsKey(ep.id())).toList();
 		var syndEntryMapper = new EpisodeSyndEntryMapper(map);
-		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, url, title, pubishedEpisodes,
+		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, url, title, publishedEpisodes,
 				syndEntryMapper);
 		var render = this.template.render(feed);
-		return ResponseEntity.status(HttpStatusCode.valueOf(200))
-			.contentType(MediaType.APPLICATION_ATOM_XML)
+		return ResponseEntity//
+			.status(HttpStatusCode.valueOf(200))//
+			.contentType(MediaType.APPLICATION_ATOM_XML)//
 			.body(render);
 
 	}
@@ -74,7 +84,7 @@ class PodcastEpisodeFeed {
 		return null;
 	}
 
-	static class EpisodeSyndEntryMapper implements SyndEntryMapper<Episode> {
+	private class EpisodeSyndEntryMapper implements SyndEntryMapper<Episode> {
 
 		private final Map<Long, String> urls;
 
@@ -91,12 +101,26 @@ class PodcastEpisodeFeed {
 			entry.setPublishedDate(episode.created());
 
 			var description = new SyndContentImpl();
-			description.setType("text/plain");
+			description.setType(MediaType.TEXT_PLAIN_VALUE);
 			description.setValue(episode.description());
 
+			// var markdownDescription = new SyndContentImpl();
+			// markdownDescription.setType(MediaType.TEXT_HTML_VALUE);
+			// markdownDescription.setValue(markdownDescription(episode.description()));
+			//
 			entry.setDescription(description);
 			return entry;
 
+		}
+
+		private String markdownDescription(String description) {
+			try {
+				return markdownService.convertMarkdownTemplateToHtml(description);
+			}
+			catch (Throwable throwable) {
+				log.warn("couldn't transcode the following " + "string into Markdown: {}", description + "");
+			}
+			return description;
 		}
 
 	}

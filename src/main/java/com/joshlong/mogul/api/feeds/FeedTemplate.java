@@ -8,6 +8,8 @@ import com.rometools.rome.io.SyndFeedOutput;
 import org.springframework.util.Assert;
 
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -15,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class FeedTemplate {
 
-	public static enum FeedType {
+	public enum FeedType {
 
 		RSS_0_9("rss_0.9"), RSS_0_93("rss_0.93"), ATOM_0_3("atom_0.3");
 
@@ -43,14 +45,18 @@ public class FeedTemplate {
 		Assert.hasText(link, "the link must not be null");
 		Assert.hasText(title, "the link must not be null");
 		Assert.notNull(posts, "the posts must not be null");
-		var entries = posts.stream().map(i -> {
-			try {
-				return mapper.map(i);
-			}
-			catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}).collect(Collectors.toList());
+		var entries = posts//
+			.stream()//
+			// .parallel()//
+			.map(i -> {
+				try {
+					return mapper.map(i);
+				}
+				catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			})//
+			.collect(Collectors.toList());
 		return this.buildFeed(feedType, title, link, description, entries);
 	}
 
@@ -58,7 +64,7 @@ public class FeedTemplate {
 		try {
 			var output = new SyndFeedOutput();
 			return output.outputString(feed);
-		}
+		} //
 		catch (FeedException e) {
 			throw new RuntimeException(e);
 		}
