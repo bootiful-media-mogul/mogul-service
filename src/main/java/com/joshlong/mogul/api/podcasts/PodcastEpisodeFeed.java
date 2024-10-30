@@ -79,8 +79,12 @@ class PodcastEpisodeFeed {
 			return publications//
 				.stream()//
 				.sorted(((Comparator<Publication>) (o1, o2) -> {
-					if (o1 != null && o2 != null && o1.published() != null && o2.published() != null)
-						return o1.published().compareTo(o2.published());
+					if (o1 != null && o2 != null) {
+						if (o1.published() != null && o2.published() != null)
+							return o1.published().compareTo(o2.published());
+						if (o1.created() != null && o2.created() != null)
+							return o1.created().compareTo(o2.created());
+					}
 					return 0;
 				})//
 					.reversed()//
