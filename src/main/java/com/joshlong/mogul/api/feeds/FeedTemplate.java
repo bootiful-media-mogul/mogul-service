@@ -77,7 +77,7 @@ public class FeedTemplate {
 		feed.setLink(link);
 		feed.setDescription(description);
 		feed.setEntries(posts);
-		
+
 		return feed;
 	}
 

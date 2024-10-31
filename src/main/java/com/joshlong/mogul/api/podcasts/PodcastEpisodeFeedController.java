@@ -32,18 +32,20 @@ class PodcastEpisodeFeedController {
 
 	private static final String PODCAST_FEED_URL = "/public/feeds/moguls/{mogulId}/podcasts/{podcastId}/episodes.atom";
 
-
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ManagedFileService managedFileService;
+
 	private final FeedTemplate template;
+
 	private final PodcastService podcastService;
+
 	private final PublicationService publicationService;
+
 	private final MarkdownService markdownService;
 
-
-	PodcastEpisodeFeedController(ManagedFileService managedFileService, FeedTemplate template, PodcastService podcastService, PublicationService publicationService,
-								 MarkdownService markdownService) {
+	PodcastEpisodeFeedController(ManagedFileService managedFileService, FeedTemplate template,
+			PodcastService podcastService, PublicationService publicationService, MarkdownService markdownService) {
 		this.managedFileService = managedFileService;
 		this.template = template;
 		this.podcastService = podcastService;
@@ -58,8 +60,10 @@ class PodcastEpisodeFeedController {
 		var episodes = this.podcastService.getPodcastEpisodesByPodcast(podcastId);
 		Assert.state(podcast.mogulId().equals(mogulId), "the mogulId must match");
 
-		// todo might want to extract this out to a generic thing as we start to expose more and more feeds across the project.
-		// todo we also need to make sure we do the right thing around the global URI namespace, too.
+		// todo might want to extract this out to a generic thing as we start to expose
+		// more and more feeds across the project.
+		// todo we also need to make sure we do the right thing around the global URI
+		// namespace, too.
 
 		var params = Map.of("mogulId", mogulId, "podcastId", podcastId);
 		var ns = PODCAST_FEED_URL;
@@ -71,7 +75,7 @@ class PodcastEpisodeFeedController {
 				ns = ns.replace(find, v.toString());
 			}
 		}
-		
+
 		var title = podcast.title();
 		var map = new HashMap<Long, String>();
 		for (var e : episodes) {
@@ -82,7 +86,8 @@ class PodcastEpisodeFeedController {
 		}
 		var publishedEpisodes = episodes.stream().filter(ep -> map.containsKey(ep.id())).toList();
 		var syndEntryMapper = new EpisodeSyndEntryMapper(map);
-		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, ns, title, publishedEpisodes, syndEntryMapper);
+		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, ns, title, publishedEpisodes,
+				syndEntryMapper);
 		var render = this.template.render(feed);
 		return ResponseEntity//
 			.status(HttpStatusCode.valueOf(200))//
@@ -105,7 +110,7 @@ class PodcastEpisodeFeedController {
 					}
 					return 0;
 				})//
-						.reversed())//
+					.reversed())//
 				.toList()
 				.getFirst()
 				.url();
@@ -134,11 +139,12 @@ class PodcastEpisodeFeedController {
 
 			// todo get the image
 
-			var graphicId = episode. producedGraphic().id();
-			var url = "/api"+ managedFileService.getPublicUrlForManagedFile(graphicId);
-			
-			//    <link rel="enclosure" type="image/jpeg" href="https://example.com/image.jpg"/>
-			// claude says this is a thing so... 
+			var graphicId = episode.producedGraphic().id();
+			var url = "/api" + managedFileService.getPublicUrlForManagedFile(graphicId);
+
+			// <link rel="enclosure" type="image/jpeg"
+			// href="https://example.com/image.jpg"/>
+			// claude says this is a thing so...
 			var image = new SyndLinkImpl();
 			image.setHref(url);
 			image.setRel("enclosure");
