@@ -3,11 +3,13 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.feeds.FeedTemplate;
 import com.joshlong.mogul.api.feeds.SyndEntryMapper;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.templates.MarkdownService;
 import com.rometools.rome.feed.synd.SyndContentImpl;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndEntryImpl;
+import com.rometools.rome.feed.synd.SyndLinkImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -26,32 +28,50 @@ import java.util.Map;
 
 @Controller
 @ResponseBody
-class PodcastEpisodeFeed {
+class PodcastEpisodeFeedController {
+
+	private static final String PODCAST_FEED_URL = "/public/feeds/moguls/{mogulId}/podcasts/{podcastId}/episodes.atom";
+
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
+	private final ManagedFileService managedFileService;
 	private final FeedTemplate template;
-
 	private final PodcastService podcastService;
-
 	private final PublicationService publicationService;
-
 	private final MarkdownService markdownService;
 
-	PodcastEpisodeFeed(FeedTemplate template, PodcastService podcastService, PublicationService publicationService,
-			MarkdownService markdownService) {
+
+	PodcastEpisodeFeedController(ManagedFileService managedFileService, FeedTemplate template, PodcastService podcastService, PublicationService publicationService,
+								 MarkdownService markdownService) {
+		this.managedFileService = managedFileService;
 		this.template = template;
 		this.podcastService = podcastService;
 		this.publicationService = publicationService;
 		this.markdownService = markdownService;
 	}
 
-	@GetMapping("/public/feeds/moguls/{mogulId}/podcasts/{podcastId}/episodes.atom")
+	@GetMapping(PODCAST_FEED_URL)
 	ResponseEntity<String> podcastsFeed(@PathVariable long mogulId, @PathVariable long podcastId) {
+
 		var podcast = this.podcastService.getPodcastById(podcastId);
 		var episodes = this.podcastService.getPodcastEpisodesByPodcast(podcastId);
 		Assert.state(podcast.mogulId().equals(mogulId), "the mogulId must match");
-		var url = "/public/feeds/moguls/" + mogulId + "/podcasts/" + podcastId + "/episodes.atom";
+
+		// todo might want to extract this out to a generic thing as we start to expose more and more feeds across the project.
+		// todo we also need to make sure we do the right thing around the global URI namespace, too.
+
+		var params = Map.of("mogulId", mogulId, "podcastId", podcastId);
+		var ns = PODCAST_FEED_URL;
+		for (var k : params.keySet()) {
+			var v = params.get(k);
+			this.log.debug("the following parameter was found: {}={}", k, v);
+			var find = "{" + k + "}";
+			if (ns.contains(find)) {
+				ns = ns.replace(find, v.toString());
+			}
+		}
+		
 		var title = podcast.title();
 		var map = new HashMap<Long, String>();
 		for (var e : episodes) {
@@ -62,14 +82,12 @@ class PodcastEpisodeFeed {
 		}
 		var publishedEpisodes = episodes.stream().filter(ep -> map.containsKey(ep.id())).toList();
 		var syndEntryMapper = new EpisodeSyndEntryMapper(map);
-		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, url, title, publishedEpisodes,
-				syndEntryMapper);
+		var feed = this.template.buildFeed(FeedTemplate.FeedType.ATOM_0_3, title, ns, title, publishedEpisodes, syndEntryMapper);
 		var render = this.template.render(feed);
 		return ResponseEntity//
 			.status(HttpStatusCode.valueOf(200))//
 			.contentType(MediaType.APPLICATION_ATOM_XML)//
 			.body(render);
-
 	}
 
 	private String publicationUrl(Episode ep) {
@@ -87,8 +105,7 @@ class PodcastEpisodeFeed {
 					}
 					return 0;
 				})//
-					.reversed()//
-				)//
+						.reversed())//
 				.toList()
 				.getFirst()
 				.url();
@@ -115,10 +132,19 @@ class PodcastEpisodeFeed {
 			description.setType(MediaType.TEXT_PLAIN_VALUE);
 			description.setValue(episode.description());
 
-			// var markdownDescription = new SyndContentImpl();
-			// markdownDescription.setType(MediaType.TEXT_HTML_VALUE);
-			// markdownDescription.setValue(markdownDescription(episode.description()));
-			//
+			// todo get the image
+
+			var graphicId = episode. producedGraphic().id();
+			var url = "/api"+ managedFileService.getPublicUrlForManagedFile(graphicId);
+			
+			//    <link rel="enclosure" type="image/jpeg" href="https://example.com/image.jpg"/>
+			// claude says this is a thing so... 
+			var image = new SyndLinkImpl();
+			image.setHref(url);
+			image.setRel("enclosure");
+			image.setType(episode.graphic().contentType());
+			entry.getLinks().add(image);
+
 			entry.setDescription(description);
 			return entry;
 
