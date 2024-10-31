@@ -77,6 +77,13 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.write(managedFileId, filename, mts, new FileSystemResource(resource));
 	}
 
+	@Override
+	public String getPublicUrlForManagedFile(Long managedFile) {
+		var mf = getManagedFile(managedFile);
+		var url = "/public/managedfiles/" + mf.id();
+		return (mf.visible()) ? url : null;
+	}
+
 	private ManagedFile forceReadManagedFile(Long managedFileId) {
 		var managedFile = this.getManagedFile(managedFileId);
 		this.managedFiles.get().remove(managedFileId);
@@ -99,6 +106,11 @@ class DefaultManagedFileService implements ManagedFileService {
 			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
 			return null;
 		});
+	}
+
+	@Override
+	public void setManagedFileVisibility(Long managedFile, boolean publicAccess) {
+		this.db.sql("update managed_file set visible = ? where id = ?").params(publicAccess, managedFile).update();
 	}
 
 	/**
@@ -200,14 +212,15 @@ class DefaultManagedFileService implements ManagedFileService {
 	@Override
 	@Transactional
 	public ManagedFile createManagedFile(Long mogulId, String bucket, String folder, String fileName, long size,
-			MediaType mediaType) {
+			MediaType mediaType, boolean visible) {
 		var kh = new GeneratedKeyHolder();
 		var sql = """
-				insert into managed_file( storage_filename, mogul , bucket, folder, filename, size,content_type)
-				values (?,?,?,?,?,?,?)
+				insert into managed_file( storage_filename, mogul , bucket, folder, filename, size,content_type, visible)
+				values (?,?,?,?,?,?,?,?)
 				""";
 		this.db.sql(sql)
-			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString())
+			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString(),
+					visible)
 			.update(kh);
 		return this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
 	}
@@ -215,7 +228,8 @@ class DefaultManagedFileService implements ManagedFileService {
 	private void initializeManagedFile(ResultSet rs, ManagedFile managedFile) throws SQLException {
 		managedFile.hydrate(rs.getLong("mogul"), rs.getLong("id"), rs.getString("bucket"),
 				rs.getString("storage_filename"), rs.getString("folder"), rs.getString("filename"),
-				rs.getTimestamp("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"));
+				rs.getTimestamp("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"),
+				rs.getBoolean("visible"));
 	}
 
 	private final TransactionSynchronization transactionSynchronization = new TransactionSynchronization() {

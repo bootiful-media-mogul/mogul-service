@@ -19,6 +19,8 @@ import java.util.function.Consumer;
 
 public class ManagedFile {
 
+	private final AtomicBoolean visible = new AtomicBoolean(false);
+
 	private final AtomicReference<Long> mogulId = new AtomicReference<>();
 
 	private final AtomicReference<Long> id = new AtomicReference<>();
@@ -52,7 +54,7 @@ public class ManagedFile {
 
 	// private implementation detail
 	void hydrate(Long mogulId, Long id, String bucket, String storageFilename, String folder, String filename,
-			Date created, boolean written, long size, String contentType) {
+			Date created, boolean written, long size, String contentType, boolean visible) {
 		this.mogulId.set(mogulId);
 		this.id.set(id);
 		this.bucket.set(bucket);
@@ -63,6 +65,7 @@ public class ManagedFile {
 		this.written.set(written);
 		this.size.set(size);
 		this.contentType.set(contentType);
+		this.visible.set(visible);
 		// very important
 		this.initialized.set(true);
 	}
@@ -95,7 +98,6 @@ public class ManagedFile {
 	}
 
 	@JsonProperty("storageFilename")
-
 	public String storageFilename() {
 		this.ensureInitialized();
 		return storageFilename.get();
@@ -104,37 +106,43 @@ public class ManagedFile {
 	@JsonProperty("folder")
 	public String folder() {
 		this.ensureInitialized();
-		return folder.get();
+		return this.folder.get();
 	}
 
 	@JsonProperty("filename")
 	public String filename() {
 		this.ensureInitialized();
-		return filename.get();
+		return this.filename.get();
 	}
 
 	@JsonProperty("created")
 	public Date created() {
 		this.ensureInitialized();
-		return created.get();
+		return this.created.get();
+	}
+
+	@JsonProperty("visible")
+	public boolean visible() {
+		this.ensureInitialized();
+		return this.visible.get();
 	}
 
 	@JsonProperty("written")
 	public boolean written() {
 		this.ensureInitialized();
-		return written.get();
+		return this.written.get();
 	}
 
 	@JsonProperty("size")
 	public long size() {
 		this.ensureInitialized();
-		return size.get();
+		return this.size.get();
 	}
 
 	@JsonProperty("contentType")
 	public String contentType() {
 		this.ensureInitialized();
-		return contentType.get();
+		return this.contentType.get();
 	}
 
 	@Override
@@ -142,7 +150,8 @@ public class ManagedFile {
 		return "ManagedFile{" + "mogulId=" + mogulId.get() + ", id=" + id.get() + ", bucket='" + bucket.get() + '\''
 				+ ", storageFilename='" + storageFilename.get() + +'\'' + ", folder='" + folder.get() + '\''
 				+ ", filename='" + filename.get() + '\'' + ", created=" + created.get() + ", written=" + written.get()
-				+ ", size=" + size.get() + ", contentType='" + contentType.get() + '\'' + '}';
+				+ "," + ", visible=" + visible.get() + "," + " size=" + size.get() + ", contentType='"
+				+ contentType.get() + '\'' + '}';
 	}
 
 	@Override
