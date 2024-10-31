@@ -44,6 +44,17 @@ class PodcastEpisodeFeedController {
 
 	private final MarkdownService markdownService;
 
+	private final Comparator<Publication> publicationComparator = ((Comparator<Publication>) (o1, o2) -> {
+		if (o1 != null && o2 != null) {
+			if (o1.published() != null && o2.published() != null)
+				return o1.published().compareTo(o2.published());
+			if (o1.created() != null && o2.created() != null)
+				return o1.created().compareTo(o2.created());
+		}
+		return 0;
+	})//
+		.reversed();
+
 	PodcastEpisodeFeedController(ManagedFileService managedFileService, FeedTemplate template,
 			PodcastService podcastService, PublicationService publicationService, MarkdownService markdownService) {
 		this.managedFileService = managedFileService;
@@ -98,22 +109,15 @@ class PodcastEpisodeFeedController {
 	private String publicationUrl(Episode ep) {
 		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(ep.publicationKey(),
 				Episode.class);
-		if (ep.complete() && !publications.isEmpty())
+		if (ep.complete() && !publications.isEmpty()) {
+
 			return publications//
 				.stream()//
-				.sorted(((Comparator<Publication>) (o1, o2) -> {
-					if (o1 != null && o2 != null) {
-						if (o1.published() != null && o2.published() != null)
-							return o1.published().compareTo(o2.published());
-						if (o1.created() != null && o2.created() != null)
-							return o1.created().compareTo(o2.created());
-					}
-					return 0;
-				})//
-					.reversed())//
+				.sorted(publicationComparator)//
 				.toList()
 				.getFirst()
 				.url();
+		}
 		return null;
 	}
 
@@ -137,14 +141,9 @@ class PodcastEpisodeFeedController {
 			description.setType(MediaType.TEXT_PLAIN_VALUE);
 			description.setValue(episode.description());
 
-			// todo get the image
-
 			var graphicId = episode.producedGraphic().id();
 			var url = "/api" + managedFileService.getPublicUrlForManagedFile(graphicId);
 
-			// <link rel="enclosure" type="image/jpeg"
-			// href="https://example.com/image.jpg"/>
-			// claude says this is a thing so...
 			var image = new SyndLinkImpl();
 			image.setHref(url);
 			image.setRel("enclosure");
@@ -156,6 +155,8 @@ class PodcastEpisodeFeedController {
 
 		}
 
+		// todo assess whether we can/should encode the description in HTML or if it's
+		// sufficient to send along the plaintext and let the clients sort it out.
 		private String markdownDescription(String description) {
 			try {
 				return markdownService.convertMarkdownTemplateToHtml(description);
