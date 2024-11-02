@@ -213,7 +213,6 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId) {
-		this.ensurePodcastBelongsToMogul(this.mogulService.getCurrentMogul().id(), podcastId);
 		var episodeRowMapper = new EpisodeRowMapper(this.managedFileService::getManagedFile);
 		return this.db//
 			.sql(" select * from podcast_episode pe where pe.podcast  = ? ") //

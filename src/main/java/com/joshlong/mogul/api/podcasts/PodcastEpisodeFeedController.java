@@ -1,8 +1,9 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.feed.FeedTemplate;
+import com.joshlong.feed.SyndEntryMapper;
 import com.joshlong.mogul.api.Publication;
-import com.joshlong.mogul.api.feeds.FeedTemplate;
-import com.joshlong.mogul.api.feeds.SyndEntryMapper;
+
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.templates.MarkdownService;
@@ -131,7 +132,6 @@ class PodcastEpisodeFeedController {
 
 		@Override
 		public SyndEntry map(Episode episode) throws Exception {
-
 			var entry = new SyndEntryImpl();
 			entry.setTitle(episode.title());
 			entry.setLink(urls.get(episode.id()));
