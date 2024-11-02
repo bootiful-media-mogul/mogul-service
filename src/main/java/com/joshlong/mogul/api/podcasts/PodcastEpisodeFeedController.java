@@ -123,11 +123,9 @@ class PodcastEpisodeFeedController {
 		public Entry map(Episode episode) {
 			var graphicManagedFile = episode.producedGraphic();
 			var urlForManagedFile = managedFileService.getPublicUrlForManagedFile(graphicManagedFile.id());
-
 			var img = new Entry.Image(urlForManagedFile, graphicManagedFile.size(), graphicManagedFile.contentType());
 			return new Entry(longToUuid(episode.id()).toString(), episode.created().toInstant(), episode.title(),
-					this.urls.get(episode.id()), episode.description(),
-					Map.of("uuid", Long.toString(episode.id()), "this", "that"), img);
+					this.urls.get(episode.id()), episode.description(), Map.of("id", Long.toString(episode.id())), img);
 		}
 
 	}

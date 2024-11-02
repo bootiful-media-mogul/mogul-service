@@ -76,18 +76,7 @@ class PodcastEpisodeFeedTest {
                     Episode.class)).thenReturn(List.of(new Publication(mogulId, counter.incrementAndGet(),
                     "mock", new Date(), new Date(), Map.of(), "", Episode.class,
                     "https://bootifulpodcast.fm/episodes/" + episode.id(), Publication.State.PUBLISHED)));
-        //
-/*
-        var feed = new PodcastEpisodeFeed(this.managedFileService, this.podcastService,
-                this.publicationService, this.mogulService);
-        var syndFeed = feed.podcastsFeed(1, 1);
-
-        Assertions.assertNotNull(syndFeed,
-                "the syndfeed is not null");
 		
-		System.out.println(syndFeed);
-*/
-
     }
 
 	private Episode nextEpisode(long mogulId, long podcastId) throws Exception {
