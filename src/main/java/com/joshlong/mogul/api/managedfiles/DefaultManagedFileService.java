@@ -217,6 +217,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	@Override
 	public void setManagedFileVisibility(Long managedFile, boolean publicAccess) {
 		this.db.sql("update managed_file set visible = ? where id = ?").params(publicAccess, managedFile).update();
+		this.ensureVisibility(this.forceReadManagedFile(managedFile));
 	}
 
 	/**
