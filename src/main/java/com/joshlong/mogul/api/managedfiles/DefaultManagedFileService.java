@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -96,21 +97,30 @@ class DefaultManagedFileService implements ManagedFileService {
 	 * meant to make sure we've synchronized the file write
 	 */
 
+	@ApplicationModuleListener
+	void onManagedFileUpdated(ManagedFileUpdatedEvent event) {
+		// time to make sure it's visible
+		var managedFile = event.managedFile();
+		this.ensureVisibility(managedFile);
+	}
+
 	private void ensureVisibility(ManagedFile managedFile) {
-		// todo should we do this on a thread? or launch it as a part of an
-		// ApplicationEvent that runs asynchronously?
-		// most of the time when we do writes, the writes will come from the http client,
-		// so we'll only get one crack at the apple.
-		// let's make sure its written to the main s3 bucket and then, if need be, well
-		// copy it from that to this visible bucket.
-		// do NOT read from the HTTP clients inputstream
 		var visibleBucket = managedFile.visibleBucket();
 		var folder = managedFile.folder();
 		var fn = managedFile.storageFilename();
 		var fqn = fqn(folder, fn);
+		var bucket = managedFile.bucket();
 		if (managedFile.visible()) {
-			var resource = this.storage.read(managedFile.bucket(), fqn);
-			this.storage.write(visibleBucket, fqn, resource);
+			this.log.debug("inside ensureVisibility(ManagedFile(# {} ))", managedFile.id());
+			if (this.storage.exists(bucket, fqn)) {
+				this.log.debug("this file {}/{} (#{}) exists", bucket, fqn, managedFile.id());
+				this.storage.copy(bucket, visibleBucket, fqn);
+				this.log.debug("copied {}/{} (#{}) to {}/{} ", bucket, fqn, managedFile.id(), visibleBucket, fqn);
+			} //
+			else {
+				// todo some sort of alerting?
+				log.warn("the file {} does not exist and so can't be synced over!", fqn(bucket, fqn));
+			}
 		} //
 		else {
 			this.storage.remove(visibleBucket, fqn);
@@ -123,7 +133,6 @@ class DefaultManagedFileService implements ManagedFileService {
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
 		this.storage.write(bucket, fqn(folder, managedFile.storageFilename()), resource);
-		this.ensureVisibility(managedFile);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)

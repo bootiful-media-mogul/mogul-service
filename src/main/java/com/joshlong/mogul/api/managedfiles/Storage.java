@@ -92,7 +92,7 @@ class Storage {
 	public void write(String bucket, String objectName, Resource resource) {
 		try {
 			var largeFile = DataSize.ofMegabytes(10);
-			log.info("started executing an S3 PUT for [{}/{}] on thread [{}]", bucket, objectName,
+			this.log.info("started executing an S3 PUT for [{}/{}] on thread [{}]", bucket, objectName,
 					Thread.currentThread());
 			this.ensureBucketExists(bucket);
 			this.doWriteForLargeFiles(bucket, objectName, resource, largeFile);
@@ -109,6 +109,22 @@ class Storage {
 			return buckets.buckets().stream().anyMatch(bucket -> bucket.name().equalsIgnoreCase(bucketName));
 		}
 		return false;
+	}
+
+	/* much faster than downloading the bytes and trying to write them back up again! */
+	public void copy(String src, String dest, String key) {
+		var copyRequest = CopyObjectRequest.builder()
+			.sourceBucket(src)
+			.sourceKey(key)
+			.destinationBucket(dest)
+			.destinationKey(key)
+			.build();
+		this.s3.copyObject(copyRequest);
+	}
+
+	public boolean exists(String bucket, String key) {
+		var head = HeadObjectRequest.builder().bucket(bucket).key(key).build();
+		return this.s3.headObject(head).sdkHttpResponse().isSuccessful();
 	}
 
 	public Resource read(String bucket, String objectName) {
