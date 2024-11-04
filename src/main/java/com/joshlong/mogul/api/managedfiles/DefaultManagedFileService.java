@@ -97,12 +97,23 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
-	public String getPublicUrlForManagedFile(Long managedFile) {
-		// todo refactor this to work with cloudfront
+	public String getPrivateUrlForManagedFile(Long managedFile) {
 		var mf = getManagedFile(managedFile);
-		var url = this.cloudfrontDomain.toString() + "/" + fqn(mf.folder(), mf.storageFilename());
-		this.log.debug("getting public url for managed file [{}]: {}", mf.id(), url);
-		return mf.visible() ? url : null;
+		return "/managedfiles/" + mf.id();
+	}
+
+	@Override
+	public String getPublicUrlForManagedFile(Long managedFile) {
+		var mf = getManagedFile(managedFile);
+		var url = "";
+		if (mf.visible()) {
+			url = this.cloudfrontDomain.toString() + "/" + fqn(mf.folder(), mf.storageFilename());
+			this.log.debug("getting public url for managed file [{}]: {}", mf.id(), url);
+		} //
+		else {
+			url = null;
+		}
+		return url;
 	}
 
 	private ManagedFile forceReadManagedFile(Long managedFileId) {
@@ -151,7 +162,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		var managedFile = this.forceReadManagedFile(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
-		this.storage.write(bucket, fqn(folder, managedFile.storageFilename()), resource);
+		this.storage.write(bucket, fqn(folder, managedFile.storageFilename()), resource, mediaType);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)

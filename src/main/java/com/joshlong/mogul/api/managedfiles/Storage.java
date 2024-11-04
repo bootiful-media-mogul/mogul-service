@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.unit.DataSize;
@@ -40,22 +41,22 @@ class Storage {
 		}
 	}
 
-	public void write(URI uri, Resource resource) {
+	public void write(URI uri, Resource resource, MediaType mediaType) {
 		validUri(uri);
-		write(uri.getHost(), uri.getPath(), resource);
+		write(uri.getHost(), uri.getPath(), resource, mediaType);
 	}
 
 	/*
 	 * writes N-mb sized chunks at a time to s3
 	 */
-	private void doWriteForLargeFiles(String bucketName, String keyName, Resource resource, DataSize maxSize)
-			throws Exception {
+	private void doWriteForLargeFiles(String bucketName, String keyName, Resource resource, DataSize maxSize,
+			MediaType mediaType) throws Exception {
 		try (var inputStream = new BufferedInputStream(resource.getInputStream());) {
 			var chunkSize = (int) maxSize.toBytes();
-			var createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
-				.bucket(bucketName)
-				.key(keyName)
-				.build();
+			var builder = CreateMultipartUploadRequest.builder().bucket(bucketName).key(keyName);
+			if (mediaType != null)
+				builder = builder.contentType(mediaType.toString());
+			var createMultipartUploadRequest = builder.build();
 			var response = this.s3.createMultipartUpload(createMultipartUploadRequest);
 			var uploadId = response.uploadId();
 			var completedParts = new ArrayList<CompletedPart>();
@@ -89,13 +90,13 @@ class Storage {
 		}
 	}
 
-	public void write(String bucket, String objectName, Resource resource) {
+	public void write(String bucket, String objectName, Resource resource, MediaType mediaType) {
 		try {
 			var largeFile = DataSize.ofMegabytes(10);
 			this.log.info("started executing an S3 PUT for [{}/{}] on thread [{}]", bucket, objectName,
 					Thread.currentThread());
 			this.ensureBucketExists(bucket);
-			this.doWriteForLargeFiles(bucket, objectName, resource, largeFile);
+			this.doWriteForLargeFiles(bucket, objectName, resource, largeFile, mediaType);
 		} //
 		catch (Throwable throwable) {
 			throw new RuntimeException(throwable);

@@ -65,7 +65,8 @@ type ManagedFile {
     size: Float
     written : Boolean
     visible : Boolean
-    publicUrl: String
+    url : String 
+    visibleUrl: String
 }
 
 type Episode {

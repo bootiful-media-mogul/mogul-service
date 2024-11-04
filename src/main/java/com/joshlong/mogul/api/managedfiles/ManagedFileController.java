@@ -38,13 +38,20 @@ class ManagedFileController {
 	@MutationMapping
 	boolean setManagedFileVisibility(@Argument Long managedFileId, @Argument boolean visible) {
 		this.managedFileService.setManagedFileVisibility(managedFileId, visible);
-
 		return true;
 	}
 
+	// url : String
+	// visibleUrl
+
 	@SchemaMapping
-	String publicUrl(ManagedFile managedFile) {
+	String visibleUrl(ManagedFile managedFile) {
 		return this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
+	}
+
+	@SchemaMapping
+	String url(ManagedFile managedFile) {
+		return this.managedFileService.getPrivateUrlForManagedFile(managedFile.id());
 	}
 
 	@QueryMapping
