@@ -4,14 +4,12 @@ import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -22,8 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,9 +27,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -86,7 +84,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	private final URI cloudfrontDomain;
 
 	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
-							  TransactionTemplate transactionTemplate, URI cloudfrontDomain) {
+			TransactionTemplate transactionTemplate, URI cloudfrontDomain) {
 		this.db = db;
 		this.cloudfrontDomain = cloudfrontDomain;
 		this.storage = storage;
@@ -142,10 +140,9 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			this.log.debug("inside ensureVisibility(ManagedFile(# {} ))", managedFile.id());
 			if (this.storage.exists(bucket, fqn)) {
 				this.log.debug("this file {}/{} (#{}) exists", bucket, fqn, managedFile.id());
-				var newContentType = StringUtils.hasText(managedFile.contentType())?
-						MediaType.parseMediaType(managedFile.contentType()) : null ;
-				this.storage.copy(bucket, visibleBucket, fqn,
-						newContentType);
+				var newContentType = StringUtils.hasText(managedFile.contentType())
+						? MediaType.parseMediaType(managedFile.contentType()) : null;
+				this.storage.copy(bucket, visibleBucket, fqn, newContentType);
 				this.log.debug("copied {}/{} (#{}) to {}/{} ", bucket, fqn, managedFile.id(), visibleBucket, fqn);
 			} //
 			else {
@@ -166,8 +163,8 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		this.storage.write(bucket, this.fqn(folder, managedFile.storageFilename()), resource, mediaType);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
-				.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
-				.update();
+			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
+			.update();
 		var freshManagedFile = this.forceReadManagedFile(managedFileId);
 		this.transactionTemplate.execute(tx -> {
 			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
@@ -215,17 +212,17 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	@Override
 	public ManagedFileDeletionRequest getManagedFileDeletionRequest(Long managedFileDeletionRequestId) {
 		return db.sql("select * from managed_file_deletion_request where id =? ")
-				.param(managedFileDeletionRequestId)
-				.query(new ManagedFileDeletionRequestRowMapper())
-				.single();
+			.param(managedFileDeletionRequestId)
+			.query(new ManagedFileDeletionRequestRowMapper())
+			.single();
 	}
 
 	@Override
 	public Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests() {
 		return this.db//
-				.sql("select * from managed_file_deletion_request where deleted = false")//
-				.query(this.managedFileDeletionRequestRowMapper)//
-				.list();
+			.sql("select * from managed_file_deletion_request where deleted = false")//
+			.query(this.managedFileDeletionRequestRowMapper)//
+			.list();
 	}
 
 	static String visibleBucketFor(String bucket) {
@@ -237,13 +234,13 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		var managedFileDeletionRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
 		Assert.notNull(managedFileDeletionRequest, "the managed file deletion request should not be null");
 		var fqn = this.fqn(managedFileDeletionRequest.folder(), managedFileDeletionRequest.storageFilename());
-		for (var bucket : new String[]{managedFileDeletionRequest.bucket(),
-				managedFileDeletionRequest.visibleBucket()}) {
+		for (var bucket : new String[] { managedFileDeletionRequest.bucket(),
+				managedFileDeletionRequest.visibleBucket() }) {
 			this.storage.remove(bucket, fqn);
 		}
 		this.db.sql(" update managed_file_deletion_request set deleted = true where id = ? ")
-				.param(managedFileDeletionRequestId)
-				.update();
+			.param(managedFileDeletionRequestId)
+			.update();
 	}
 
 	@Override
@@ -254,14 +251,14 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		// lazily trigger the loading of the managed_file, which will be deleted if we
 		// waited until after the next line
 		this.db.sql(
-						"insert into managed_file_deletion_request ( mogul , bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
-				.params(managedFile.mogulId(), //
-						managedFile.bucket(), //
-						managedFile.folder(), //
-						managedFile.filename(), //
-						managedFile.storageFilename() //
-				)
-				.update();
+				"insert into managed_file_deletion_request ( mogul , bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
+			.params(managedFile.mogulId(), //
+					managedFile.bucket(), //
+					managedFile.folder(), //
+					managedFile.filename(), //
+					managedFile.storageFilename() //
+			)
+			.update();
 		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
 		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
@@ -292,16 +289,16 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	@Override
 	@Transactional
 	public ManagedFile createManagedFile(Long mogulId, String bucket, String folder, String fileName, long size,
-										 MediaType mediaType, boolean visible) {
+			MediaType mediaType, boolean visible) {
 		var kh = new GeneratedKeyHolder();
 		var sql = """
 				insert into managed_file( storage_filename, mogul , bucket, folder, filename, size,content_type, visible)
 				values (?,?,?,?,?,?,?,?)
 				""";
 		this.db.sql(sql)
-				.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString(),
-						visible)
-				.update(kh);
+			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString(),
+					visible)
+			.update(kh);
 		return this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
 	}
 
@@ -320,19 +317,19 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 					managedFileMap.size());
 			// let's get all the IDs, then visit each managed file and hydrate.
 			var ids = managedFileMap//
-					.values()//
-					.stream()//
-					.map(ManagedFile::id)//
-					.map(i -> Long.toString(i))//
-					.collect(Collectors.joining(", "));
+				.values()//
+				.stream()//
+				.map(ManagedFile::id)//
+				.map(i -> Long.toString(i))//
+				.collect(Collectors.joining(", "));
 
 			this.db //
-					.sql("select * from managed_file where id in ( " + ids + ")") //
-					.query(rs -> {
-						var mfId = rs.getLong("id");
-						var managedFile = managedFileMap.get(mfId);
-						initializeManagedFile(rs, managedFile);
-					});
+				.sql("select * from managed_file where id in ( " + ids + ")") //
+				.query(rs -> {
+					var mfId = rs.getLong("id");
+					var managedFile = managedFileMap.get(mfId);
+					initializeManagedFile(rs, managedFile);
+				});
 
 		} //
 
@@ -354,125 +351,17 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			// this allows any managed file that for whatever reason we're manipulating
 			// and NOT able to wait for the transaction to commit to hydrate its state
 			var hydration = (Consumer<ManagedFile>) managedFile -> this.db
-					.sql("select * from managed_file where id = ?")
-					.param(managedFileId)
-					.query(rs -> {
-						if (this.log.isTraceEnabled())
-							this.log.trace("Manually hydrating ManagedFile #{}.".trim(), managedFileId);
-						this.initializeManagedFile(rs, managedFile);
-					});
+				.sql("select * from managed_file where id = ?")
+				.param(managedFileId)
+				.query(rs -> {
+					if (this.log.isTraceEnabled())
+						this.log.trace("Manually hydrating ManagedFile #{}.".trim(), managedFileId);
+					this.initializeManagedFile(rs, managedFile);
+				});
 
 			return this.managedFiles.get().computeIfAbsent(managedFileId, mid -> new ManagedFile(mid, hydration)); //
 
 		});
 	}
 
-
 }
-
-@Configuration
-class S3CloudfrontInitialization {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private String fqn(String folder, String filename) {
-		return folder + '/' + filename;
-	}
-
-	record DumbManagedFile(String bucket, String folder,
-						   String contentType, String storageFilename) {
-		String visibleBucket() {
-			return DefaultManagedFileService.visibleBucketFor(bucket);
-		}
-
-	}
-
-	record Error(DumbManagedFile managedFile, Throwable throwable) {
-	}
-
-	static class DumbManagedFileRowMapper implements RowMapper<DumbManagedFile> {
-
-
-		@Override
-		public DumbManagedFile mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new DumbManagedFile(rs.getString("bucket"),
-					rs.getString("folder"),
-					rs.getString("content_type"),
-					rs.getString("storage_filename")
-			);
-		}
-	}
-
-	@Bean
-	ApplicationRunner contentTypeMigrationRunner (Storage storage, S3Client s3Client, JdbcClient db, ManagedFileService managedFileService) {
-		var dumbManagedFileRowMapper = new DumbManagedFileRowMapper();
-		var errorComparator = new Comparator<Error>() {
-
-			private String unique(Error o1) {
-				return fqn(o1.managedFile().bucket(), o1.managedFile().storageFilename());
-			}
-
-			@Override
-			public int compare(Error o1, Error o2) {
-				return unique(o1).compareTo(unique(o2));
-			}
-		};
-		var errors = new ConcurrentSkipListSet<>(errorComparator);
-
-		return args -> {
-			db
-					.sql("select * from managed_file where visible = ? ")//
-					.params(true)
-					.query(dumbManagedFileRowMapper)//
-					.stream()//
-					.parallel()//
-					.forEach(mf -> {
-						var fqn = this.fqn(mf.folder(), mf.storageFilename());
-						var visibleBucket = DefaultManagedFileService.visibleBucketFor(mf.bucket());
-						var bucket = mf.bucket();
-						for (var b : new String[]{bucket, visibleBucket}) {
-							this.doUpdate(s3Client, mf, b, fqn, visibleBucket, errors);
-						}
-
-					});
-
-			for (var e : errors) {
-				System.out.println("e: [" + e + "]");
-			}
-		};
-	}
-
-	private void doUpdate(S3Client s3Client, DumbManagedFile mf, String b, String fqn, String visibleBucket, Collection<Error> errors) {
-		try {
-			var headedObject = s3Client.headObject(builder -> builder.bucket(b).key(fqn));
-			System.out.println(headedObject.contentType());
-			this.updateContentType(s3Client, b, fqn, mf.contentType());
-			headedObject = s3Client.headObject(builder -> builder.bucket(b).key(fqn));
-			log.info("finish:: bucket: {}; visible bucket: {}; fqn: {}; content type: {}", b, visibleBucket, fqn, mf.contentType());
-		}//  
-		catch (Exception e) {
-			errors.add(new Error(mf, e));
-			log.warn("error:: bucket: {}; visible bucket: {}; fqn: {}; content type: {}: exception: {}", b, visibleBucket, fqn, mf.contentType(),
-					e.getLocalizedMessage());
-		}
-	}
-
-
-	private void updateContentType(S3Client s3Client, String bucketName, String key, String newContentType) {
-		var copyRequest = CopyObjectRequest
-				.builder()
-				.sourceBucket(bucketName)
-				.sourceKey(key)
-				.destinationBucket(bucketName)
-				.destinationKey(key)
-				.contentType(newContentType)
-				.metadataDirective("REPLACE")  // This ensures we keep other metadata
-				.build();
-
-
-		var copyResponse = s3Client.copyObject(copyRequest);
-
-		System.out.println("Successfully updated content type for object: " + key);
-	}
-}
-
