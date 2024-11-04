@@ -41,9 +41,6 @@ class ManagedFileController {
 		return true;
 	}
 
-	// url : String
-	// visibleUrl
-
 	@SchemaMapping
 	String visibleUrl(ManagedFile managedFile) {
 		return this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
