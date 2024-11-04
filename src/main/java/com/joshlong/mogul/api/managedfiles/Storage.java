@@ -113,14 +113,19 @@ class Storage {
 	}
 
 	/* much faster than downloading the bytes and trying to write them back up again! */
-	public void copy(String src, String dest, String key) {
-		var copyRequest = CopyObjectRequest.builder()
-			.sourceBucket(src)
-			.sourceKey(key)
-			.destinationBucket(dest)
-			.destinationKey(key)
-			.build();
-		this.s3.copyObject(copyRequest);
+	public void copy(String src, String dest, String key, MediaType newContentType) {
+		var copyRequestBuilder = CopyObjectRequest
+				.builder()
+				.metadataDirective("REPLACE")
+				.sourceBucket(src)
+				.sourceKey(key)
+				.destinationBucket(dest)
+				.destinationKey(key);
+		copyRequestBuilder = newContentType == null ?
+				copyRequestBuilder :
+				copyRequestBuilder.contentType(newContentType.toString());
+		var result = copyRequestBuilder.build();
+		this.s3.copyObject(result);
 	}
 
 	public boolean exists(String bucket, String key) {
