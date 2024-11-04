@@ -64,7 +64,7 @@ class DefaultManagedFileServiceConfiguration {
  * the data to each placeholder object, fleshing them out, in effect.
  */
 
-class DefaultManagedFileService implements ManagedFileService {
+class DefaultManagedFileService implements TransactionSynchronization, ManagedFileService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -306,34 +306,31 @@ class DefaultManagedFileService implements ManagedFileService {
 				rs.getBoolean("visible"));
 	}
 
-	private final TransactionSynchronization transactionSynchronization = new TransactionSynchronization() {
+	@Override
+	public void beforeCompletion() {
+		var managedFileMap = this.managedFiles.get();
+		if (managedFileMap != null && !managedFileMap.isEmpty()) {
+			this.log.trace("beforeCompletion(): for the current thread there are {} managed files",
+					managedFileMap.size());
+			// let's get all the IDs, then visit each managed file and hydrate.
+			var ids = managedFileMap//
+				.values()//
+				.stream()//
+				.map(ManagedFile::id)//
+				.map(i -> Long.toString(i))//
+				.collect(Collectors.joining(", "));
 
-		@Override
-		public void beforeCompletion() {
-			var managedFileMap = managedFiles.get();
-			if (managedFileMap != null && !managedFileMap.isEmpty()) {
-				log.trace("beforeCompletion(): for the current thread there are {} managed files",
-						managedFileMap.size());
-				// let's get all the IDs, then visit each managed file and hydrate.
-				var ids = managedFileMap.values()
-					.stream()
-					.map(ManagedFile::id)
-					.map(i -> Long.toString(i))
-					.collect(Collectors.joining(", "));
+			this.db //
+				.sql("select * from managed_file where id in ( " + ids + ")") //
+				.query(rs -> {
+					var mfId = rs.getLong("id");
+					var managedFile = managedFileMap.get(mfId);
+					initializeManagedFile(rs, managedFile);
+				});
 
-				db //
-					.sql("select * from managed_file where id in ( " + ids + ")") //
-					.query(rs -> {
-						var mfId = rs.getLong("id");
-						var managedFile = managedFileMap.get(mfId);
-						initializeManagedFile(rs, managedFile);
-					});
+		} //
 
-			} //
-
-		}
-
-	};
+	}
 
 	/**
 	 * returns lazy, stand-in proxies to {@link ManagedFile managedfiles } that
@@ -341,9 +338,9 @@ class DefaultManagedFileService implements ManagedFileService {
 	 */
 	@Override
 	public ManagedFile getManagedFile(Long managedFileId) {
-
 		return this.transactionTemplate.execute(tx -> {
-			TransactionSynchronizationManager.registerSynchronization(this.transactionSynchronization);
+
+			TransactionSynchronizationManager.registerSynchronization(this);
 
 			if (this.managedFiles.get() == null)
 				this.managedFiles.set(new ConcurrentSkipListMap<>());
