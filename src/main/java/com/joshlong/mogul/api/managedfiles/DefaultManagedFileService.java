@@ -97,21 +97,18 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 	@Override
-	public String getPrivateUrlForManagedFile(Long managedFile) {
-		var mf = getManagedFile(managedFile);
-		return "/managedfiles/" + mf.id();
+	public String getPrivateUrlForManagedFile(Long managedFileId) {
+		var managedFile = this.getManagedFile(managedFileId);
+		return "/managedfiles/" + managedFile.id();
 	}
 
 	@Override
-	public String getPublicUrlForManagedFile(Long managedFile) {
-		var mf = getManagedFile(managedFile);
-		var url = "";
-		if (mf.visible()) {
-			url = this.cloudfrontDomain.toString() + "/" + fqn(mf.folder(), mf.storageFilename());
-			this.log.debug("getting public url for managed file [{}]: {}", mf.id(), url);
-		} //
-		else {
-			url = null;
+	public String getPublicUrlForManagedFile(Long managedFileId) {
+		var managedFile = this.getManagedFile(managedFileId);
+		var url = (String) null;
+		if (managedFile.visible()) {
+			url = this.cloudfrontDomain.toString() + "/" + fqn(managedFile.folder(), managedFile.storageFilename());
+			this.log.debug("getting public url for managed file [{}]: {}", managedFile.id(), url);
 		}
 		return url;
 	}
@@ -119,7 +116,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	private ManagedFile forceReadManagedFile(Long managedFileId) {
 		var managedFile = this.getManagedFile(managedFileId);
 		this.managedFiles.get().remove(managedFileId);
-		managedFile.contentType();// triggers the rehydration sideeffect. yuck.
+		managedFile.contentType();// triggers the rehydration side effect. yuck.
 		return managedFile;
 	}
 
