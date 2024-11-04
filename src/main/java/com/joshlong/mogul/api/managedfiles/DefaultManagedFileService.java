@@ -107,7 +107,8 @@ class DefaultManagedFileService implements ManagedFileService {
 		var managedFile = this.getManagedFile(managedFileId);
 		var url = (String) null;
 		if (managedFile.visible()) {
-			url = this.cloudfrontDomain.toString() + "/" + fqn(managedFile.folder(), managedFile.storageFilename());
+			url = this.cloudfrontDomain.toString() + "/"
+					+ this.fqn(managedFile.folder(), managedFile.storageFilename());
 			this.log.debug("getting public url for managed file [{}]: {}", managedFile.id(), url);
 		}
 		return url;
@@ -120,10 +121,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		return managedFile;
 	}
 
-	/**
-	 * meant to make sure we've synchronized the file write
-	 */
-
+	// meant to make sure we've synchronized the file write
 	@ApplicationModuleListener
 	void onManagedFileUpdated(ManagedFileUpdatedEvent event) {
 		// time to make sure it's visible
@@ -135,7 +133,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		var visibleBucket = managedFile.visibleBucket();
 		var folder = managedFile.folder();
 		var fn = managedFile.storageFilename();
-		var fqn = fqn(folder, fn);
+		var fqn = this.fqn(folder, fn);
 		var bucket = managedFile.bucket();
 		if (managedFile.visible()) {
 			this.log.debug("inside ensureVisibility(ManagedFile(# {} ))", managedFile.id());
@@ -159,7 +157,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		var managedFile = this.forceReadManagedFile(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
-		this.storage.write(bucket, fqn(folder, managedFile.storageFilename()), resource, mediaType);
+		this.storage.write(bucket, this.fqn(folder, managedFile.storageFilename()), resource, mediaType);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
@@ -232,7 +230,7 @@ class DefaultManagedFileService implements ManagedFileService {
 	public void completeManagedFileDeletion(Long managedFileDeletionRequestId) {
 		var managedFileDeletionRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
 		Assert.notNull(managedFileDeletionRequest, "the managed file deletion request should not be null");
-		var fqn = fqn(managedFileDeletionRequest.folder(), managedFileDeletionRequest.storageFilename());
+		var fqn = this.fqn(managedFileDeletionRequest.folder(), managedFileDeletionRequest.storageFilename());
 		for (var bucket : new String[] { managedFileDeletionRequest.bucket(),
 				managedFileDeletionRequest.visibleBucket() }) {
 			this.storage.remove(bucket, fqn);
@@ -262,7 +260,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
 
-	private static String fqn(String folder, String filename) {
+	private String fqn(String folder, String filename) {
 		return folder + '/' + filename;
 	}
 
@@ -271,7 +269,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		// the call to getManagedFile needs to be in a transaction. the reading of bytes
 		// does not.
 		var mf = this.transactionTemplate.execute(status -> this.getManagedFile(managedFileId));
-		var fn = fqn(mf.folder(), mf.storageFilename());
+		var fn = this.fqn(mf.folder(), mf.storageFilename());
 		var bucket = mf.bucket();
 		return this.storage.read(bucket, fn);
 	}
