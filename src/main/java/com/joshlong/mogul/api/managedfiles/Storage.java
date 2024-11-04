@@ -123,8 +123,15 @@ class Storage {
 	}
 
 	public boolean exists(String bucket, String key) {
-		var head = HeadObjectRequest.builder().bucket(bucket).key(key).build();
-		return this.s3.headObject(head).sdkHttpResponse().isSuccessful();
+		var request = HeadObjectRequest.builder().bucket(bucket).key(key).build();
+
+		try {
+			this.s3.headObject(request);
+			return true;
+		}
+		catch (Throwable throwable) {
+			return false;
+		}
 	}
 
 	public Resource read(String bucket, String objectName) {

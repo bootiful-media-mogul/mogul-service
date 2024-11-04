@@ -1,16 +1,18 @@
 package com.joshlong.mogul.api.managedfiles;
 
+import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -21,6 +23,7 @@ import org.springframework.util.FileCopyUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -30,6 +33,18 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+@Configuration
+class DefaultManagedFileServiceConfiguration {
+
+	@Bean
+	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties) {
+		return new DefaultManagedFileService(db, storage, publisher, transactionTemplate,
+				properties.aws().cloudfront().domain());
+	}
+
+}
 
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
@@ -48,7 +63,7 @@ import java.util.stream.Collectors;
  * right before committing , we do one big query for all the managed files and then give
  * the data to each placeholder object, fleshing them out, in effect.
  */
-@Service
+
 class DefaultManagedFileService implements ManagedFileService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -65,9 +80,12 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	private final TransactionTemplate transactionTemplate;
 
+	private final URI cloudfrontDomain;
+
 	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
-			TransactionTemplate transactionTemplate) {
+			TransactionTemplate transactionTemplate, URI cloudfrontDomain) {
 		this.db = db;
+		this.cloudfrontDomain = cloudfrontDomain;
 		this.storage = storage;
 		this.publisher = publisher;
 		this.transactionTemplate = transactionTemplate;
@@ -82,8 +100,9 @@ class DefaultManagedFileService implements ManagedFileService {
 	public String getPublicUrlForManagedFile(Long managedFile) {
 		// todo refactor this to work with cloudfront
 		var mf = getManagedFile(managedFile);
-		var url = "/public/managedfiles/" + mf.id();
-		return (mf.visible()) ? url : null;
+		var url = this.cloudfrontDomain.toString() + "/" + fqn(mf.folder(), mf.storageFilename());
+		this.log.debug("getting public url for managed file [{}]: {}", mf.id(), url);
+		return mf.visible() ? url : null;
 	}
 
 	private ManagedFile forceReadManagedFile(Long managedFileId) {
@@ -245,7 +264,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		// does not.
 		var mf = this.transactionTemplate.execute(status -> this.getManagedFile(managedFileId));
 		var fn = fqn(mf.folder(), mf.storageFilename());
-		var bucket = mf.visible() ? mf.visibleBucket() : mf.bucket();
+		var bucket = mf.bucket();
 		return this.storage.read(bucket, fn);
 	}
 
