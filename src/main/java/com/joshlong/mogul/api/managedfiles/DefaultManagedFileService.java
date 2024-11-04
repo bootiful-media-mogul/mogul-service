@@ -144,7 +144,7 @@ class DefaultManagedFileService implements ManagedFileService {
 			} //
 			else {
 				// todo some sort of alerting?
-				log.warn("the file {} does not exist and so can't be synced over!", fqn(bucket, fqn));
+				this.log.warn("the file {} does not exist and so can't be synced over!", fqn(bucket, fqn));
 			}
 		} //
 		else {
@@ -188,9 +188,9 @@ class DefaultManagedFileService implements ManagedFileService {
 		var tmp = FileUtils.tempFileWithExtension();
 		try {
 			try (var in = resource.getInputStream(); var out = new FileOutputStream(tmp)) {
-				log.debug("starting download to local file [{}]", tmp.getAbsolutePath());
+				this.log.debug("starting download to local file [{}]", tmp.getAbsolutePath());
 				FileCopyUtils.copy(in, out);
-				log.debug("finished download to local file [{}]", tmp.getAbsolutePath());
+				this.log.debug("finished download to local file [{}]", tmp.getAbsolutePath());
 			} //
 			this.write(managedFile.id(), managedFile.filename(), CommonMediaTypes.MP3, tmp);
 		} //
@@ -203,7 +203,7 @@ class DefaultManagedFileService implements ManagedFileService {
 			FileUtils.delete(tmp);
 		}
 		var mf = this.getManagedFile(managedFileId);
-		log.debug("refreshed managed file {}", mf);
+		this.log.debug("refreshed managed file {}", mf);
 	}
 
 	@Override
@@ -312,7 +312,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		public void beforeCompletion() {
 			var managedFileMap = managedFiles.get();
 			if (managedFileMap != null && !managedFileMap.isEmpty()) {
-				log.trace("beforeCompletion(): for the current thread there are {} managed files ",
+				log.trace("beforeCompletion(): for the current thread there are {} managed files",
 						managedFileMap.size());
 				// let's get all the IDs, then visit each managed file and hydrate.
 				var ids = managedFileMap.values()
