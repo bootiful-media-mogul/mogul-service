@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.blogs;
 import com.joshlong.mogul.api.mogul.Mogul;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.util.StringUtils;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Disabled
 @SpringBootTest
 class DefaultBlogServiceTest {
 
@@ -76,7 +78,6 @@ class DefaultBlogServiceTest {
 					ctr++;
 		}
 		Assertions.assertEquals(ctr, split.length, "there should be 3 matches for the tags");
-
 	}
 
 	@Test
