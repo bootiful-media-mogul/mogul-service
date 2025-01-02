@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
@@ -8,10 +9,11 @@ import java.util.Map;
 
 public interface PodcastService {
 
-	// todo make this a configuration value from a property file or something.
 	String PODCAST_EPISODES_BUCKET = "mogul-managedfiles";
 
-	// String PODCAST_EPISODES_BUCKET = "mogul-podcast-episodes";
+	Composition getPodcastEpisodeTitleComposition(Long episodeId);
+
+	Composition getPodcastEpisodeDescriptionComposition(Long episodeId);
 
 	Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade);
 

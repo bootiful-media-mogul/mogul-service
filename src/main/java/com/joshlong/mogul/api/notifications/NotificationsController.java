@@ -35,7 +35,11 @@ class NotificationsController {
 
 	@QueryMapping
 	Map<String, Object> notifications() {
-		var currentMogulId = this.mogulService.getCurrentMogul().id();
+		var currentMogul = this.mogulService.getCurrentMogul();
+		if (currentMogul == null) {
+			return new HashMap<>();
+		}
+		var currentMogulId = currentMogul.id();
 		var notificationEvents = this.events.computeIfAbsent(currentMogulId, mogulId -> new ConcurrentLinkedQueue<>());
 		var notification = notificationEvents.poll();
 		if (null != notification) {
