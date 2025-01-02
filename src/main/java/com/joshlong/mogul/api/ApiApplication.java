@@ -34,6 +34,12 @@ public class ApiApplication {
 
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+
+			// see
+			hints.reflection()
+				.registerType(org.flywaydb.core.internal.publishing.PublishingConfigurationExtension.class,
+						MemberCategory.values());
+
 			var mcs = MemberCategory.values();
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, mcs);
