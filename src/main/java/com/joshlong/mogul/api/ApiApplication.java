@@ -2,6 +2,7 @@ package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
+import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -35,12 +36,12 @@ public class ApiApplication {
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 
-			// see
-			hints.reflection()
-				.registerType(org.flywaydb.core.internal.publishing.PublishingConfigurationExtension.class,
-						MemberCategory.values());
-
 			var mcs = MemberCategory.values();
+
+			// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69
+			// todo can we remove this one day?
+			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
+
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, mcs);
 		}
