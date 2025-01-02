@@ -1,6 +1,4 @@
 -- support the basic schema around blogs
-
-
 create table composition
 (
     id       serial primary key not null,
