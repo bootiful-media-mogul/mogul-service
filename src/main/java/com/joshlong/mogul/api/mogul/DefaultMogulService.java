@@ -186,8 +186,8 @@ class DefaultMogulService implements MogulService {
 			msg.append(", but had to hit the DB to find a mogul by name [").append(name).append("]");
 			return mogul;
 		});
-		if (log.isTraceEnabled())
-			log.trace(msg.toString());
+		if (log.isDebugEnabled())
+			log.debug(msg.toString());
 		return res;
 	}
 
