@@ -117,7 +117,7 @@ class DefaultMogulService implements MogulService {
 				)//
 				.update();
 
-			mogulByName = this.getRecentlyLoggedInMogulByUsername(username);
+			mogulByName = this.getMogulByName(username);
 			this.nonNullMogul(mogulByName, username);
 			this.publisher.publishEvent(new MogulCreatedEvent(mogulByName));
 		} //
@@ -130,33 +130,13 @@ class DefaultMogulService implements MogulService {
 		Assert.notNull(mogul, "the mogul by name [" + username + "] is null");
 	}
 
-	private Mogul getRecentlyLoggedInMogulByUsername(String username) {
-		var sql = " select * from mogul where username = ? and updated  > ( NOW() - INTERVAL '"
-				+ this.minutesSinceLastUserinfoEndpointRequest + " minute ' ) ";
-		var mogul = this.db.sql(sql).param(username).query(this.mogulRowMapper).list();
-		if (!mogul.isEmpty()) {
-			var validMatchingMogul = mogul.getFirst();
-			this.db//
-				.sql(" update mogul set updated = NOW() where username = ?  and id = ?  ")
-				.param(username) //
-				.param(validMatchingMogul.id())//
-				.update();//
-			this.log.trace(
-					"found a recent mogul by name [{}] in the database, so no need to hit the /userinfo endpoint.",
-					username);
-			return validMatchingMogul;
-		}
-		return null;
-	}
-
 	/**
 	 * adapts calls to {@link this#login(String, String, String, String, String)}
 	 */
-	private Mogul loginByPrincipal(JwtAuthenticationToken principal) {
+	private Mogul doLoginByPrincipal(JwtAuthenticationToken principal) {
 		var username = principal.getName();
 		this.log.trace("logging in mogul [{}] with client id [{}]", username, principal.getName());
-
-		var mogul = this.getRecentlyLoggedInMogulByUsername(username);
+		var mogul = this.getMogulByName(username);
 		if (null == mogul) {
 			if (principal.getPrincipal() instanceof Jwt jwt && jwt.getClaims().get("aud") instanceof List<?> list
 					&& list.getFirst() instanceof String aud) {
@@ -164,7 +144,6 @@ class DefaultMogulService implements MogulService {
 						"could NOT find a recent mogul by name [{}] in the database, so we'll have to hit the /userinfo endpoint.",
 						username);
 				var accessToken = principal.getToken().getTokenValue();
-				// var uri = this.auth0Domain + "/userinfo";
 				var userinfo = this.userinfoHttpRestClient.get()
 					.uri(this.auth0Userinfo)
 					.headers(httpHeaders -> httpHeaders.setBearerAuth(accessToken))
@@ -235,7 +214,7 @@ class DefaultMogulService implements MogulService {
 		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
 		this.transactionTemplate.execute(status -> {
 			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
-			this.loginByPrincipal(authentication);
+			this.doLoginByPrincipal(authentication);
 			return null;
 		});
 	}

@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.managedfiles;
 
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.core.MessageSource;
@@ -11,6 +12,7 @@ import java.time.Duration;
 import java.util.Collection;
 
 @Configuration
+@RegisterReflectionForBinding(ManagedFile.class)
 class ManagedFilesConfiguration {
 
 	@Bean

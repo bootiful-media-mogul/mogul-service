@@ -22,7 +22,7 @@ import java.util.Set;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @IntegrationComponentScan
-@ImportRuntimeHints(ApiApplication.Hints.class)
+@ImportRuntimeHints({ ApiApplication.MogulHints.class, ApiApplication.FlywayHints.class })
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
@@ -31,19 +31,23 @@ public class ApiApplication {
 		SpringApplication.run(ApiApplication.class, args);
 	}
 
-	static class Hints implements RuntimeHintsRegistrar {
+	static class MogulHints implements RuntimeHintsRegistrar {
 
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-
-			var mcs = MemberCategory.values();
-
-			// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69
-			// todo can we remove this one day?
-			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
-
 			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
-				hints.reflection().registerType(c, mcs);
+				hints.reflection().registerType(c, MemberCategory.values());
+		}
+
+	}
+
+	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 todo can we
+	// remove this one day?
+	static class FlywayHints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
 		}
 
 	}

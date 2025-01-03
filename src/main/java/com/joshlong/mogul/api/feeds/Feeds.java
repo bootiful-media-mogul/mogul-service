@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.feeds;
 
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -25,6 +26,7 @@ import java.util.Map;
  * @author Josh Long
  */
 @Component
+@RegisterReflectionForBinding(Entry.class)
 public class Feeds {
 
 	private static final String MOGUL_FEEDS_NS = "http://api.media-mogul.io";

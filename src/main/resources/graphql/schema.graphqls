@@ -4,22 +4,19 @@ type Setting {
     value: String
     valid: Boolean
 }
-# compositions
 
 type Composition  {
     mogulId: Int
     id:ID
     field:String
     attachments: [Attachment]
-
 }
+
 type Attachment {
     id: ID
     key: String
     managedFile: ManagedFile
 }
-
-# 
 
 type Publication {
     mogulId:Int
