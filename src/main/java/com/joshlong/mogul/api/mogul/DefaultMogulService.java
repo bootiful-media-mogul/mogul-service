@@ -144,13 +144,12 @@ class DefaultMogulService implements MogulService {
 						"could NOT find a recent mogul by name [{}] in the database, so we'll have to hit the /userinfo endpoint.",
 						username);
 				var accessToken = principal.getToken().getTokenValue();
-				var userinfo = this.userinfoHttpRestClient.get()
-					.uri(this.auth0Userinfo)
-					.headers(httpHeaders -> httpHeaders.setBearerAuth(accessToken))
-					.retrieve()
+				var userinfo = this.userinfoHttpRestClient.get()//
+					.uri(this.auth0Userinfo)//
+					.headers(httpHeaders -> httpHeaders.setBearerAuth(accessToken))//
+					.retrieve()//
 					.body(UserInfo.class);
 				mogul = this.login(userinfo.sub(), aud, userinfo.email(), userinfo.givenName(), userinfo.familyName());
-
 			}
 		}
 		this.nonNullMogul(mogul, username);
