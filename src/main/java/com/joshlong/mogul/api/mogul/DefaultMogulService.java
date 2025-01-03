@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
@@ -27,9 +29,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @Transactional
@@ -50,11 +52,9 @@ class DefaultMogulService implements MogulService {
 
 	private final RestClient userinfoHttpRestClient = RestClient.builder().build();
 
-	private final int minutesSinceLastUserinfoEndpointRequest = 5;
+	private final Map<Long, Mogul> mogulsById = evictingConcurrentMap();
 
-	private final Map<String, Mogul> mogulsByName = new ConcurrentHashMap<>();
-
-	private final Map<Long, Mogul> mogulsById = new ConcurrentHashMap<>();
+	private final Map<String, Mogul> mogulsByName = evictingConcurrentMap();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -70,26 +70,22 @@ class DefaultMogulService implements MogulService {
 
 	DefaultMogulService(@Value("${auth0.userinfo}") String auth0Userinfo, JdbcClient jdbcClient,
 			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate) {
-
 		this.auth0Userinfo = auth0Userinfo;
 		this.transactionTemplate = transactionTemplate;
-
 		this.db = jdbcClient;
 		this.publisher = publisher;
 		Assert.notNull(this.db, "the db is null");
-		try (var scheduledExecutorService = Executors.newScheduledThreadPool(1);) {
-			scheduledExecutorService.scheduleAtFixedRate(() -> {
-				mogulsById.clear();
-				mogulsByName.clear();
-				log.debug("mogul cache eviction...");
-			}, 1, 5, TimeUnit.MINUTES);
-		}
 	}
 
 	@Override
 	public Mogul getCurrentMogul() {
 		var name = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication().getName();
 		return this.getMogulByName(name);
+	}
+
+	private static <K> ConcurrentMap<K, Mogul> evictingConcurrentMap() {
+		Cache<K, Mogul> build = Caffeine.newBuilder().maximumSize(100).expireAfterWrite(10, TimeUnit.MINUTES).build();
+		return build.asMap();
 	}
 
 	// just for the first time login
@@ -158,22 +154,20 @@ class DefaultMogulService implements MogulService {
 
 	@Override
 	public Mogul getMogulById(Long id) {
-		var msg = new StringBuilder();
-		msg.append("trying to resolve mogul by id ").append(id);
+		var resolved = new AtomicBoolean(false);
 		var res = this.mogulsById.computeIfAbsent(id, mogulId -> {
 			var mogul = this.db.sql("select * from mogul where id =? ").param(id).query(this.mogulRowMapper).single();
-			msg.append(", cache missed, resolving by db query [").append(mogulId).append("]");
+			resolved.set(true);
 			return mogul;
 		});
-		if (this.log.isTraceEnabled())
-			this.log.trace(msg.toString());
+		this.logMogulCacheAttempt(id, "id", resolved.get());
 		return res;
 	}
 
 	@Override
 	public Mogul getMogulByName(String name) {
-		var msg = new StringBuilder();
-		msg.append("trying to resolve mogul by name [").append(name).append("]");
+		var resolved = new AtomicBoolean(false);
+
 		var res = this.mogulsByName.computeIfAbsent(name, key -> {
 			var moguls = this.db//
 				.sql("select * from mogul where username = ? ")
@@ -182,12 +176,16 @@ class DefaultMogulService implements MogulService {
 				.list();
 			Assert.state(moguls.size() <= 1, "there should only be one mogul with this username [" + name + "]");
 			var mogul = moguls.isEmpty() ? null : moguls.getFirst();
-			msg.append(", but had to hit the DB to find a mogul by name [").append(name).append("]");
+			resolved.set(true);
 			return mogul;
 		});
-		if (log.isDebugEnabled())
-			log.debug(msg.toString());
+		this.logMogulCacheAttempt(name, "name", resolved.get());
 		return res;
+	}
+
+	private void logMogulCacheAttempt(Object input, String type, boolean resolved) {
+		this.log.debug("tried to resolve the mogul by {} with input [{}] and found it {}.", type, input,
+				resolved ? "in the DB" : "in the cache");
 	}
 
 	@Override
@@ -210,7 +208,7 @@ class DefaultMogulService implements MogulService {
 
 	@EventListener
 	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
-		this.log.debug("handling authentication success event for {}", ase.getAuthentication().getName());
+		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
 		this.transactionTemplate.execute(status -> {
 			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
 			this.doLoginByPrincipal(authentication);
