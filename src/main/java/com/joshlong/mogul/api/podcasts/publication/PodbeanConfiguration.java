@@ -28,21 +28,6 @@ import org.springframework.util.Assert;
 @ImportRuntimeHints(PodbeanConfiguration.Hints.class)
 class PodbeanConfiguration {
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			var classes = new Class<?>[] { com.joshlong.podbean.token.TokenProvider.class,
-					org.springframework.aop.SpringProxy.class, org.springframework.aop.framework.Advised.class,
-					org.springframework.core.DecoratingProxy.class };
-			var mcs = MemberCategory.values();
-			for (var c : classes)
-				hints.reflection().registerType(TypeReference.of(c), mcs);
-			hints.proxies().registerJdkProxy(classes);
-		}
-
-	}
-
 	@Bean
 	TokenProvider multitenantTokenProvider(MogulService mogulService, Settings settings) {
 		var tenantAwareTokenProvider = new MogulAwareTokenProvider(mogulService, settings);
@@ -61,6 +46,21 @@ class PodbeanConfiguration {
 
 		});
 		return (TokenProvider) proxyFactory.getProxy();
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var classes = new Class<?>[] { com.joshlong.podbean.token.TokenProvider.class,
+					org.springframework.aop.SpringProxy.class, org.springframework.aop.framework.Advised.class,
+					org.springframework.core.DecoratingProxy.class };
+			var mcs = MemberCategory.values();
+			for (var c : classes)
+				hints.reflection().registerType(TypeReference.of(c), mcs);
+			hints.proxies().registerJdkProxy(classes);
+		}
+
 	}
 
 	static class MogulAwareTokenProvider implements TokenProvider {

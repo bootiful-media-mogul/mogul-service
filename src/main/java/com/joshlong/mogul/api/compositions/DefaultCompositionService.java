@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 
@@ -14,6 +15,7 @@ import java.util.Collection;
  * helps to manage the lifecycle and entities associated with a given composition.
  */
 @Service
+@Transactional
 class DefaultCompositionService implements CompositionService {
 
 	private final JdbcClient db;
@@ -31,31 +33,33 @@ class DefaultCompositionService implements CompositionService {
 		this.compositionRowMapper = new CompositionRowMapper(this::getAttachmentsByComposition);
 	}
 
+	@Override
 	public Composition getCompositionById(Long id) {
-		return this.db.sql("select  * from composition where id = ? ")
-			.params(id)
-			.query(this.compositionRowMapper)
+		return this.db //
+			.sql("select * from composition where id = ? ") //
+			.params(id)//
+			.query(this.compositionRowMapper) //
 			.single();
 	}
 
 	@Override
 	public <T extends Composable> Composition compose(T payload, String field) {
-
 		var generatedKeyHolder = new GeneratedKeyHolder();
 		var key = JsonUtils.write(payload.compositionKey());
 		var clazz = payload.getClass().getName();
 		this.db //
 			.sql("""
-					insert into composition (  payload, payload_class ,   field ) values (?,?,?)
+					insert into composition(payload, payload_class, field) values (?,?,?)
 					on conflict on constraint composition_payload_class_payload_field_key
 					do nothing
 					""")//
 			.params(key, clazz, field)//
 			.update(generatedKeyHolder);
 
-		return this.db.sql("select * from composition where  payload_class  = ? and payload = ?  and field = ? ")
-			.params(clazz, key, field)
-			.query(this.compositionRowMapper)
+		return this.db //
+			.sql("select * from composition where  payload_class  = ? and payload = ?  and field = ? ")//
+			.params(clazz, key, field)//
+			.query(this.compositionRowMapper)//
 			.single();
 	}
 

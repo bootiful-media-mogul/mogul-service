@@ -38,18 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @ImportRuntimeHints(DefaultMogulService.Hints.class)
 class DefaultMogulService implements MogulService {
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			var values = MemberCategory.values();
-			for (var c : Set.of(UserInfo.class)) {
-				hints.reflection().registerType(c, values);
-			}
-		}
-
-	}
-
 	private final RestClient userinfoHttpRestClient = RestClient.builder().build();
 
 	private final Map<Long, Mogul> mogulsById = evictingConcurrentMap();
@@ -77,22 +65,15 @@ class DefaultMogulService implements MogulService {
 		Assert.notNull(this.db, "the db is null");
 	}
 
-	@Override
-	public Mogul getCurrentMogul() {
-		var name = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication().getName();
-		return this.getMogulByName(name);
-	}
-
 	private static <K> ConcurrentMap<K, Mogul> evictingConcurrentMap() {
 		Cache<K, Mogul> build = Caffeine.newBuilder().maximumSize(100).expireAfterWrite(10, TimeUnit.MINUTES).build();
 		return build.asMap();
 	}
 
-	// just for the first time login
-	private record UserInfo(String sub, @JsonProperty("username") String username,
-			@JsonProperty("given_name") String givenName, @JsonProperty("family_name") String familyName,
-			String nickname, String picture, String email) {
-
+	@Override
+	public Mogul getCurrentMogul() {
+		var name = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication().getName();
+		return this.getMogulByName(name);
 	}
 
 	@Override
@@ -167,7 +148,6 @@ class DefaultMogulService implements MogulService {
 	@Override
 	public Mogul getMogulByName(String name) {
 		var resolved = new AtomicBoolean(false);
-
 		var res = this.mogulsByName.computeIfAbsent(name, key -> {
 			var moguls = this.db//
 				.sql("select * from mogul where username = ? ")
@@ -184,7 +164,7 @@ class DefaultMogulService implements MogulService {
 	}
 
 	private void logMogulCacheAttempt(Object input, String type, boolean resolved) {
-		this.log.debug("tried to resolve the mogul by {} with input [{}] and found it {}.", type, input,
+		this.log.trace("tried to resolve the mogul by {} with input [{}] and found it {}.", type, input,
 				resolved ? "in the DB" : "in the cache");
 	}
 
@@ -193,6 +173,35 @@ class DefaultMogulService implements MogulService {
 		var currentlyAuthenticated = this.getCurrentMogul();
 		Assert.state(currentlyAuthenticated != null && currentlyAuthenticated.id().equals(mogulId),
 				"the requested mogul [" + mogulId + "] is not currently authenticated");
+	}
+
+	@EventListener
+	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
+		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
+		this.transactionTemplate.execute(status -> {
+			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
+			this.doLoginByPrincipal(authentication);
+			return null;
+		});
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var values = MemberCategory.values();
+			for (var c : Set.of(UserInfo.class)) {
+				hints.reflection().registerType(c, values);
+			}
+		}
+
+	}
+
+	// just for the first time login
+	private record UserInfo(String sub, @JsonProperty("username") String username,
+			@JsonProperty("given_name") String givenName, @JsonProperty("family_name") String familyName,
+			String nickname, String picture, String email) {
+
 	}
 
 	private static class MogulRowMapper implements RowMapper<Mogul> {
@@ -204,16 +213,6 @@ class DefaultMogulService implements MogulService {
 					rs.getDate("updated"));
 		}
 
-	}
-
-	@EventListener
-	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
-		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
-		this.transactionTemplate.execute(status -> {
-			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
-			this.doLoginByPrincipal(authentication);
-			return null;
-		});
 	}
 
 }

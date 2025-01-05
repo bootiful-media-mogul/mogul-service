@@ -28,8 +28,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component(PodbeanPodcastEpisodePublisherPlugin.PLUGIN_NAME)
 class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin, BeanNameAware {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	/**
 	 * well known values written to the context after publication.
 	 */
@@ -40,6 +38,8 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public static final String CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS = "contextPodbeanEpisodePublishDateInMilliseconds";
 
 	public static final String PLUGIN_NAME = "podbean";
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<String> beanName = new AtomicReference<>();
 
@@ -131,7 +131,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var episodeId = context.get(CONTEXT_PODBEAN_EPISODE_ID);
 		this.podbeanClient//
 			.getAllEpisodes() // todo this is super inefficient. is there no way to get a
-								// single episode?
+			// single episode?
 			.stream()
 			.filter(episode -> episode.getId().equalsIgnoreCase(episodeId))
 			.forEach(episode -> {

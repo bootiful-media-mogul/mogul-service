@@ -17,9 +17,6 @@ import java.util.stream.Stream;
 
 abstract class SilenceDetector {
 
-	public record Silence(float start, float end, float duration) {
-	}
-
 	private static final Map<String, Pattern> PATTERNS = new ConcurrentHashMap<>();
 
 	private static final Logger log = LoggerFactory.getLogger(SilenceDetector.class);
@@ -80,6 +77,9 @@ abstract class SilenceDetector {
 		if (matcher.find())
 			return matcher.group();
 		throw new IllegalArgumentException("line [" + line + "] does not match pattern [" + pattern.pattern() + "]");
+	}
+
+	public record Silence(float start, float end, float duration) {
 	}
 
 }

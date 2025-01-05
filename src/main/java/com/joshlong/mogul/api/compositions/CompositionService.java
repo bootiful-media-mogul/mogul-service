@@ -11,4 +11,6 @@ public interface CompositionService {
 
 	Attachment attach(Long compositionId, String caption, Long managedFileId);
 
+	Composition getCompositionById(Long id);
+
 }

@@ -41,8 +41,8 @@ class DefaultManagedFileServiceConfiguration {
 	@Bean
 	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher,
 			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties) {
-		return new DefaultManagedFileService(db, storage, publisher, transactionTemplate,
-				properties.aws().cloudfront().domain());
+		return new DefaultManagedFileService(properties.managedFiles().s3().bucket(), db, storage, publisher,
+				transactionTemplate, properties.aws().cloudfront().domain());
 	}
 
 }
@@ -67,6 +67,8 @@ class DefaultManagedFileServiceConfiguration {
 
 class DefaultManagedFileService implements TransactionSynchronization, ManagedFileService {
 
+	private final String bucket;
+
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ManagedFileDeletionRequestRowMapper managedFileDeletionRequestRowMapper = new ManagedFileDeletionRequestRowMapper();
@@ -83,13 +85,18 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	private final URI cloudfrontDomain;
 
-	DefaultManagedFileService(JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
+	DefaultManagedFileService(String bucket, JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
 			TransactionTemplate transactionTemplate, URI cloudfrontDomain) {
+		this.bucket = bucket;
 		this.db = db;
 		this.cloudfrontDomain = cloudfrontDomain;
 		this.storage = storage;
 		this.publisher = publisher;
 		this.transactionTemplate = transactionTemplate;
+	}
+
+	static String visibleBucketFor(String bucket) {
+		return bucket + "-visible";
 	}
 
 	@Override
@@ -225,10 +232,6 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			.list();
 	}
 
-	static String visibleBucketFor(String bucket) {
-		return bucket + "-visible";
-	}
-
 	@Override
 	public void completeManagedFileDeletion(Long managedFileDeletionRequestId) {
 		var managedFileDeletionRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
@@ -288,7 +291,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	@Override
 	@Transactional
-	public ManagedFile createManagedFile(Long mogulId, String bucket, String folder, String fileName, long size,
+	public ManagedFile createManagedFile(Long mogulId, /* String bucket, */ String folder, String fileName, long size,
 			MediaType mediaType, boolean visible) {
 		var kh = new GeneratedKeyHolder();
 		var sql = """

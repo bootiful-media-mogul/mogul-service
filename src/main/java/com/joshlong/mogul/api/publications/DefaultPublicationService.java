@@ -33,10 +33,6 @@ import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })
 class DefaultPublicationService implements PublicationService {
 
-	public record SettingsLookup(Long mogulId, String category) {
-
-	}
-
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -98,8 +94,6 @@ class DefaultPublicationService implements PublicationService {
 		}
 		return this.getPublicationById(publication.id());
 	}
-	// do this on a separate thread so that it's
-	// not included in the longer running parent transaction
 
 	@Override
 	public <T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
@@ -156,6 +150,8 @@ class DefaultPublicationService implements PublicationService {
 		this.log.debug("writing publication out: {}", publication);
 		return publication;
 	}
+	// do this on a separate thread so that it's
+	// not included in the longer running parent transaction
 
 	@Override
 	public Publication getPublicationById(Long publicationId) {
@@ -222,6 +218,10 @@ class DefaultPublicationService implements PublicationService {
 	@EventListener
 	void completed(PublicationCompletedEvent pce) {
 		this.refreshCache();
+	}
+
+	public record SettingsLookup(Long mogulId, String category) {
+
 	}
 
 }

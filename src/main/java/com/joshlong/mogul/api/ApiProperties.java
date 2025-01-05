@@ -2,15 +2,14 @@ package com.joshlong.mogul.api;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.io.File;
 import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
-public record ApiProperties(Aws aws, Podcasts podcasts, Transcription transcription, Settings settings, boolean debug) {
+public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcriptions transcriptions, Podcasts podcasts,
+		Settings settings, boolean debug) {
 
-	public record Transcription(S3 s3) {
-
-		public record S3(String inputBucket, String outputBucket) {
-		}
+	public record Transcriptions(File root) {
 	}
 
 	public record Settings(String password, String salt) {
@@ -18,6 +17,12 @@ public record ApiProperties(Aws aws, Podcasts podcasts, Transcription transcript
 
 	public record Aws(String accessKey, String accessKeySecret, String region, Cloudfront cloudfront) {
 		public record Cloudfront(URI domain) {
+		}
+	}
+
+	public record ManagedFiles(S3 s3) {
+
+		public record S3(String bucket) {
 		}
 	}
 

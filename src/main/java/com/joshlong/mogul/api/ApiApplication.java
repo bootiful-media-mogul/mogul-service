@@ -31,6 +31,26 @@ public class ApiApplication {
 		SpringApplication.run(ApiApplication.class, args);
 	}
 
+	@Bean
+	SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
+		return http //
+			.authorizeHttpRequests((authorize) -> authorize //
+				.requestMatchers(EndpointRequest.toAnyEndpoint())
+				.permitAll() //
+				.requestMatchers("/public/**")
+				.permitAll()
+				.anyRequest()
+				.authenticated()//
+			)//
+			.oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults()))//
+			.build();
+	}
+
+	@Bean
+	DateTimeFormatter dateTimeFormatter() {
+		return DateTimeFormatter.BASIC_ISO_DATE;
+	}
+
 	static class MogulHints implements RuntimeHintsRegistrar {
 
 		@Override
@@ -50,26 +70,6 @@ public class ApiApplication {
 			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
 		}
 
-	}
-
-	@Bean
-	SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
-		return http //
-			.authorizeHttpRequests((authorize) -> authorize //
-				.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.permitAll() //
-				.requestMatchers("/public/**")
-				.permitAll()
-				.anyRequest()
-				.authenticated()//
-			)//
-			.oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults()))//
-			.build();
-	}
-
-	@Bean
-	DateTimeFormatter dateTimeFormatter() {
-		return DateTimeFormatter.BASIC_ISO_DATE;
 	}
 
 }

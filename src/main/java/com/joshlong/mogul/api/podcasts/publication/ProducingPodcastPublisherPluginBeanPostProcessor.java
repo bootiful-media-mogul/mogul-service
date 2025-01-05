@@ -36,14 +36,6 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 		log.debug("obtained reference to BeanFactory in {}", getClass().getName());
 	}
 
-	public record PodcastEpisodeRenderStartedEvent(long episodeId) {
-
-	}
-
-	public record PodcastEpisodeRenderFinishedEvent(long episodeId) {
-
-	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
@@ -100,6 +92,14 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 		}
 
 		return BeanPostProcessor.super.postProcessAfterInitialization(bean, beanName);
+	}
+
+	public record PodcastEpisodeRenderStartedEvent(long episodeId) {
+
+	}
+
+	public record PodcastEpisodeRenderFinishedEvent(long episodeId) {
+
 	}
 
 }

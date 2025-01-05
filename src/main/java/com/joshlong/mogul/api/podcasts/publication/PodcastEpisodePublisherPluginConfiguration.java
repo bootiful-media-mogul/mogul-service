@@ -11,6 +11,11 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 @ImportRuntimeHints(PodcastEpisodePublisherPluginConfiguration.Hints.class)
 class PodcastEpisodePublisherPluginConfiguration {
 
+	@Bean
+	static ProducingPodcastPublisherPluginBeanPostProcessor podcastProducingBeanPostProcessor(BeanFactory beanFactory) {
+		return new ProducingPodcastPublisherPluginBeanPostProcessor();
+	}
+
 	static class Hints implements RuntimeHintsRegistrar {
 
 		@Override
@@ -22,11 +27,6 @@ class PodcastEpisodePublisherPluginConfiguration {
 						org.springframework.core.DecoratingProxy.class);
 		}
 
-	}
-
-	@Bean
-	static ProducingPodcastPublisherPluginBeanPostProcessor podcastProducingBeanPostProcessor(BeanFactory beanFactory) {
-		return new ProducingPodcastPublisherPluginBeanPostProcessor();
 	}
 
 }

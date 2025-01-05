@@ -33,6 +33,56 @@ public class Feeds {
 
 	private static final String MOGUL_FEEDS_ELEMENT_PREFIX = "mogul-feeds";
 
+	private static String formatInstant(Instant instant) {
+		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
+	}
+
+	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, String imageUrl,
+			String imageContentType, long thumbnailSize, String titleTxt, String entryUrl, String summaryText,
+			Map<String, String> customMetadataMap) throws ParserConfigurationException {
+		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
+
+		var enclosure = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
+		enclosure.setAttribute("rel", "enclosure");
+		enclosure.setAttribute("type", imageContentType);
+		enclosure.setAttribute("href", imageUrl);
+		enclosure.setAttribute("title", "Thumbnail");
+		enclosure.setAttribute("length", Long.toString(thumbnailSize));
+		entry.appendChild(enclosure);
+
+		// Add entry elements
+		var title = doc.createElementNS("http://www.w3.org/2005/Atom", "title");
+		title.setTextContent(titleTxt);
+		entry.appendChild(title);
+
+		var link = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
+		link.setAttribute("href", entryUrl);
+		// link.setAttribute("rel", "self");
+		entry.appendChild(link);
+
+		var id = doc.createElementNS("http://www.w3.org/2005/Atom", "id");
+		id.setTextContent("urn:uuid:" + entryId);
+		entry.appendChild(id);
+
+		var updated = doc.createElementNS("http://www.w3.org/2005/Atom", "updated");
+		updated.setTextContent(formatInstant(updatedInstant));
+		entry.appendChild(updated);
+
+		var summary = doc.createElementNS("http://www.w3.org/2005/Atom", "summary");
+		summary.setTextContent(summaryText);
+		entry.appendChild(summary);
+
+		var customMetadata = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":metadata");
+
+		customMetadataMap.forEach((key, value) -> {
+			var element = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":" + key);
+			element.setTextContent(value);
+			customMetadata.appendChild(element);
+		});
+		entry.appendChild(customMetadata);
+		return entry;
+	}
+
 	public <T> String createMogulAtomFeed(String feedTitle, String feedUrl, Instant published, String feedAuthor,
 			String feedId, Collection<T> entries, EntryMapper<T> entryMapper)
 			throws TransformerException, IOException, ParserConfigurationException {
@@ -97,56 +147,6 @@ public class Feeds {
 			transformer.transform(source, result);
 			return writer.toString();
 		}
-	}
-
-	private static String formatInstant(Instant instant) {
-		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
-	}
-
-	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, String imageUrl,
-			String imageContentType, long thumbnailSize, String titleTxt, String entryUrl, String summaryText,
-			Map<String, String> customMetadataMap) throws ParserConfigurationException {
-		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
-
-		var enclosure = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
-		enclosure.setAttribute("rel", "enclosure");
-		enclosure.setAttribute("type", imageContentType);
-		enclosure.setAttribute("href", imageUrl);
-		enclosure.setAttribute("title", "Thumbnail");
-		enclosure.setAttribute("length", Long.toString(thumbnailSize));
-		entry.appendChild(enclosure);
-
-		// Add entry elements
-		var title = doc.createElementNS("http://www.w3.org/2005/Atom", "title");
-		title.setTextContent(titleTxt);
-		entry.appendChild(title);
-
-		var link = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
-		link.setAttribute("href", entryUrl);
-		// link.setAttribute("rel", "self");
-		entry.appendChild(link);
-
-		var id = doc.createElementNS("http://www.w3.org/2005/Atom", "id");
-		id.setTextContent("urn:uuid:" + entryId);
-		entry.appendChild(id);
-
-		var updated = doc.createElementNS("http://www.w3.org/2005/Atom", "updated");
-		updated.setTextContent(formatInstant(updatedInstant));
-		entry.appendChild(updated);
-
-		var summary = doc.createElementNS("http://www.w3.org/2005/Atom", "summary");
-		summary.setTextContent(summaryText);
-		entry.appendChild(summary);
-
-		var customMetadata = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":metadata");
-
-		customMetadataMap.forEach((key, value) -> {
-			var element = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":" + key);
-			element.setTextContent(value);
-			customMetadata.appendChild(element);
-		});
-		entry.appendChild(customMetadata);
-		return entry;
 	}
 
 }

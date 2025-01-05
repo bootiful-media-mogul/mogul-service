@@ -35,12 +35,6 @@ class SettingsController {
 		this.plugins.putAll(ps);
 	}
 
-	record Setting(String name, boolean valid, String value) {
-	}
-
-	record SettingsPage(boolean valid, String category, List<Setting> settings) {
-	}
-
 	@MutationMapping
 	boolean updateSetting(@Argument String category, @Argument String name, @Argument String value) {
 		this.settings.set(this.mogulService.getCurrentMogul().id(), category, name, value);
@@ -72,6 +66,12 @@ class SettingsController {
 			}
 		}
 		return pages;
+	}
+
+	record Setting(String name, boolean valid, String value) {
+	}
+
+	record SettingsPage(boolean valid, String category, List<Setting> settings) {
 	}
 
 }

@@ -24,16 +24,11 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 
 	private static final AtomicReference<BeanFactory> BEAN_FACTORY_ATOMIC_REFERENCE = new AtomicReference<>();
 
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		BEAN_FACTORY_ATOMIC_REFERENCE.set(beanFactory);
-	}
+	private static final Executor EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
 	private static TransactionTemplate transactionTemplate() {
 		return BEAN_FACTORY_ATOMIC_REFERENCE.get().getBean(TransactionTemplate.class);
 	}
-
-	private static final Executor EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
 	private static Executor executor() {
 		return EXECUTOR;
@@ -68,6 +63,11 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 		if (log.isDebugEnabled()) {
 			log.debug("published {} [{}]", NotificationEvent.class.getName(), event);
 		}
+	}
+
+	@Override
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		BEAN_FACTORY_ATOMIC_REFERENCE.set(beanFactory);
 	}
 
 	@Override

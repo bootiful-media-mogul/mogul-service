@@ -17,9 +17,9 @@ import java.util.UUID;
 @Component
 class ImageEncoder implements Encoder {
 
-	private final Logger log = LoggerFactory.getLogger(ImageEncoder.class);
-
 	public final static DataSize MAX_SIZE = DataSize.ofMegabytes(1);
+
+	private final Logger log = LoggerFactory.getLogger(ImageEncoder.class);
 
 	@Override
 	public File encode(File path) {

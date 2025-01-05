@@ -414,7 +414,7 @@ class DefaultPodcastService implements PodcastService {
 			.orElse(0)
 			.longValue()) + 1;
 		var uid = UUID.randomUUID().toString();
-		var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
+		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		this.mogulService.assertAuthorizedMogul(mogulId);
 		var sql = """
 					insert into podcast_episode_segment (
@@ -434,10 +434,10 @@ class DefaultPodcastService implements PodcastService {
 					 	?
 					);
 				""";
-		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
-				CommonMediaTypes.MP3, false);
-		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, bucket, uid, "", 0,
-				CommonMediaTypes.MP3, false);
+		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId,
+				/* bucket, */uid, "", 0, CommonMediaTypes.MP3, false);
+		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId,
+				/* bucket, */uid, "", 0, CommonMediaTypes.MP3, false);
 		var gkh = new GeneratedKeyHolder();
 		this.db //
 			.sql(sql)
@@ -482,14 +482,14 @@ class DefaultPodcastService implements PodcastService {
 		this.ensurePodcastBelongsToMogul(currentMogulId, podcastId);
 		var uid = UUID.randomUUID().toString();
 		// todo we should check for collisions...
-		var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
+		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		// images are publicly visible by default. everything else, not
-		var image = this.managedFileService.createManagedFile(currentMogulId, bucket, uid, "", 0,
-				CommonMediaTypes.BINARY, true);
-		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId, bucket, uid,
-				"produced-graphic.jpg", 0, CommonMediaTypes.JPG, true);
-		var producedAudio = this.managedFileService.createManagedFile(currentMogulId, bucket, uid, "produced-audio.mp3",
-				0, CommonMediaTypes.MP3, false);
+		var image = this.managedFileService.createManagedFile(currentMogulId,
+				/* bucket, */ uid, "", 0, CommonMediaTypes.BINARY, true);
+		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId,
+				/* bucket, */ uid, "produced-graphic.jpg", 0, CommonMediaTypes.JPG, true);
+		var producedAudio = this.managedFileService.createManagedFile(currentMogulId,
+				/* bucket, */uid, "produced-audio.mp3", 0, CommonMediaTypes.MP3, false);
 		var episode = this.createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
 		var episodeId = episode.id();
 		var titleComp = this.getPodcastEpisodeTitleComposition(episodeId);

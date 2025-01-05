@@ -34,9 +34,9 @@ import java.util.stream.Stream;
  */
 class ChunkingTranscriber implements Transcriber {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	private static final ThreadLocal<NumberFormat> NUMBER_FORMAT = new ThreadLocal<>();
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -50,7 +50,7 @@ class ChunkingTranscriber implements Transcriber {
 
 	private final Runnable cleanup = () -> {
 		var key = futureInstant(0);
-		log.debug("the current hour instant is {}", key.toString());
+		log.debug("the current instant is {}", key.toString());
 		for (var file : filesToDelete.getOrDefault(key, new HashSet<>())) {
 			FileUtils.delete(file);
 		}
@@ -66,7 +66,26 @@ class ChunkingTranscriber implements Transcriber {
 		Assert.state(this.maxFileSize > 0, "the max file size must be greater than zero");
 		Assert.state(this.root.exists() || this.root.mkdirs(),
 				"the root for transcription, " + this.root.getAbsolutePath() + ", could not be created");
-		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(this.cleanup, 1, 10, TimeUnit.MINUTES);
+		try (var scheduledThreadPool = Executors.newScheduledThreadPool(1)) {
+			scheduledThreadPool.scheduleAtFixedRate(this.cleanup, 1, 10, TimeUnit.MINUTES);
+		}
+	}
+
+	private static String convertMillisToTimeFormat(long millis) {
+		var hours = TimeUnit.MILLISECONDS.toHours(millis);
+		var minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;
+		var seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
+		var milliseconds = millis % 1000;
+		return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+	}
+
+	private static <T> T from(Future<T> tFuture) {
+		try {
+			return tFuture.get();
+		} //
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -188,14 +207,6 @@ class ChunkingTranscriber implements Transcriber {
 		return listOfSegments.stream();
 	}
 
-	private static String convertMillisToTimeFormat(long millis) {
-		var hours = TimeUnit.MILLISECONDS.toHours(millis);
-		var minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;
-		var seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
-		var milliseconds = millis % 1000;
-		return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
-	}
-
 	private void bisect(File source, File destination, long start, long stop) throws IOException, InterruptedException {
 		var result = new ProcessBuilder()
 			.command("ffmpeg", "-i", source.getAbsolutePath(), "-ss", convertMillisToTimeFormat(start), "-to",
@@ -216,15 +227,6 @@ class ChunkingTranscriber implements Transcriber {
 			NUMBER_FORMAT.set(formatter);
 		}
 		return NUMBER_FORMAT.get();
-	}
-
-	private static <T> T from(Future<T> tFuture) {
-		try {
-			return tFuture.get();
-		} //
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 	private Duration durationFor(File originalAudio) throws Exception {

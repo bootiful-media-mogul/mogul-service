@@ -18,9 +18,9 @@ import static com.joshlong.mogul.api.podcasts.publication.MockPodcastEpisodePubl
 @Component(PLUGIN_NAME)
 class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	static final String PLUGIN_NAME = "mock";
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Override
 	public boolean unpublish(Map<String, String> context, Publication publication) {

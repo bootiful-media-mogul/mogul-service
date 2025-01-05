@@ -9,18 +9,8 @@ import org.springframework.util.StringUtils;
 /**
  * includes some useful content types that, for some reason, {@link MediaType } does not
  * have.
- *
  */
 public abstract class CommonMediaTypes {
-
-	private final static Logger log = LoggerFactory.getLogger(CommonMediaTypes.class);
-
-	public static MediaType guess(Resource resource) {
-		var ct = java.net.URLConnection.guessContentTypeFromName(resource.getFilename());
-		var mt = StringUtils.hasText(ct) ? MediaType.parseMediaType(ct) : CommonMediaTypes.BINARY;
-		log.debug("guessed [{}] for resource [{}]. the media type is [{}]", ct, resource.getFilename(), mt);
-		return mt;
-	}
 
 	public static final MediaType BINARY = MediaType.APPLICATION_OCTET_STREAM;
 
@@ -40,5 +30,14 @@ public abstract class CommonMediaTypes {
 	public static final MediaType WAV = MediaType.parseMediaType("audio/wav");
 
 	public static final MediaType MP3 = MediaType.parseMediaType("audio/mpeg");
+
+	private final static Logger log = LoggerFactory.getLogger(CommonMediaTypes.class);
+
+	public static MediaType guess(Resource resource) {
+		var ct = java.net.URLConnection.guessContentTypeFromName(resource.getFilename());
+		var mt = StringUtils.hasText(ct) ? MediaType.parseMediaType(ct) : CommonMediaTypes.BINARY;
+		log.debug("guessed [{}] for resource [{}]. the media type is [{}]", ct, resource.getFilename(), mt);
+		return mt;
+	}
 
 }

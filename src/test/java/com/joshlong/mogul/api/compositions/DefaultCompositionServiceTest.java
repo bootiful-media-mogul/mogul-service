@@ -69,7 +69,7 @@ class DefaultCompositionServiceTest {
 
 		assertTrue(descriptionComp.attachments().isEmpty(), "there should be no attachments for the description, yet");
 
-		var mfForAttachment = managedFileService.createManagedFile(mogulId, "bucket", "folder", "filename", 10L,
+		var mfForAttachment = managedFileService.createManagedFile(mogulId, "compositions", "filename.png", 10L,
 				MediaType.IMAGE_JPEG, true);
 		var attachment = compositionService.attach(descriptionComp.id(),
 				"this is the nicest image that's ever been attached, ever", mfForAttachment.id());

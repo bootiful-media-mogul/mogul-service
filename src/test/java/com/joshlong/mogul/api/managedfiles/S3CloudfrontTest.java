@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.managedfiles;
 
-import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -16,13 +15,13 @@ class S3CloudfrontTest {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
+	private final AtomicReference<StaticCredentialsProvider> credentials = new AtomicReference<>(authenticate());
+
 	private static StaticCredentialsProvider authenticate() {
 		var accessId = System.getenv("AWS_ACCESS_KEY_ID");
 		var accessSecret = System.getenv("AWS_ACCESS_KEY_SECRET");
 		return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessId, accessSecret));
 	}
-
-	private final AtomicReference<StaticCredentialsProvider> credentials = new AtomicReference<>(authenticate());
 
 	// @Test
 	void go() {

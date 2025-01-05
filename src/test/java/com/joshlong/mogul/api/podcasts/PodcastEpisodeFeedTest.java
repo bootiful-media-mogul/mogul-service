@@ -7,7 +7,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.publications.PublicationService;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

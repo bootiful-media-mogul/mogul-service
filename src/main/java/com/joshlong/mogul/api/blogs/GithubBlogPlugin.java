@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component(GithubBlogPlugin.PLUGIN_NAME)
 class GithubBlogPlugin implements PublisherPlugin<Blog>, BeanNameAware {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	public static final String PLUGIN_NAME = "github";
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<String> beanName = new AtomicReference<>();
 

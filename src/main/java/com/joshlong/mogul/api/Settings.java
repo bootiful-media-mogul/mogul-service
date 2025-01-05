@@ -26,25 +26,6 @@ public class Settings {
 		this.rowMapper = new SettingsRowMapper(encryptor);
 	}
 
-	public record Setting(String category, String key, String value) {
-	}
-
-	private static class SettingsRowMapper implements RowMapper<Setting> {
-
-		private final TextEncryptor encryptor;
-
-		SettingsRowMapper(TextEncryptor encryptor) {
-			this.encryptor = encryptor;
-			Assert.notNull(this.encryptor, "the " + TextEncryptor.class.getName() + " must be non-null");
-		}
-
-		@Override
-		public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new Setting(rs.getString("category"), rs.getString("key"), encryptor.decrypt(rs.getString("value")));
-		}
-
-	}
-
 	public Map<String, String> getAllValuesByCategory(Long mogulId, String category) {
 		var all = getAllSettingsByCategory(mogulId, category);
 		var res = new HashMap<String, String>();
@@ -91,6 +72,25 @@ public class Settings {
 				""") //
 			.params(mogulId, category, key, this.encryptor.encrypt(value))//
 			.update();
+
+	}
+
+	public record Setting(String category, String key, String value) {
+	}
+
+	private static class SettingsRowMapper implements RowMapper<Setting> {
+
+		private final TextEncryptor encryptor;
+
+		SettingsRowMapper(TextEncryptor encryptor) {
+			this.encryptor = encryptor;
+			Assert.notNull(this.encryptor, "the " + TextEncryptor.class.getName() + " must be non-null");
+		}
+
+		@Override
+		public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+			return new Setting(rs.getString("category"), rs.getString("key"), encryptor.decrypt(rs.getString("value")));
+		}
 
 	}
 

@@ -47,6 +47,8 @@ TODO put these in github issues!
 @Transactional
 class DefaultBlogService implements BlogService {
 
+	public final ApplicationEventPublisher publisher;
+
 	private final RowMapper<Blog> blogRowMapper = new BlogRowMapper();
 
 	private final RowMapper<Post> postRowMapper = new PostRowMapper();
@@ -54,8 +56,6 @@ class DefaultBlogService implements BlogService {
 	private final JdbcClient db;
 
 	private final AiClient singularity;
-
-	public final ApplicationEventPublisher publisher;
 
 	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
 		this.db = db;
@@ -124,25 +124,6 @@ class DefaultBlogService implements BlogService {
 		return null;
 	}
 
-	private static class PostRowMapper implements RowMapper<Post> {
-
-		@Override
-		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
-			var arr = rs.getArray("tags");
-			System.out.println("------------------------");
-			System.out.println(arr);
-			System.out.println(arr.getClass().getName());
-			System.out.println("------------------------");
-			var tags = new String[0];
-			if (arr.getArray() instanceof String[] tagsStringArray) {
-				tags = tagsStringArray;
-			}
-			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
-					rs.getString("content"), tags, rs.getBoolean("complete"), new HashMap<>());
-		}
-
-	}
-
 	@Override
 	public Post updatePost(Long postId, String title, String content, String[] tags, Set<Asset> assets) {
 		return null;
@@ -163,16 +144,6 @@ class DefaultBlogService implements BlogService {
 		return Map.of();
 	}
 
-	private static class BlogRowMapper implements RowMapper<Blog> {
-
-		@Override
-		public Blog mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new Blog(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("title"),
-					rs.getString("description"), rs.getDate("created"), new HashSet<>());
-		}
-
-	}
-
 	@EventListener
 	void onPostUpdatedEvent(PostUpdatedEvent postUpdatedEvent) {
 		// todo update the markdown => html
@@ -182,6 +153,35 @@ class DefaultBlogService implements BlogService {
 
 		// todo we should check to see if the text for the title / description themselves
 		// were actually updated before publishing this event.
+	}
+
+	private static class PostRowMapper implements RowMapper<Post> {
+
+		@Override
+		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
+			var arr = rs.getArray("tags");
+			System.out.println("------------------------");
+			System.out.println(arr);
+			System.out.println(arr.getClass().getName());
+			System.out.println("------------------------");
+			var tags = new String[0];
+			if (arr.getArray() instanceof String[] tagsStringArray) {
+				tags = tagsStringArray;
+			}
+			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
+					rs.getString("content"), tags, rs.getBoolean("complete"), new HashMap<>());
+		}
+
+	}
+
+	private static class BlogRowMapper implements RowMapper<Blog> {
+
+		@Override
+		public Blog mapRow(ResultSet rs, int rowNum) throws SQLException {
+			return new Blog(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("title"),
+					rs.getString("description"), rs.getDate("created"), new HashSet<>());
+		}
+
 	}
 
 }

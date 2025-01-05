@@ -1,4 +1,3 @@
-
 type Setting {
     name: String
     value: String
@@ -14,7 +13,7 @@ type Composition  {
 
 type Attachment {
     id: ID
-    key: String
+    caption: String
     managedFile: ManagedFile
 }
 
@@ -43,12 +42,14 @@ type Mogul {
 
 
 type Query {
-    
-    compose(type: String, publicationKey:Int, managedFileId:Int): Composition 
 
-    renderMarkdown( markdown : String) : String 
+    # compositions
+    compositionById ( compositionId:ID) : Composition
 
-    # outstanding notifications
+    # misc 
+    renderMarkdown( markdown : String) : String
+
+    # notifications
     notifications: NotificationEvent
 
     # settings
@@ -79,14 +80,14 @@ type ManagedFile {
     size: Float
     written : Boolean
     visible : Boolean
-    url : String 
+    url : String
     visibleUrl: String
 }
 
 type Episode {
     titleComposition: Composition
     descriptionComposition: Composition
-    
+
     #
     availablePlugins :[String]
     id : ID
@@ -129,10 +130,10 @@ type NotificationEvent {
 }
 
 type Mutation {
-    
-    
+
+
     attachToComposition(compositionId: Int ,  key:String, managedFileId: Int) : Attachment
-    
+
     setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
     setManagedFileVisibility( managedFileId: ID,  visible: Boolean) : Boolean
     unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean

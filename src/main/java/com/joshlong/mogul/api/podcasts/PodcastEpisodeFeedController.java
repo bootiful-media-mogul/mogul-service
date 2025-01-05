@@ -8,6 +8,8 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.publications.PublicationService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -63,6 +65,8 @@ class PodcastEpisodeFeedController {
 
 	private final ManagedFileService managedFileService;
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	PodcastEpisodeFeedController(PodcastService podcastService, PublicationService publicationService,
 			MogulService mogulService, Feeds feeds, ManagedFileService managedFileService) {
 		this.podcastService = podcastService;
@@ -72,13 +76,18 @@ class PodcastEpisodeFeedController {
 		this.managedFileService = managedFileService;
 	}
 
+	private static UUID longToUuid(long id) {
+		// Split the long into most and least significant bits
+		return new UUID(0, id); // Uses 0 for most significant bits
+	}
+
 	@GetMapping(PODCAST_FEED_URL)
 	String feed(HttpServletRequest request, @PathVariable long mogulId, @PathVariable long podcastId)
 			throws TransformerException, IOException, ParserConfigurationException {
 
 		var serverRequest = new ServletServerHttpRequest(request);
 
-		System.out.println(serverRequest);
+		log.info(serverRequest.toString());
 
 		var mogul = this.mogulService.getMogulById(mogulId);
 		var podcast = this.podcastService.getPodcastById(podcastId);
@@ -104,9 +113,18 @@ class PodcastEpisodeFeedController {
 				longToUuid(podcastId).toString(), publishedEpisodes, mapper);
 	}
 
-	private static UUID longToUuid(long id) {
-		// Split the long into most and least significant bits
-		return new UUID(0, id); // Uses 0 for most significant bits
+	private String publicationUrl(Episode episode) {
+		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
+				Episode.class);
+		if (episode.complete() && !publications.isEmpty()) {
+			return publications//
+				.stream()//
+				.sorted(this.publicationComparator)//
+				.toList()
+				.getFirst()
+				.url();
+		}
+		return null;
 	}
 
 	private class PodcastEpisodeEntryMapper implements EntryMapper<Episode> {
@@ -126,20 +144,6 @@ class PodcastEpisodeFeedController {
 					this.urls.get(episode.id()), episode.description(), Map.of("id", Long.toString(episode.id())), img);
 		}
 
-	}
-
-	private String publicationUrl(Episode episode) {
-		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
-				Episode.class);
-		if (episode.complete() && !publications.isEmpty()) {
-			return publications//
-				.stream()//
-				.sorted(this.publicationComparator)//
-				.toList()
-				.getFirst()
-				.url();
-		}
-		return null;
 	}
 
 }
