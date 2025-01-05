@@ -38,11 +38,15 @@ import java.util.stream.Collectors;
 @Configuration
 class DefaultManagedFileServiceConfiguration {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	@Bean
 	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher,
 			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties) {
-		return new DefaultManagedFileService(properties.managedFiles().s3().bucket(), db, storage, publisher,
-				transactionTemplate, properties.aws().cloudfront().domain());
+		var bucket = properties.managedFiles().s3().bucket();
+
+		return new DefaultManagedFileService(bucket, db, storage, publisher, transactionTemplate,
+				properties.aws().cloudfront().domain());
 	}
 
 }
@@ -93,6 +97,10 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		this.storage = storage;
 		this.publisher = publisher;
 		this.transactionTemplate = transactionTemplate;
+
+		this.log.debug(
+				"the file ManagedFile file system S3 bucket is called [{}]" + " and the visible bucket is called [{}]",
+				bucket, visibleBucketFor(bucket));
 	}
 
 	static String visibleBucketFor(String bucket) {
