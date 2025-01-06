@@ -99,8 +99,9 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		this.transactionTemplate = transactionTemplate;
 
 		this.log.debug(
-				"the file ManagedFile file system S3 bucket is called [{}]" + " and the visible bucket is called [{}]",
+				"the file ManagedFile file system S3 bucket is called [{}] and the visible bucket is called [{}]",
 				bucket, visibleBucketFor(bucket));
+
 	}
 
 	static String visibleBucketFor(String bucket) {
