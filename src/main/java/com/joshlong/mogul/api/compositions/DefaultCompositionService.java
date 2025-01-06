@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.compositions;
 
+import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
@@ -12,7 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 
 /**
- * helps to manage the lifecycle and entities associated with a given composition.
+ * helps to manage the lifecycle and entities associated with a given composition, which
+ * are blocks of text with attachments. for now, we'll assume attachments are images.
+ * maybe one day we'll be able to embed, somehow, audio and videos that have been dragged
+ * into a text block. it wouldn't be so hard. some sort of strategy that - given a
+ * particular {@link com.joshlong.mogul.api.managedfiles.ManagedFile}, consults the
+ * {@link ManagedFile#contentType()} and helps to render Markdown that embeds a
+ * {@code <video>} player or a {@code <audio>} player or an {@code <img >} tag, as
+ * appropriate. for now, though. images.
  */
 @Service
 @Transactional

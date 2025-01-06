@@ -15,6 +15,7 @@ type Attachment {
     id: ID
     caption: String
     managedFile: ManagedFile
+    embedding: String 
 }
 
 type Publication {
