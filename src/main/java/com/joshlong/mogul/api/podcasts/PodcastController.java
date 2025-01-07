@@ -266,7 +266,7 @@ class PodcastController {
 	@ApplicationModuleListener
 	void broadcastPodcastEpisodeCompletionEventToClients(PodcastEpisodeCompletionEvent podcastEpisodeCompletionEvent) {
 		var episode = podcastEpisodeCompletionEvent.episode();
-		var id = episode.id();
+		var id = episod e.id();
 		try {
 			var map = Map.of("episodeId", id, "complete", episode.complete());
 			var json = JsonUtils.write(map);

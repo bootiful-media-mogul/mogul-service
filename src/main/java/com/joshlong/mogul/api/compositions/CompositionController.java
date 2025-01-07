@@ -46,9 +46,9 @@ class CompositionController {
 	}
 
 	@MutationMapping
-	Long deleteCompositionAttachment(@Argument Long id) {
-		this.compositionService.deleteCompositionAttachment(id);
-		return id;
+	boolean deleteCompositionAttachment(@Argument Long compositionId) {
+		this.compositionService.deleteCompositionAttachment(compositionId);
+		return true;
 	}
 
 	@MutationMapping

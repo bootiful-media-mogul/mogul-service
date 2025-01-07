@@ -131,9 +131,8 @@ type NotificationEvent {
 }
 
 type Mutation {
-    
-    createCompositionAttachment( compositionId : ID) : Attachment
-    
+    createCompositionAttachment( compositionId:ID ) : Attachment
+    deleteCompositionAttachment( compositionId:ID ) : Boolean
     setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
     setManagedFileVisibility( managedFileId: ID,  visible: Boolean) : Boolean
     unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean
