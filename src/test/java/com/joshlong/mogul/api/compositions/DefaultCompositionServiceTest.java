@@ -48,9 +48,9 @@ class DefaultCompositionServiceTest {
 
 	@Test
 	@WithUserDetails(ONE)
-	void composeAndAttach(@Autowired CompositionService compositionService, @Autowired PodcastService podcastService,
-			@Autowired ManagedFileService managedFileService, @Autowired MogulService mogulService,
-			@Autowired TransactionTemplate transactionTemplate) {
+	void composeAndCreateCompositionAttachment(@Autowired CompositionService compositionService,
+			@Autowired PodcastService podcastService, @Autowired ManagedFileService managedFileService,
+			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
 		// todo login
 		var mogulId = transactionTemplate.execute(status -> {
 			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
@@ -71,7 +71,7 @@ class DefaultCompositionServiceTest {
 
 		var mfForAttachment = managedFileService.createManagedFile(mogulId, "compositions", "filename.png", 10L,
 				MediaType.IMAGE_JPEG, true);
-		var attachment = compositionService.attach(descriptionComp.id(),
+		var attachment = compositionService.createCompositionAttachment(descriptionComp.id(),
 				"this is the nicest image that's ever been attached, ever", mfForAttachment.id());
 		assertNotNull(attachment, "the attachment should not be null");
 

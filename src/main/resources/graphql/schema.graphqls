@@ -15,7 +15,7 @@ type Attachment {
     id: ID
     caption: String
     managedFile: ManagedFile
-    embedding: String 
+    embedding: String
 }
 
 type Publication {
@@ -131,10 +131,9 @@ type NotificationEvent {
 }
 
 type Mutation {
-
-
-    attachToComposition(compositionId: Int ,  key:String, managedFileId: Int) : Attachment
-
+    
+    createCompositionAttachment( compositionId : ID) : Attachment
+    
     setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
     setManagedFileVisibility( managedFileId: ID,  visible: Boolean) : Boolean
     unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean

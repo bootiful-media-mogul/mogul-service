@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.compositions;
 
+import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -51,6 +52,14 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
+	public void deleteCompositionAttachment(Long id) {
+		var attachmentById = getAttachmentById(id);
+		var mf = attachmentById.managedFile();
+		db.sql("delete from composition_attachment where id = ?").params(id).update();
+		this.managedFileService.deleteManagedFile(mf.id());
+	}
+
+	@Override
 	public <T extends Composable> Composition compose(T payload, String field) {
 		var generatedKeyHolder = new GeneratedKeyHolder();
 		var key = JsonUtils.write(payload.compositionKey());
@@ -72,12 +81,17 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
-	public Attachment attach(Long compositionId, String key, Long managedFileId) {
+	public Attachment createCompositionAttachment(Long mogul, Long compositionId, String key) {
+
+		var managedFile = this.managedFileService.createManagedFile(mogul, "compositions", "", 0,
+				CommonMediaTypes.BINARY, true);
+
 		var gkh = new GeneratedKeyHolder();
 		this.db.sql("""
-				insert into composition_attachment ( caption, composition_id, managed_file_id) values (?,?,?)
+				insert into composition_attachment( caption, composition_id, managed_file_id )
+				values (?,?,?)
 				""")//
-			.params(key, compositionId, managedFileId)//
+			.params(key, compositionId, managedFile.id())//
 			.update(gkh);
 		var ai = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 		return this.getAttachmentById(ai);

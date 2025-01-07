@@ -9,8 +9,10 @@ public interface CompositionService {
 	 */
 	<T extends Composable> Composition compose(T payload, String field);
 
-	Attachment attach(Long compositionId, String caption, Long managedFileId);
+	Attachment createCompositionAttachment(Long mogulId, Long compositionId, String caption);
 
 	Composition getCompositionById(Long id);
+
+	void deleteCompositionAttachment(Long id);
 
 }

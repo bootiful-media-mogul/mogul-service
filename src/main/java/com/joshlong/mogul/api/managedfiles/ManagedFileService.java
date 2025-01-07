@@ -42,7 +42,7 @@ public interface ManagedFileService {
 
 	String getPublicUrlForManagedFile(Long managedFile);
 
-	ManagedFile createManagedFile(Long mogulId, /* String bucket, */ String folder, String fileName, long size,
-			MediaType mediaType, boolean visible);
+	ManagedFile createManagedFile(Long mogulId, String folder, String fileName, long size, MediaType mediaType,
+			boolean visible);
 
 }

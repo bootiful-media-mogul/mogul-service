@@ -15,6 +15,10 @@ public abstract class CommonMediaTypes {
 	public static final MediaType BINARY = MediaType.APPLICATION_OCTET_STREAM;
 
 	// images
+
+	// all images. will this work?
+	public static final MediaType IMAGE = MediaType.parseMediaType("image/*");
+
 	public static final MediaType PNG = MediaType.IMAGE_PNG;
 
 	public static final MediaType WEBP = MediaType.parseMediaType("image/webp");

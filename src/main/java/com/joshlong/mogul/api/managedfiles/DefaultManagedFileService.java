@@ -67,6 +67,8 @@ class DefaultManagedFileServiceConfiguration {
  * file, but not the data of one. that is until the transaction finishes. at this point,
  * right before committing , we do one big query for all the managed files and then give
  * the data to each placeholder object, fleshing them out, in effect.
+ *
+ * warning: do <EM>NOT</EM> make the entire class {@link Transactional}!
  */
 
 class DefaultManagedFileService implements TransactionSynchronization, ManagedFileService {

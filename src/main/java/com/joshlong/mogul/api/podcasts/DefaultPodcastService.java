@@ -484,10 +484,10 @@ class DefaultPodcastService implements PodcastService {
 		// todo we should check for collisions...
 		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		// images are publicly visible by default. everything else, not
-		var image = this.managedFileService.createManagedFile(currentMogulId,
-				/* bucket, */ uid, "", 0, CommonMediaTypes.BINARY, true);
-		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId,
-				/* bucket, */ uid, "produced-graphic.jpg", 0, CommonMediaTypes.JPG, true);
+		var image = this.managedFileService.createManagedFile(currentMogulId, uid, "", 0, CommonMediaTypes.BINARY,
+				true);
+		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId, uid, "produced-graphic.jpg", 0,
+				CommonMediaTypes.JPG, true);
 		var producedAudio = this.managedFileService.createManagedFile(currentMogulId,
 				/* bucket, */uid, "produced-audio.mp3", 0, CommonMediaTypes.MP3, false);
 		var episode = this.createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
