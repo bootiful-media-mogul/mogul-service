@@ -32,12 +32,16 @@ class CompositionController {
 		this.mogulService = mogulService;
 	}
 
+	private final static String NLS = System.lineSeparator() + System.lineSeparator();
+
 	@SchemaMapping
 	String embedding(Attachment attachment) {
 		var managedFile = attachment.managedFile();
 		var publicUrl = this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
 		this.log.trace("got the public url for managed file # {} as {}", managedFile.id(), publicUrl);
-		return "![%s](%s)".formatted(StringUtils.hasText(attachment.caption()) ? attachment.caption() : "", publicUrl);
+		var embedding = "![%s](%s)".formatted(StringUtils.hasText(attachment.caption()) ? attachment.caption() : "",
+				publicUrl);
+		return NLS + embedding + NLS;
 	}
 
 	@QueryMapping
@@ -46,9 +50,9 @@ class CompositionController {
 	}
 
 	@MutationMapping
-	boolean deleteCompositionAttachment(@Argument Long compositionId) {
-		this.compositionService.deleteCompositionAttachment(compositionId);
-		return true;
+	Long deleteCompositionAttachment(@Argument Long attachmentId) {
+		this.compositionService.deleteCompositionAttachment(attachmentId);
+		return attachmentId;
 	}
 
 	@MutationMapping

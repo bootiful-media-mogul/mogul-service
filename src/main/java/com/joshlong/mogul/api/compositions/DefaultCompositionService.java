@@ -53,9 +53,9 @@ class DefaultCompositionService implements CompositionService {
 
 	@Override
 	public void deleteCompositionAttachment(Long id) {
-		var attachmentById = getAttachmentById(id);
+		var attachmentById = this.getAttachmentById(id);
 		var mf = attachmentById.managedFile();
-		db.sql("delete from composition_attachment where id = ?").params(id).update();
+		this.db.sql("delete from composition_attachment where id = ?").params(id).update();
 		this.managedFileService.deleteManagedFile(mf.id());
 	}
 
