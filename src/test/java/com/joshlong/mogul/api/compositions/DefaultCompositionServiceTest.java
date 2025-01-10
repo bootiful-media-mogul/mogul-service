@@ -69,12 +69,9 @@ class DefaultCompositionServiceTest {
 
 		assertTrue(descriptionComp.attachments().isEmpty(), "there should be no attachments for the description, yet");
 
-		var mfForAttachment = managedFileService.createManagedFile(mogulId, "compositions", "filename.png", 10L,
-				MediaType.IMAGE_JPEG, true);
-		var attachment = compositionService.createCompositionAttachment(descriptionComp.id(),
-				"this is the nicest image that's ever been attached, ever", mfForAttachment.id());
+		var attachment = compositionService.createCompositionAttachment(mogulId, descriptionComp.id(),
+				"this is the nicest image that's ever been attached, ever");
 		assertNotNull(attachment, "the attachment should not be null");
-
 		descriptionComp = podcastService.getPodcastEpisodeDescriptionComposition(episode.id());
 		assertEquals(1, descriptionComp.attachments().size(), "there should be one attachment for the title");
 

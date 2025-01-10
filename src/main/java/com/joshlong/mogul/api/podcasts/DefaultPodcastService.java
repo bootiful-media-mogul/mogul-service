@@ -415,7 +415,6 @@ class DefaultPodcastService implements PodcastService {
 			.longValue()) + 1;
 		var uid = UUID.randomUUID().toString();
 		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
-		this.mogulService.assertAuthorizedMogul(mogulId);
 		var sql = """
 					insert into podcast_episode_segment (
 						podcast_episode,
