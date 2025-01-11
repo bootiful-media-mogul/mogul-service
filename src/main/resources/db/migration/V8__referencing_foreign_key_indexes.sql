@@ -1,0 +1,11 @@
+create index blog_post_blog_id_index on blog_post (blog_id);
+create index composition_attachment_composition_id_index on composition_attachment (composition_id);
+create index managed_file_mogul_index on managed_file (mogul);
+create index managed_file_deletion_request_mogul_index on managed_file_deletion_request (mogul);
+create index podcast_mogul_index on podcast (mogul);
+create index podcast_episode_produced_audio_index on podcast_episode (produced_audio);
+create index podcast_episode_produced_graphic_index on podcast_episode (produced_graphic);
+create index podcast_episode_graphic_index on podcast_episode (graphic);
+create index podcast_episode_segment_segment_audio_managed_file_index on podcast_episode_segment (segment_audio_managed_file);
+create index podcast_episode_segment_produced_segment_audio_managed_file_idx on podcast_episode_segment (produced_segment_audio_managed_file);
+create index publication_mogul_index on publication (mogul);
