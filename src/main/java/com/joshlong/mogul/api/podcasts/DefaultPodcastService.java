@@ -7,7 +7,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
@@ -16,7 +15,10 @@ import com.joshlong.mogul.api.transcription.TranscriptionProcessedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -52,8 +54,6 @@ class DefaultPodcastService implements PodcastService {
 
 	private final SegmentRowMapper episodeSegmentRowMapper;
 
-	private final MogulService mogulService;
-
 	private final ManagedFileService managedFileService;
 
 	private final MediaNormalizer mediaNormalizer;
@@ -64,13 +64,11 @@ class DefaultPodcastService implements PodcastService {
 
 	private final ApplicationEventPublisher publisher;
 
-	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer,
-			MogulService mogulService, JdbcClient db, ManagedFileService managedFileService,
-			ApplicationEventPublisher publisher, Transcriber transcriber) {
+	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer, JdbcClient db,
+			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber) {
 		this.compositionService = compositionService;
 		this.db = db;
 		this.mediaNormalizer = mediaNormalizer;
-		this.mogulService = mogulService;
 		this.managedFileService = managedFileService;
 		this.publisher = publisher;
 		this.transcriber = transcriber;
@@ -480,15 +478,12 @@ class DefaultPodcastService implements PodcastService {
 	public Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description) {
 		this.ensurePodcastBelongsToMogul(currentMogulId, podcastId);
 		var uid = UUID.randomUUID().toString();
-		// todo we should check for collisions...
-		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
-		// images are publicly visible by default. everything else, not
 		var image = this.managedFileService.createManagedFile(currentMogulId, uid, "", 0, CommonMediaTypes.BINARY,
 				true);
 		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId, uid, "produced-graphic.jpg", 0,
 				CommonMediaTypes.JPG, true);
-		var producedAudio = this.managedFileService.createManagedFile(currentMogulId,
-				/* bucket, */uid, "produced-audio.mp3", 0, CommonMediaTypes.MP3, false);
+		var producedAudio = this.managedFileService.createManagedFile(currentMogulId, uid, "produced-audio.mp3", 0,
+				CommonMediaTypes.MP3, false);
 		var episode = this.createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
 		var episodeId = episode.id();
 		var titleComp = this.getPodcastEpisodeTitleComposition(episodeId);
@@ -567,6 +562,41 @@ class DefaultPodcastService implements PodcastService {
 			.query(this.podcastRowMapper)//
 			.list();
 		return pds;
+	}
+
+}
+
+@Configuration
+class CompositionInitializer {
+
+	private final Logger log = LoggerFactory.getLogger(CompositionInitializer.class);
+
+	private static String status(Composition composition) {
+		return composition == null ? "no" : "yes";
+	}
+
+	@Bean
+	ApplicationRunner compositionInitializerRunner(JdbcClient db, ManagedFileService managedFileService,
+			PodcastService podcastService) {
+		return args -> {
+			var episodeRowMapper = new EpisodeRowMapper(managedFileService::getManagedFile);
+			var episodes = db //
+				.sql("select * from podcast_episode pe") //
+				.query(episodeRowMapper) //
+				.list();
+			for (var e : episodes) {
+				var episodeId = e.id();
+				var podcastEpisodeDescriptionComposition = podcastService
+					.getPodcastEpisodeDescriptionComposition(episodeId);
+				var podcastEpisodeTitleComposition = podcastService.getPodcastEpisodeTitleComposition(episodeId);
+				this.log.debug(
+						"initializing compositions for episode {}. got description composition? {} and title composition? {}",
+						episodeId, status(podcastEpisodeDescriptionComposition),
+						status(podcastEpisodeTitleComposition));
+
+			}
+
+		};
 	}
 
 }
