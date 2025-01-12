@@ -565,38 +565,3 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 }
-
-@Configuration
-class CompositionInitializer {
-
-	private final Logger log = LoggerFactory.getLogger(CompositionInitializer.class);
-
-	private static String status(Composition composition) {
-		return composition == null ? "no" : "yes";
-	}
-
-	@Bean
-	ApplicationRunner compositionInitializerRunner(JdbcClient db, ManagedFileService managedFileService,
-			PodcastService podcastService) {
-		return args -> {
-			var episodeRowMapper = new EpisodeRowMapper(managedFileService::getManagedFile);
-			var episodes = db //
-				.sql("select * from podcast_episode pe") //
-				.query(episodeRowMapper) //
-				.list();
-			for (var e : episodes) {
-				var episodeId = e.id();
-				var podcastEpisodeDescriptionComposition = podcastService
-					.getPodcastEpisodeDescriptionComposition(episodeId);
-				var podcastEpisodeTitleComposition = podcastService.getPodcastEpisodeTitleComposition(episodeId);
-				this.log.debug(
-						"initializing compositions for episode {}. got description composition? {} and title composition? {}",
-						episodeId, status(podcastEpisodeDescriptionComposition),
-						status(podcastEpisodeTitleComposition));
-
-			}
-
-		};
-	}
-
-}
