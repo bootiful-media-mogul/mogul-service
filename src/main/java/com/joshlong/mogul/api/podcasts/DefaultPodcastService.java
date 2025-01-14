@@ -15,10 +15,7 @@ import com.joshlong.mogul.api.transcription.TranscriptionProcessedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -431,10 +428,10 @@ class DefaultPodcastService implements PodcastService {
 					 	?
 					);
 				""";
-		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId,
-				/* bucket, */uid, "", 0, CommonMediaTypes.MP3, false);
-		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId,
-				/* bucket, */uid, "", 0, CommonMediaTypes.MP3, false);
+		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, uid, "", 0,
+				CommonMediaTypes.MP3, false);
+		var producedSegmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, uid, "", 0,
+				CommonMediaTypes.MP3, false);
 		var gkh = new GeneratedKeyHolder();
 		this.db //
 			.sql(sql)
