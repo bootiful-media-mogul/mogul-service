@@ -34,8 +34,6 @@ class PodcastController {
 
 	private final MogulService mogulService;
 
-	private final CompositionService compositionService;
-
 	private final PodcastService podcastService;
 
 	private final Map<String, PodcastEpisodePublisherPlugin> plugins;
@@ -46,13 +44,11 @@ class PodcastController {
 
 	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
-	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService,
-			CompositionService compositionService, PodcastService podcastService,
+	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService,
 			Map<String, PodcastEpisodePublisherPlugin> plugins, PublicationService publicationService,
 			Settings settings) {
 		this.publisher = publisher;
 		this.mogulService = mogulService;
-		this.compositionService = compositionService;
 		this.podcastService = podcastService;
 		this.plugins = plugins;
 		this.publicationService = publicationService;
@@ -96,6 +92,12 @@ class PodcastController {
 	boolean addPodcastEpisodeSegment(@Argument Long episodeId) {
 		var mogul = this.mogulService.getCurrentMogul().id();
 		this.podcastService.createPodcastEpisodeSegment(mogul, episodeId, "", 0);
+		return true;
+	}
+
+	@MutationMapping
+	boolean refreshPodcastEpisodesSegmentTranscript(@Argument Long episodeSegmentId) {
+		this.podcastService.refreshPodcastEpisodesSegmentTranscript(episodeSegmentId);
 		return true;
 	}
 

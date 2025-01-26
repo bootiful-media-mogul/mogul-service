@@ -7,11 +7,12 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
+import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
 import com.joshlong.mogul.api.transcription.Transcriber;
-import com.joshlong.mogul.api.transcription.TranscriptionProcessedEvent;
+import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +62,11 @@ class DefaultPodcastService implements PodcastService {
 
 	private final ApplicationEventPublisher publisher;
 
+	private final MogulService mogulService;
+
 	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer, JdbcClient db,
-			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber) {
+			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber,
+			MogulService mogulService) {
 		this.compositionService = compositionService;
 		this.db = db;
 		this.mediaNormalizer = mediaNormalizer;
@@ -71,6 +75,7 @@ class DefaultPodcastService implements PodcastService {
 		this.transcriber = transcriber;
 		this.podcastRowMapper = new PodcastRowMapper();
 		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFile);
+		this.mogulService = mogulService;
 	}
 
 	@Override
@@ -149,7 +154,7 @@ class DefaultPodcastService implements PodcastService {
 						.update();
 
 					if (segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
-						this.transcribe(segment.id(), Segment.class,
+						this.transcribe(mf.mogulId(), segment.id(), Segment.class,
 								this.managedFileService.read(segment.producedAudio().id()));
 					}
 					updatedFlag.set(true);
@@ -167,22 +172,34 @@ class DefaultPodcastService implements PodcastService {
 		}
 	}
 
-	private void transcribe(Serializable key, Class<?> subject, Resource resource) {
+	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
 		var reply = this.transcriber.transcribe(resource);
-		var transcriptionProcessedEvent = new TranscriptionProcessedEvent(key, reply, subject);
-		this.publisher.publishEvent(transcriptionProcessedEvent);
+		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
+		this.publisher.publishEvent(tpe);
 	}
 
 	@ApplicationModuleListener
-	void onPodcastEpisodeSegmentTranscription(TranscriptionProcessedEvent processedEvent) throws Exception {
+	void onPodcastEpisodeSegmentTranscription(TranscriptProcessedEvent processedEvent) throws Exception {
 		var key = processedEvent.key();
 		var txt = processedEvent.transcript();
 		var clzz = processedEvent.subject();
+		var mogulId = processedEvent.mogulId();
 		if (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName())
 				&& key instanceof Number number) {
 			var id = number.longValue();
 			this.setPodcastEpisodesSegmentTranscript(id, true, txt);
 		}
+
+		// todo publish a notification event back down to the client that it then
+		// interprets to reload the transcripton component _IF_ the transcript
+		// for this particular segment happens to be loaded!
+		// maybe we should also gray out the text box to disallow text input while this
+		// transcription is happening server-side?
+		// this event (on(TranscriptProcessedEvent) will be called both when manually
+		// updating a transcript and when re-initializing it
+		var notificationEvent = NotificationEvent.notificationEventFor(mogulId, processedEvent,
+				processedEvent.key().toString(), processedEvent.transcript(), false, false);
+		NotificationEvents.notify(notificationEvent);
 	}
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
@@ -458,6 +475,18 @@ class DefaultPodcastService implements PodcastService {
 		} //
 		else {
 			this.log.debug("could not find the podcast episode segment with id: {} ", episodeSegmentId);
+		}
+	}
+
+	@Override
+	public void refreshPodcastEpisodesSegmentTranscript(Long episodeSegmentId) {
+		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
+		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
+		var mogul = this.mogulService.getCurrentMogul().id();
+		if (null != segment && segment.transcribable()) {
+			this.transcribe(mogul, segment.id(), Segment.class,
+					this.managedFileService.read(segment.producedAudio().id()));
+
 		}
 	}
 

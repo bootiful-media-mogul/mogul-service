@@ -134,6 +134,7 @@ type Mutation {
     createCompositionAttachment( compositionId:ID ) : Attachment
     deleteCompositionAttachment( attachmentId:ID ) : ID
     setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
+    refreshPodcastEpisodesSegmentTranscript(episodeSegmentId: ID ) :Boolean
     setManagedFileVisibility( managedFileId: ID,  visible: Boolean) : Boolean
     unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean
     publishPodcastEpisode(episodeId:ID, pluginName: String): Boolean
