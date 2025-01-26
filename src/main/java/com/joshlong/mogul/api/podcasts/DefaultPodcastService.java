@@ -596,13 +596,21 @@ class DefaultPodcastService implements PodcastService {
 	// future, one hopes.
 	@EventListener(ApplicationReadyEvent.class)
 	void transcribeAllSegments() throws Exception {
-		var segments = this.db.sql("select * from podcast_episode_segment ").query(this.episodeSegmentRowMapper).list();
-		for (var segment : segments) {
-			var mf = segment.producedAudio();
-			if (mf != null && segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
-				this.transcribe(mf.mogulId(), segment.id(), Segment.class,
-						this.managedFileService.read(segment.producedAudio().id()));
+		try {
+			var segments = this.db.sql("select * from podcast_episode_segment ")
+				.query(this.episodeSegmentRowMapper)
+				.list();
+			for (var segment : segments) {
+				var mf = segment.producedAudio();
+				if (mf != null && segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
+					Thread.sleep(30 * 1000);
+					this.transcribe(mf.mogulId(), segment.id(), Segment.class,
+							this.managedFileService.read(segment.producedAudio().id()));
+				}
 			}
+		}
+		catch (Throwable t) {
+			this.log.error("oops! some sort of API error when trying to transcribe segments.", t);
 		}
 
 	}
