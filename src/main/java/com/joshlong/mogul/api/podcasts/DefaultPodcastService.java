@@ -16,6 +16,7 @@ import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
@@ -170,12 +171,6 @@ class DefaultPodcastService implements PodcastService {
 		if (updatedFlag.get()) {
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
 		}
-	}
-
-	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
-		var reply = this.transcriber.transcribe(resource);
-		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
-		this.publisher.publishEvent(tpe);
 	}
 
 	@ApplicationModuleListener
@@ -582,12 +577,34 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Podcast> getAllPodcastsByMogul(Long mogulId) {
-		var pds = this.db //
+		return this.db //
 			.sql("select * from podcast p where p.mogul = ?")//
 			.param(mogulId)//
 			.query(this.podcastRowMapper)//
 			.list();
-		return pds;
+	}
+
+	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
+		this.log.debug("going to transcribe for mogul {} the key {} and subject {} ", mogulId, key, subject.getName());
+		var reply = this.transcriber.transcribe(resource);
+		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
+		this.publisher.publishEvent(tpe);
+		this.log.debug("transcribed for mogul {} the key {} and subject {} ", mogulId, key, subject.getName());
+	}
+
+	// todo delete this once its run for existing records. it wont be needed in the
+	// future, one hopes.
+	@EventListener(ApplicationReadyEvent.class)
+	void transcribeAllSegments() throws Exception {
+		var segments = this.db.sql("select * from podcast_episode_segment ").query(this.episodeSegmentRowMapper).list();
+		for (var segment : segments) {
+			var mf = segment.producedAudio();
+			if (mf != null && segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
+				this.transcribe(mf.mogulId(), segment.id(), Segment.class,
+						this.managedFileService.read(segment.producedAudio().id()));
+			}
+		}
+
 	}
 
 }
