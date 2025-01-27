@@ -96,7 +96,20 @@ class ChunkingTranscriber implements Transcriber {
 				+ parentFile.getAbsolutePath() + "] does not exist, and could not be created.");
 		try {
 			var orderedAudio = this.divide(transcriptionForResource, audio)//
-				.map(tr -> (Callable<String>) () -> this.openAiAudioTranscriptionModel.call(tr.audio()))//
+				.map(tr -> (Callable<String>) () -> {
+					var audioResource = tr.audio();
+					if (audioResource != null) {
+						try {
+							return this.openAiAudioTranscriptionModel.call(audioResource);
+						} //
+						catch (Throwable e) {
+							var formatted = "oops! an error when trying to process a %s # %s"
+								.formatted(TranscriptionSegment.class.getName(), audioResource.getFilename());
+							this.log.error(formatted, e);
+						}
+					}
+					return "";
+				})//
 				.toList();
 			return this.executor//
 				.invokeAll(orderedAudio)//
@@ -105,6 +118,7 @@ class ChunkingTranscriber implements Transcriber {
 				.collect(Collectors.joining());
 		} //
 		catch (Exception e) {
+			this.log.error("trouble trying to transcode!", e);
 			throw new RuntimeException(e);
 		} //
 		finally {
