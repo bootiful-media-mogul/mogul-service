@@ -597,6 +597,7 @@ class DefaultPodcastService implements PodcastService {
 	@EventListener(ApplicationReadyEvent.class)
 	void transcribeAllSegments() throws Exception {
 		try {
+			this.log.debug("using the openai api key [{}]", System.getenv("OPENAI_KEY"));
 			var segments = this.db.sql("select * from podcast_episode_segment ")
 				.query(this.episodeSegmentRowMapper)
 				.list();
