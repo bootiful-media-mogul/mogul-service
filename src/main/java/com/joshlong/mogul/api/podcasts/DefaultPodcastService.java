@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -596,22 +597,27 @@ class DefaultPodcastService implements PodcastService {
 	// future, one hopes.
 	@EventListener(ApplicationReadyEvent.class)
 	void transcribeAllSegments() throws Exception {
+		Executors.newVirtualThreadPerTaskExecutor()
+			.submit(() -> doTranscribe(db, this, log, managedFileService, episodeSegmentRowMapper));
+
+	}
+
+	static void doTranscribe(JdbcClient db, DefaultPodcastService that, Logger log,
+			ManagedFileService managedFileService, SegmentRowMapper episodeRowMapper) {
 		try {
-			this.log.debug("using the openai api key [{}]", System.getenv("OPENAI_KEY"));
-			var segments = this.db.sql("select * from podcast_episode_segment ")
-				.query(this.episodeSegmentRowMapper)
-				.list();
+			log.debug("using the openai api key [{}]", System.getenv("OPENAI_KEY"));
+			var segments = db.sql("select * from podcast_episode_segment ").query(episodeRowMapper).list();
 			for (var segment : segments) {
 				var mf = segment.producedAudio();
 				if (mf != null && segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
 					Thread.sleep(30 * 1000);
-					this.transcribe(mf.mogulId(), segment.id(), Segment.class,
-							this.managedFileService.read(segment.producedAudio().id()));
+					that.transcribe(mf.mogulId(), segment.id(), Segment.class,
+							managedFileService.read(segment.producedAudio().id()));
 				}
 			}
 		}
 		catch (Throwable t) {
-			this.log.error("oops! some sort of API error when trying to transcribe segments.", t);
+			log.error("oops! some sort of API error when trying to transcribe segments.", t);
 		}
 
 	}
