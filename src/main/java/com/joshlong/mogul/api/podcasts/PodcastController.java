@@ -79,7 +79,7 @@ class PodcastController {
 
 	@MutationMapping
 	Episode updatePodcastEpisode(@Argument Long episodeId, @Argument String title, @Argument String description) {
-		return this.podcastService.updatePodcastEpisodeDraft(episodeId, title, description);
+		return this.podcastService.updatePodcastEpisodeDetails(episodeId, title, description);
 	}
 
 	@QueryMapping

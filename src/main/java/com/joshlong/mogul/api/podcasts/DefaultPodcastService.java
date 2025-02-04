@@ -528,7 +528,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public Episode updatePodcastEpisodeDraft(Long episodeId, String title, String description) {
+	public Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description) {
 		Assert.notNull(episodeId, "the episode is null");
 		title = StringUtils.hasText(title) ? title : "";
 		description = StringUtils.hasText(description) ? description : "";

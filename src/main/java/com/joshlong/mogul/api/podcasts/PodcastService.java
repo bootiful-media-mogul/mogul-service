@@ -59,7 +59,7 @@ public interface PodcastService {
 
 	Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description);
 
-	Episode updatePodcastEpisodeDraft(Long episodeId, String title, String description);
+	Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description);
 
 	void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
 
