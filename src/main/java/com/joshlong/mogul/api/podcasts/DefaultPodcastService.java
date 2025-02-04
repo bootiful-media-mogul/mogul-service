@@ -247,15 +247,17 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
+	public Podcast updatePodcast(Long podcastId, String title) {
+		this.db.sql(" update podcast   set title = ? where id = ? ").params(title, podcastId).update();
+		var podcast = this.getPodcastById(podcastId);
+		this.publisher.publishEvent(new PodcastUpdatedEvent(podcast));
+		return podcast;
+	}
+
+	@Override
 	public Episode createPodcastEpisode(Long podcastId, String title, String description, ManagedFile graphic,
 			ManagedFile producedGraphic, ManagedFile producedAudio) {
 		Assert.notNull(podcastId, "the podcast is null");
-		/*
-		 * Assert.hasText(title, "the title has no text"); Assert.hasText(description,
-		 * "the description has no text");
-		 */
-		// todo throw an exception when they try to publish the episode without the title
-		// and description
 		Assert.notNull(graphic, "the graphic is null ");
 		Assert.notNull(producedAudio, "the produced audio is null ");
 		Assert.notNull(producedGraphic, "the produced graphic is null");

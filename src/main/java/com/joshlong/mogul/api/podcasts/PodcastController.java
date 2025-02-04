@@ -253,8 +253,12 @@ class PodcastController {
 	}
 
 	@MutationMapping
+	Podcast updatePodcast(@Argument Long podcastId, @Argument String title) {
+		return this.podcastService.updatePodcast(podcastId, title);
+	}
+
+	@MutationMapping
 	Podcast createPodcast(@Argument String title) {
-		Assert.hasText(title, "the title for the podcast must be non-empty!");
 		return this.podcastService.createPodcast(this.mogulService.getCurrentMogul().id(), title);
 	}
 
