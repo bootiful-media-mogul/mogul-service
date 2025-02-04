@@ -16,14 +16,12 @@ import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -32,7 +30,6 @@ import org.springframework.util.StringUtils;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -204,13 +201,13 @@ class DefaultPodcastService implements PodcastService {
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 		var graphicsWritten = episode.graphic().written() && episode.producedGraphic().written();
-		var complete = graphicsWritten && !segments.isEmpty()
+		var complete = StringUtils.hasText(episode.title()) && StringUtils.hasText(episode.description())
+				&& graphicsWritten && !segments.isEmpty()
 				&& (segments.stream().allMatch(se -> se.audio().written() && se.producedAudio().written()));
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		var episodeById = this.getPodcastEpisodeById(episode.id());
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletionEvent(mogulId, episodeById))) {
-			this.log.info("publishing {}.", e.getClass().getName());
 			this.publisher.publishEvent(e);
 		}
 
@@ -253,8 +250,12 @@ class DefaultPodcastService implements PodcastService {
 	public Episode createPodcastEpisode(Long podcastId, String title, String description, ManagedFile graphic,
 			ManagedFile producedGraphic, ManagedFile producedAudio) {
 		Assert.notNull(podcastId, "the podcast is null");
-		Assert.hasText(title, "the title has no text");
-		Assert.hasText(description, "the description has no text");
+		/*
+		 * Assert.hasText(title, "the title has no text"); Assert.hasText(description,
+		 * "the description has no text");
+		 */
+		// todo throw an exception when they try to publish the episode without the title
+		// and description
 		Assert.notNull(graphic, "the graphic is null ");
 		Assert.notNull(producedAudio, "the produced audio is null ");
 		Assert.notNull(producedGraphic, "the produced graphic is null");
@@ -529,11 +530,12 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Episode updatePodcastEpisodeDraft(Long episodeId, String title, String description) {
 		Assert.notNull(episodeId, "the episode is null");
-		Assert.hasText(title, "the title is null");
-		Assert.hasText(description, "the description is null");
+		title = StringUtils.hasText(title) ? title : "";
+		description = StringUtils.hasText(description) ? description : "";
 		this.db.sql("update podcast_episode set title = ?, description =? where id = ?")
 			.params(title, description, episodeId)
 			.update();
+		this.refreshPodcastEpisodeCompleteness(episodeId);
 		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
 		return this.getPodcastEpisodeById(episodeId);
 	}

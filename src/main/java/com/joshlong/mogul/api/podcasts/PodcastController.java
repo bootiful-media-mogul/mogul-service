@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.compositions.Composition;
-import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
