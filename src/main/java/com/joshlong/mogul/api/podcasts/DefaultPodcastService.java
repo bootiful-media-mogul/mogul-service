@@ -23,6 +23,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -591,35 +592,6 @@ class DefaultPodcastService implements PodcastService {
 		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
 		this.publisher.publishEvent(tpe);
 		this.log.debug("transcribed for mogul {} the key {} and subject {} ", mogulId, key, subject.getName());
-	}
-
-	// todo delete this once its run for existing records. it wont be needed in the
-	// future, one hopes.
-	@EventListener(ApplicationReadyEvent.class)
-	void transcribeAllSegments() throws Exception {
-		Executors.newVirtualThreadPerTaskExecutor()
-			.submit(() -> doTranscribe(db, this, log, managedFileService, episodeSegmentRowMapper));
-
-	}
-
-	static void doTranscribe(JdbcClient db, DefaultPodcastService that, Logger log,
-			ManagedFileService managedFileService, SegmentRowMapper episodeRowMapper) {
-		try {
-			log.debug("using the openai api key [{}]", System.getenv("OPENAI_KEY"));
-			var segments = db.sql("select * from podcast_episode_segment ").query(episodeRowMapper).list();
-			for (var segment : segments) {
-				var mf = segment.producedAudio();
-				if (mf != null && segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
-					Thread.sleep(30 * 1000);
-					that.transcribe(mf.mogulId(), segment.id(), Segment.class,
-							managedFileService.read(segment.producedAudio().id()));
-				}
-			}
-		}
-		catch (Throwable t) {
-			log.error("oops! some sort of API error when trying to transcribe segments.", t);
-		}
-
 	}
 
 }

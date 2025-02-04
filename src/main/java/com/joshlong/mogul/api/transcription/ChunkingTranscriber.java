@@ -144,6 +144,7 @@ class ChunkingTranscriber implements Transcriber {
 		var originalAudio = new File(transcriptionForResource, "audio.mp3");
 		Assert.state(transcriptionForResource.mkdirs(),
 				"the directory [" + transcriptionForResource.getAbsolutePath() + "] has not been created");
+		Assert.notNull(audio, "the audio file must be non null!");
 		FileCopyUtils.copy(audio.getInputStream(), new FileOutputStream(originalAudio));
 		this.enqueueForDeletion(transcriptionForResource);
 		var duration = this.durationFor(originalAudio);
