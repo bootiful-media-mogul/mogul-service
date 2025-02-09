@@ -44,6 +44,17 @@ type Mogul {
 
 type Query {
 
+    # publications
+
+
+    canPublish (
+        publishableType : String ,
+        id :  Int, 
+        contextJson : String ,
+        plugin : String 
+    ) : Boolean
+
+
     # compositions
     compositionById ( compositionId:ID) : Composition
 
@@ -131,6 +142,17 @@ type NotificationEvent {
 }
 
 type Mutation {
+    
+    publish (
+        publishableType : String ,
+        id :  Int,
+        contextJson : String ,
+        plugin : String
+    ) : Boolean
+
+
+
+
     createCompositionAttachment( compositionId:ID ) : Attachment
     deleteCompositionAttachment( attachmentId:ID ) : ID
     setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
