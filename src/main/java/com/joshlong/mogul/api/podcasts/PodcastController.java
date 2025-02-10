@@ -32,32 +32,15 @@ class PodcastController {
 
 	private final PodcastService podcastService;
 
-	private final Map<String, PodcastEpisodePublisherPlugin> plugins;
-
-	private final PublicationService publicationService;
-
-	private final Settings settings;
-
-	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService,
-			Map<String, PodcastEpisodePublisherPlugin> plugins, PublicationService publicationService,
-			Settings settings) {
+	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService) {
 		this.publisher = publisher;
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
-		this.plugins = plugins;
-		this.publicationService = publicationService;
-		this.settings = settings;
 	}
 
 	@QueryMapping
 	Collection<Episode> podcastEpisodesByPodcast(@Argument Long podcastId) {
 		return this.podcastService.getPodcastEpisodesByPodcast(podcastId);
-	}
-
-	@SchemaMapping
-	Collection<Publication> publications(Episode episode) {
-		return this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
-				episode.getClass());
 	}
 
 	@MutationMapping
@@ -105,28 +88,21 @@ class PodcastController {
 	// todo this could be moved to the publication controller
 	// todo remove this once all the logic for publication has been moved to the
 	// PublicationService
-	@BatchMapping
-	Map<Episode, Collection<String>> availablePlugins(List<Episode> episodes) {
-		var mogul = this.mogulService.getCurrentMogul();
-		var mapOfEpisodesToValidPlugins = new HashMap<Episode, Collection<String>>();
-		for (var pluginEntry : this.plugins.entrySet()) {
-			var pluginName = pluginEntry.getKey();
-			var plugin = pluginEntry.getValue();
-			var configuration = this.settings.getAllValuesByCategory(mogul.id(), pluginName);
-			for (var episode : episodes) {
-				var pluginNamesForEpisode = mapOfEpisodesToValidPlugins.computeIfAbsent(episode,
-						e -> new ArrayList<>());
-				if (plugin.canPublish(configuration, episode)) {
-					pluginNamesForEpisode.add(plugin.name());
-				} //
-				else {
-					this.log.trace("can not publish with plugin {} for episode #{} with title {}", plugin.name(),
-							episode.id(), episode.title());
-				}
-			}
-		}
-		return mapOfEpisodesToValidPlugins;
-	}
+	/*
+	 * @BatchMapping Map<Episode, Collection<String>> availablePlugins(List<Episode>
+	 * episodes) { var mogul = this.mogulService.getCurrentMogul(); var
+	 * mapOfEpisodesToValidPlugins = new HashMap<Episode, Collection<String>>(); for (var
+	 * pluginEntry : this.plugins.entrySet()) { var pluginName = pluginEntry.getKey(); var
+	 * plugin = pluginEntry.getValue(); var configuration =
+	 * this.settings.getAllValuesByCategory(mogul.id(), pluginName); for (var episode :
+	 * episodes) { var pluginNamesForEpisode =
+	 * mapOfEpisodesToValidPlugins.computeIfAbsent(episode, e -> new ArrayList<>()); if
+	 * (plugin.canPublish(configuration, episode)) {
+	 * pluginNamesForEpisode.add(plugin.name()); } // else {
+	 * this.log.trace("can not publish with plugin {} for episode #{} with title {}",
+	 * plugin.name(), episode.id(), episode.title()); } } } return
+	 * mapOfEpisodesToValidPlugins; }
+	 */
 
 	@SchemaMapping
 	long created(Podcast podcast) {
@@ -178,16 +154,6 @@ class PodcastController {
 				"you must have at least one active, non-deleted podcast");
 		this.podcastService.deletePodcast(podcast.id());
 		return id;
-	}
-
-	@SchemaMapping
-	long created(Publication publication) {
-		return publication.created().getTime();
-	}
-
-	@SchemaMapping
-	Long published(Publication publication) {
-		return publication.published() != null ? publication.published().getTime() : null;
 	}
 
 	@BatchMapping

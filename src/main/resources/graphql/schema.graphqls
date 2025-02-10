@@ -42,46 +42,6 @@ type Mogul {
 }
 
 
-type Query {
-
-    # publications
-
-
-    canPublish (
-        publishableType : String ,
-        id :  Int, 
-        contextJson : String ,
-        plugin : String 
-    ) : Boolean
-
-
-    # compositions
-    compositionById ( compositionId:ID) : Composition
-
-    # misc 
-    renderMarkdown( markdown : String) : String
-
-    # notifications
-    notifications: NotificationEvent
-
-    # settings
-    settings: [SettingsPage]
-
-    # mogul
-    me: Mogul
-
-    # ai
-    aiChat(prompt:String): String
-
-    # podcasts
-    podcastById(id:ID): Podcast
-    podcasts: [Podcast]
-    podcastEpisodeById(id:ID): Episode
-    podcastEpisodesByPodcast (podcastId: ID) : [Episode]
-
-    # managedFiles
-    managedFileById ( id : ID) : ManagedFile
-}
 
 type ManagedFile {
     id: ID
@@ -110,7 +70,7 @@ type Episode {
     complete: Boolean
     created: Float
     segments : [Segment]
-    publications : [Publication]
+    #publications : [Publication]
 }
 
 type Segment {
@@ -142,16 +102,13 @@ type NotificationEvent {
 }
 
 type Mutation {
-    
-    publish (
+
+    publish(
         publishableType : String ,
         id :  Int,
         contextJson : String ,
         plugin : String
     ) : Boolean
-
-
-
 
     createCompositionAttachment( compositionId:ID ) : Attachment
     deleteCompositionAttachment( attachmentId:ID ) : ID
@@ -171,4 +128,45 @@ type Mutation {
     movePodcastEpisodeSegmentUp(episodeId: ID  , episodeSegmentId: ID ): Boolean
     movePodcastEpisodeSegmentDown(episodeId: ID  , episodeSegmentId: ID ): Boolean
     updateSetting(category:String, name:String, value:String): Boolean
+}
+
+
+type Query {
+
+    publicationsForPublishable( type : String, id: Int ) : [Publication]
+
+    canPublish (
+        publishableType: String ,
+        id: Int ,
+        contextJson: String ,
+        plugin: String
+    ) : Boolean
+
+
+    # compositions
+    compositionById ( compositionId:ID) : Composition
+
+    # misc 
+    renderMarkdown( markdown : String) : String
+
+    # notifications
+    notifications: NotificationEvent
+
+    # settings
+    settings: [SettingsPage]
+
+    # mogul
+    me: Mogul
+
+    # ai
+    aiChat(prompt:String): String
+
+    # podcasts
+    podcastById(id:ID): Podcast
+    podcasts: [Podcast]
+    podcastEpisodeById(id:ID): Episode
+    podcastEpisodesByPodcast (podcastId: ID) : [Episode]
+
+    # managedFiles
+    managedFileById ( id : ID) : ManagedFile
 }
