@@ -152,10 +152,13 @@ class PublicationController<T extends Publishable> {
 		return publication.published() != null ? publication.published().getTime() : null;
 	}
 
-	// todo tie the UNpublication logic into this new subsystem!
 	@MutationMapping
 	boolean unpublish(@Argument Long publicationId) {
+		this.log.debug("going to unpublish the publication with id # {}", publicationId);
+		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
+
 		var runnable = (Runnable) () -> {
+			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.log.debug("going to unpublish the publication with id # {}", publicationId);
 			var publicationById = this.publicationService.getPublicationById(publicationId);
 			Assert.notNull(publicationById, "the publication should not be null");
@@ -168,16 +171,3 @@ class PublicationController<T extends Publishable> {
 	}
 
 }
-/*
- *
- *
- * @MutationMapping boolean unpublishPodcastEpisodePublication(@Argument Long
- * publicationId) { var runnable = (Runnable) () -> {
- * log.debug("going to unpublish the publication with id # {}", publicationId); var
- * publicationById = this.publicationService.getPublicationById(publicationId);
- * Assert.notNull(publicationById, "the publication should not be null"); var plugin =
- * this.plugins.get(publicationById.plugin()); Assert.notNull(plugin,
- * "you must specify an active plugin");
- * this.publicationService.unpublish(publicationById.mogulId(), publicationById, plugin);
- * }; this.executor.execute(runnable); return true; }
- */

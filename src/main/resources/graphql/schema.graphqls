@@ -103,11 +103,13 @@ type NotificationEvent {
 
 type Mutation {
 
+    unpublish(publicationId : Int): Boolean
+    
     publish(
-        publishableType : String ,
-        id :  Int,
-        contextJson : String ,
-        plugin : String
+        publishableType: String ,
+        id: Int,
+        contextJson: String ,
+        plugin: String
     ) : Boolean
 
     createCompositionAttachment( compositionId:ID ) : Attachment

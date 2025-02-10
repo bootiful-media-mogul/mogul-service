@@ -116,7 +116,8 @@ class DefaultPublicationService implements PublicationService {
 			}
 		}
 		catch (Exception throwable) {
-			log.warn("couldn't unpublish {} with url {}", publication.id(), publication.url());
+			this.log.warn(String.format("couldn't unpublish " + publication.id() + " with url " + publication.url()),
+					throwable);
 			//
 		}
 		return this.getPublicationById(publication.id());

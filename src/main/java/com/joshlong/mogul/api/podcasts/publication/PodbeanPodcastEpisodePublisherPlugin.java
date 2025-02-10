@@ -130,13 +130,12 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var done = new AtomicBoolean(false);
 		var episodeId = context.get(CONTEXT_PODBEAN_EPISODE_ID);
 		this.podbeanClient//
-			.getAllEpisodes() // todo this is super inefficient. is there no way to get a
-			// single episode?
+			.getAllEpisodes()
 			.stream()
 			.filter(episode -> episode.getId().equalsIgnoreCase(episodeId))
 			.forEach(episode -> {
 				this.podbeanClient.updateEpisode(episodeId, episode.getTitle(), episode.getContent(),
-						EpisodeStatus.DRAFT, EpisodeType.PRIVATE, null, null);
+						EpisodeStatus.DRAFT, EpisodeType.PUBLIC, null, null);
 				done.set(true);
 				log.debug("unpublishing podbean publication for episode #{}", publication.payload());
 			});
