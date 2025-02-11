@@ -25,6 +25,7 @@ type Publication {
     url:String
     created: Float
     published: Float
+    state : String
 }
 
 type SettingsPage {
@@ -97,7 +98,7 @@ type NotificationEvent {
 }
 
 type Mutation {
-    
+
     # publications
     unpublish( publicationId: Int): Boolean
     publish( publishableId: Int,
@@ -113,11 +114,11 @@ type Mutation {
     createPodcast(title:String): Podcast
     deletePodcast(podcastId:Int): Boolean
     updatePodcast(podcastId:Int, title:String ): Boolean
-    
+
     # podcast episodes
     createPodcastEpisodeDraft(
         podcastId:Int ,
-        title:String, 
+        title:String,
         description:String): Episode
     updatePodcastEpisode( podcastEpisodeId: Int, title: String, description: String): Boolean
     deletePodcastEpisode(podcastEpisodeId: Int): Boolean
@@ -125,34 +126,25 @@ type Mutation {
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
-    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId:  Int , transcribable: Boolean, transcript: String) : Boolean
+    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcribable: Boolean, transcript: String) : Boolean
     transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
-    movePodcastEpisodeSegmentUp(podcastEpisodeId: Int  ,
-        podcastEpisodeSegmentId: Int  ): Boolean
-    movePodcastEpisodeSegmentDown(podcastEpisodeId: Int,
-        podcastEpisodeSegmentId: Int  ): Boolean
-    
+    movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
+    movePodcastEpisodeSegmentDown(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
+
     # managed files
     setManagedFileVisibility(managedFileId: Int , visible: Boolean): Boolean
-
-        
     
+    # settings
     updateSetting(category:String, name:String, value:String): Boolean
 }
 
 
 type Query {
-    
+
     # publications
     publicationsForPublishable( type : String, id: Int ) : [Publication]
-    canPublish (
-        publishableId: Int ,
-        publishableType: String ,
-        contextJson: String ,
-        plugin: String
-    ) : Boolean
-
-
+    canPublish ( publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
+    
     # compositions
     compositionById ( compositionId:Int) : Composition
 

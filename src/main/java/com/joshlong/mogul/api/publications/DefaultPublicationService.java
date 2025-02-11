@@ -111,13 +111,12 @@ class DefaultPublicationService implements PublicationService {
 				this.db.sql("update publication set state = ?, context = ? where id =? ")
 					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
 					.update();
-
 				this.publisher.publishEvent(new PublicationUpdatedEvent(publication.id()));
+
 			}
 		}
 		catch (Exception throwable) {
 			this.log.warn("couldn't unpublish " + publication.id() + " with url " + publication.url(), throwable);
-			//
 		}
 		return this.getPublicationById(publication.id());
 
@@ -226,6 +225,7 @@ class DefaultPublicationService implements PublicationService {
 
 	@EventListener
 	void updated(PublicationUpdatedEvent pue) {
+		this.log.info("publicationUpdatedEvent");
 		this.refreshCache();
 	}
 

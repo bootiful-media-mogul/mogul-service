@@ -108,6 +108,11 @@ class PublicationController<T extends Publishable> {
 	}
 
 	@SchemaMapping
+	String state(Publication publication) {
+		return publication.state().name().toLowerCase();
+	}
+
+	@SchemaMapping
 	Long published(Publication publication) {
 		return publication.published() != null ? publication.published().getTime() : null;
 	}
@@ -115,18 +120,11 @@ class PublicationController<T extends Publishable> {
 	@MutationMapping
 	boolean unpublish(@Argument Long publicationId) {
 		this.log.debug("going to unpublish the publication with id # {}", publicationId);
-		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
-
-		var runnable = (Runnable) () -> {
-			SecurityContextHolder.getContext().setAuthentication(auth);
-			this.log.debug("going to unpublish the publication with id # {}", publicationId);
-			var publicationById = this.publicationService.getPublicationById(publicationId);
-			Assert.notNull(publicationById, "the publication should not be null");
-			var resolvedPlugin = this.plugins.get(publicationById.plugin());
-			Assert.notNull(resolvedPlugin, "you must specify an active plugin");
-			this.publicationService.unpublish(publicationById.mogulId(), publicationById, resolvedPlugin);
-		};
-		this.executor.execute(runnable);
+		var publicationById = this.publicationService.getPublicationById(publicationId);
+		Assert.notNull(publicationById, "the publication should not be null");
+		var resolvedPlugin = this.plugins.get(publicationById.plugin());
+		Assert.notNull(resolvedPlugin, "you must specify an active plugin");
+		this.publicationService.unpublish(publicationById.mogulId(), publicationById, resolvedPlugin);
 		return true;
 	}
 
