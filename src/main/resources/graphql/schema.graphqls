@@ -5,22 +5,22 @@ type Setting {
 }
 
 type Composition  {
+    id: Int
     mogulId: Int
-    id:ID
     field:String
     attachments: [Attachment]
 }
 
 type Attachment {
-    id: ID
+    id: Int
     caption: String
     managedFile: ManagedFile
     embedding: String
 }
 
 type Publication {
-    mogulId:Int
-    id:ID
+    mogulId: Int
+    id: Int
     plugin:String
     url:String
     created: Float
@@ -41,10 +41,8 @@ type Mogul {
     email : String
 }
 
-
-
 type ManagedFile {
-    id: ID
+    id: Int
     bucket: String
     folder: String
     filename: String
@@ -57,12 +55,10 @@ type ManagedFile {
 }
 
 type Episode {
+    id : Int
     titleComposition: Composition
     descriptionComposition: Composition
-
-    #
     availablePlugins :[String]
-    id : ID
     title: String
     description: String
     valid: Boolean
@@ -70,11 +66,10 @@ type Episode {
     complete: Boolean
     created: Float
     segments : [Segment]
-    #publications : [Publication]
 }
 
 type Segment {
-    id : ID
+    id : Int
     name : String
     transcript : String
     transcribable : Boolean
@@ -85,14 +80,14 @@ type Segment {
 }
 
 type Podcast {
-    id: ID
+    id: Int
     title: String
     episodes : [Episode]
     created: Float
 }
 
 type NotificationEvent {
-    mogulId: ID
+    mogulId: Int
     category: String
     key: String
     when :  Float
@@ -102,54 +97,67 @@ type NotificationEvent {
 }
 
 type Mutation {
-
-    unpublish(publicationId : Int): Boolean
     
-    publish(
-        publishableType: String ,
-        id: Int,
-        contextJson: String ,
-        plugin: String
-    ) : Boolean
+    # publications
+    unpublish( publicationId: Int): Boolean
+    publish( publishableId: Int,
+        publishableType: String,
+        contextJson: String,
+        plugin: String): Boolean
 
-    createCompositionAttachment( compositionId:ID ) : Attachment
-    deleteCompositionAttachment( attachmentId:ID ) : ID
-    setPodcastEpisodesSegmentTranscript(episodeSegmentId: ID, transcribable: Boolean, transcript: String) :Boolean
-    refreshPodcastEpisodesSegmentTranscript(episodeSegmentId: ID ) :Boolean
-    setManagedFileVisibility( managedFileId: ID,  visible: Boolean) : Boolean
-    unpublishPodcastEpisodePublication ( publicationId: ID) : Boolean
-    publishPodcastEpisode(episodeId:ID, pluginName: String): Boolean
-    updatePodcastEpisode(episodeId: ID, title: String, description: String): Episode
+    # compositions
+    createCompositionAttachment( compositionId: Int  ) : Attachment
+    deleteCompositionAttachment( compositionAttachmentId: Int  ) : Boolean
+
+    # podcasts
     createPodcast(title:String): Podcast
-    createPodcastEpisodeDraft(podcastId: ID, title: String, description:String): Episode
-    deletePodcast(id:ID): ID
-    updatePodcast( podcastId:ID, title:String ): Podcast
-    deletePodcastEpisode(id:ID): ID
-    deletePodcastEpisodeSegment(id:ID): ID
-    addPodcastEpisodeSegment(episodeId: ID): Boolean
-    movePodcastEpisodeSegmentUp(episodeId: ID  , episodeSegmentId: ID ): Boolean
-    movePodcastEpisodeSegmentDown(episodeId: ID  , episodeSegmentId: ID ): Boolean
+    deletePodcast(podcastId:Int): Boolean
+    updatePodcast(podcastId:Int, title:String ): Boolean
+    
+    # podcast episodes
+    createPodcastEpisodeDraft(
+        podcastId:Int ,
+        title:String, 
+        description:String): Episode
+    updatePodcastEpisode( podcastEpisodeId: Int, title: String, description: String): Boolean
+    deletePodcastEpisode(podcastEpisodeId: Int): Boolean
+
+    # podcast episode segments 
+    deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
+    createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
+    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId:  Int , transcribable: Boolean, transcript: String) : Boolean
+    transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
+    movePodcastEpisodeSegmentUp(podcastEpisodeId: Int  ,
+        podcastEpisodeSegmentId: Int  ): Boolean
+    movePodcastEpisodeSegmentDown(podcastEpisodeId: Int,
+        podcastEpisodeSegmentId: Int  ): Boolean
+    
+    # managed files
+    setManagedFileVisibility(managedFileId: Int , visible: Boolean): Boolean
+
+        
+    
     updateSetting(category:String, name:String, value:String): Boolean
 }
 
 
 type Query {
-
+    
+    # publications
     publicationsForPublishable( type : String, id: Int ) : [Publication]
-
     canPublish (
+        publishableId: Int ,
         publishableType: String ,
-        id: Int ,
         contextJson: String ,
         plugin: String
     ) : Boolean
 
 
     # compositions
-    compositionById ( compositionId:ID) : Composition
+    compositionById ( compositionId:Int) : Composition
 
     # misc 
-    renderMarkdown( markdown : String) : String
+    renderedMarkdown( markdown : String) : String
 
     # notifications
     notifications: NotificationEvent
@@ -164,11 +172,11 @@ type Query {
     aiChat(prompt:String): String
 
     # podcasts
-    podcastById(id:ID): Podcast
+    podcastById(podcastId: Int ): Podcast
     podcasts: [Podcast]
-    podcastEpisodeById(id:ID): Episode
-    podcastEpisodesByPodcast (podcastId: ID) : [Episode]
+    podcastEpisodeById(  podcastEpisodeId:Int ): Episode
+    podcastEpisodesByPodcast (podcastId: Int ) : [Episode]
 
     # managedFiles
-    managedFileById ( id : ID) : ManagedFile
+    managedFileById( managedFileId: Int ) : ManagedFile
 }

@@ -20,13 +20,13 @@ public interface PodcastService {
 	// todo could we genericize this so that there's a chain of responsibility on the
 	// server side, event listeners, that handle updating a particular type of entity's
 	// transcript?
-	void setPodcastEpisodesSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript);
+	void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript);
 
 	// forces the server to re-initialize the transcript for this podcast episode segment.
 	// todo could we genericize this so that there's a chain of responsibility on the
 	// server side, event listeners, that handle refreshing a particular type of entity's
 	// transcript?
-	void refreshPodcastEpisodesSegmentTranscript(Long episodeSegmentId);
+	void transcribePodcastEpisodeSegment(Long episodeSegmentId);
 
 	void movePodcastEpisodeSegmentUp(Long episode, Long segment);
 

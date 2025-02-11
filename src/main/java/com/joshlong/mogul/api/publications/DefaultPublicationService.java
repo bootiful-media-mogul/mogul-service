@@ -31,6 +31,7 @@ import java.util.function.Function;
 
 import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
 
+@SuppressWarnings("unused")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })
 class DefaultPublicationService implements PublicationService {
 
@@ -38,8 +39,6 @@ class DefaultPublicationService implements PublicationService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	// mapping of an element (podcast episode, youtube video, blog, etc.)'s id to the
-	// publications associated with that element
 	private final Map<String, Collection<Publication>> publicationsCache = new ConcurrentHashMap<>();
 
 	private final Function<SettingsLookup, Map<String, String>> settingsLookup;
@@ -72,7 +71,8 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	@Override
-	public <T extends Publishable> T resolvePublishable(Long mogulId, Serializable id, Class<T> clazz) {
+	@SuppressWarnings("unchecked")
+	public <T extends Publishable> T resolvePublishable(Long mogulId, Long id, Class<T> clazz) {
 		this.mogulService.assertAuthorizedMogul(mogulId);
 		for (var pr : this.publishableRepositories) {
 			if (pr.supports(clazz)) {
@@ -84,13 +84,13 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	@Override
-	public <T extends Publishable> boolean canPublish(Long mogulId, Serializable serializable, Class<T> clazz,
+	public <T extends Publishable> boolean canPublish(Long mogulId, Long publishableId, Class<T> clazz,
 			Map<String, String> contextAndSettings, PublisherPlugin<T> plugin) {
 		var mogul = this.mogulService.getMogulById(mogulId);
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(mogul, "the mogul should not be null");
 		var ctx = new HashMap<>(contextAndSettings == null ? Map.of() : contextAndSettings);
-		var payload = this.resolvePublishable(mogulId, serializable, clazz);
+		var payload = this.resolvePublishable(mogulId, publishableId, clazz);
 		return plugin.canPublish(ctx, payload);
 	}
 
@@ -116,8 +116,7 @@ class DefaultPublicationService implements PublicationService {
 			}
 		}
 		catch (Exception throwable) {
-			this.log.warn(String.format("couldn't unpublish " + publication.id() + " with url " + publication.url()),
-					throwable);
+			this.log.warn("couldn't unpublish " + publication.id() + " with url " + publication.url(), throwable);
 			//
 		}
 		return this.getPublicationById(publication.id());
@@ -208,8 +207,7 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	@Override
-	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Serializable publicationKey,
-			Class<?> clazz) {
+	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz) {
 		var key = this.buildPublicationCacheKey(clazz, publicationKey);
 		if (this.publicationsCache.containsKey(key)) {
 			return this.publicationsCache//
@@ -224,8 +222,6 @@ class DefaultPublicationService implements PublicationService {
 	@EventListener
 	void applicationReady(ApplicationReadyEvent are) {
 		this.scheduledExecutorService.submit(this::refreshCache);
-		// todo why is this a minute later? why did this code exist?
-		// this.scheduledExecutorService.schedule(this::refreshCache, 1, TimeUnit.);
 	}
 
 	@EventListener

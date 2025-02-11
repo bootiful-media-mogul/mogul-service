@@ -1,12 +1,8 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.Publication;
-import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
-import com.joshlong.mogul.api.podcasts.publication.PodcastEpisodePublisherPlugin;
-import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,65 +40,48 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	boolean movePodcastEpisodeSegmentDown(@Argument Long episodeId, @Argument Long episodeSegmentId) {
-		this.podcastService.movePodcastEpisodeSegmentDown(episodeId, episodeSegmentId);
+	boolean movePodcastEpisodeSegmentDown(@Argument Long podcastEpisodeId, @Argument Long segmentId) {
+		this.podcastService.movePodcastEpisodeSegmentDown(podcastEpisodeId, segmentId);
 		return true;
 	}
 
 	@MutationMapping
-	boolean movePodcastEpisodeSegmentUp(@Argument Long episodeId, @Argument Long episodeSegmentId) {
-		this.podcastService.movePodcastEpisodeSegmentUp(episodeId, episodeSegmentId);
+	boolean movePodcastEpisodeSegmentUp(@Argument Long podcastEpisodeId, @Argument Long segmentId) {
+		this.podcastService.movePodcastEpisodeSegmentUp(podcastEpisodeId, segmentId);
 		return true;
 	}
 
 	@MutationMapping
-	Episode updatePodcastEpisode(@Argument Long episodeId, @Argument String title, @Argument String description) {
-		return this.podcastService.updatePodcastEpisodeDetails(episodeId, title, description);
+	boolean updatePodcastEpisode(@Argument Long podcastEpisodeId, @Argument String title,
+			@Argument String description) {
+		this.podcastService.updatePodcastEpisodeDetails(podcastEpisodeId, title, description);
+		return true;
 	}
 
 	@QueryMapping
-	Episode podcastEpisodeById(@Argument Long id) {
-		return this.podcastService.getPodcastEpisodeById(id);
+	Episode podcastEpisodeById(@Argument Long podcastEpisodeId) {
+		return this.podcastService.getPodcastEpisodeById(podcastEpisodeId);
 	}
 
 	@MutationMapping
-	boolean addPodcastEpisodeSegment(@Argument Long episodeId) {
+	boolean createPodcastEpisodeSegment(@Argument Long podcastEpisodeId) {
 		var mogul = this.mogulService.getCurrentMogul().id();
-		this.podcastService.createPodcastEpisodeSegment(mogul, episodeId, "", 0);
+		this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
 		return true;
 	}
 
 	@MutationMapping
-	boolean refreshPodcastEpisodesSegmentTranscript(@Argument Long episodeSegmentId) {
-		this.podcastService.refreshPodcastEpisodesSegmentTranscript(episodeSegmentId);
+	boolean transcribePodcastEpisodeSegment(@Argument Long podcastEpisodeSegmentId) {
+		this.podcastService.transcribePodcastEpisodeSegment(podcastEpisodeSegmentId);
 		return true;
 	}
 
 	@MutationMapping
-	boolean setPodcastEpisodesSegmentTranscript(@Argument Long episodeSegmentId, @Argument boolean transcribable,
+	boolean setPodcastEpisodeSegmentTranscript(@Argument Long podcastEpisodeSegmentId, @Argument boolean transcribable,
 			@Argument String transcript) {
-		this.podcastService.setPodcastEpisodesSegmentTranscript(episodeSegmentId, transcribable, transcript);
+		this.podcastService.setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId, transcribable, transcript);
 		return true;
 	}
-
-	// todo this could be moved to the publication controller
-	// todo remove this once all the logic for publication has been moved to the
-	// PublicationService
-	/*
-	 * @BatchMapping Map<Episode, Collection<String>> availablePlugins(List<Episode>
-	 * episodes) { var mogul = this.mogulService.getCurrentMogul(); var
-	 * mapOfEpisodesToValidPlugins = new HashMap<Episode, Collection<String>>(); for (var
-	 * pluginEntry : this.plugins.entrySet()) { var pluginName = pluginEntry.getKey(); var
-	 * plugin = pluginEntry.getValue(); var configuration =
-	 * this.settings.getAllValuesByCategory(mogul.id(), pluginName); for (var episode :
-	 * episodes) { var pluginNamesForEpisode =
-	 * mapOfEpisodesToValidPlugins.computeIfAbsent(episode, e -> new ArrayList<>()); if
-	 * (plugin.canPublish(configuration, episode)) {
-	 * pluginNamesForEpisode.add(plugin.name()); } // else {
-	 * this.log.trace("can not publish with plugin {} for episode #{} with title {}",
-	 * plugin.name(), episode.id(), episode.title()); } } } return
-	 * mapOfEpisodesToValidPlugins; }
-	 */
 
 	@SchemaMapping
 	long created(Podcast podcast) {
@@ -115,8 +94,8 @@ class PodcastController {
 	}
 
 	@QueryMapping
-	Podcast podcastById(@Argument Long id) {
-		return this.podcastService.getPodcastById(id);
+	Podcast podcastById(@Argument Long podcastId) {
+		return this.podcastService.getPodcastById(podcastId);
 	}
 
 	@QueryMapping
@@ -132,20 +111,26 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	Long deletePodcastEpisode(@Argument Long id) {
-		this.podcastService.deletePodcastEpisode(id);
-		return id;
+	boolean deletePodcastEpisode(@Argument Long podcastEpisodeId) {
+		this.podcastService.deletePodcastEpisode(podcastEpisodeId);
+		return true;
 	}
 
 	@MutationMapping
-	Long deletePodcastEpisodeSegment(@Argument Long id) {
-		this.podcastService.deletePodcastEpisodeSegment(id);
-		return id;
+	boolean deletePodcastEpisodeSegment(@Argument Long podcastEpisodeSegmentId) {
+		this.podcastService.deletePodcastEpisodeSegment(podcastEpisodeSegmentId);
+		return true;
 	}
 
 	@MutationMapping
-	Long deletePodcast(@Argument Long id) {
-		var podcast = this.podcastService.getPodcastById(id);
+	Episode createPodcastEpisodeDraft(@Argument Long podcastId, @Argument String title, @Argument String description) {
+		var mogulId = this.mogulService.getCurrentMogul().id();
+		return this.podcastService.createPodcastEpisodeDraft(mogulId, podcastId, title, description);
+	}
+
+	@MutationMapping
+	boolean deletePodcast(@Argument Long podcastId) {
+		var podcast = this.podcastService.getPodcastById(podcastId);
 		Assert.notNull(podcast, "the podcast is null");
 		var mogulId = podcast.mogulId();
 		this.mogulService.assertAuthorizedMogul(mogulId);
@@ -153,7 +138,7 @@ class PodcastController {
 		Assert.state(!podcasts.isEmpty() && podcasts.size() - 1 > 0,
 				"you must have at least one active, non-deleted podcast");
 		this.podcastService.deletePodcast(podcast.id());
-		return id;
+		return true;
 	}
 
 	@BatchMapping
@@ -183,19 +168,14 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	Podcast updatePodcast(@Argument Long podcastId, @Argument String title) {
-		return this.podcastService.updatePodcast(podcastId, title);
+	boolean updatePodcast(@Argument Long podcastId, @Argument String title) {
+		this.podcastService.updatePodcast(podcastId, title);
+		return true;
 	}
 
 	@MutationMapping
 	Podcast createPodcast(@Argument String title) {
 		return this.podcastService.createPodcast(this.mogulService.getCurrentMogul().id(), title);
-	}
-
-	@MutationMapping
-	Episode createPodcastEpisodeDraft(@Argument Long podcastId, @Argument String title, @Argument String description) {
-		return this.podcastService.createPodcastEpisodeDraft(this.mogulService.getCurrentMogul().id(), podcastId, title,
-				description);
 	}
 
 	@ApplicationModuleListener

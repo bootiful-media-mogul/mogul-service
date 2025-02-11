@@ -14,7 +14,7 @@ class MarkdownController {
 	}
 
 	@QueryMapping
-	String renderMarkdown(@Argument String markdown) {
+	String renderedMarkdown(@Argument String markdown) {
 		return this.service.render(markdown);
 	}
 

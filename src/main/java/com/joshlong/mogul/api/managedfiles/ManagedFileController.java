@@ -52,8 +52,8 @@ class ManagedFileController {
 	}
 
 	@QueryMapping
-	ManagedFile managedFileById(@Argument Long id) {
-		return this.managedFileService.getManagedFile(id);
+	ManagedFile managedFileById(@Argument Long managedFileId) {
+		return this.managedFileService.getManagedFile(managedFileId);
 	}
 
 	@ResponseBody

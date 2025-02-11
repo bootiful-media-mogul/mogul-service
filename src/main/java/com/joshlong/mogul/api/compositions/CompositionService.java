@@ -13,6 +13,6 @@ public interface CompositionService {
 
 	Composition getCompositionById(Long id);
 
-	void deleteCompositionAttachment(Long id);
+	boolean deleteCompositionAttachment(Long id);
 
 }

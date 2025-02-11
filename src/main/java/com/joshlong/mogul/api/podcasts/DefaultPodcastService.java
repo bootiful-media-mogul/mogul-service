@@ -181,7 +181,7 @@ class DefaultPodcastService implements PodcastService {
 		if (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName())
 				&& key instanceof Number number) {
 			var id = number.longValue();
-			this.setPodcastEpisodesSegmentTranscript(id, true, txt);
+			this.setPodcastEpisodeSegmentTranscript(id, true, txt);
 		}
 
 		// todo publish a notification event back down to the client that it then
@@ -463,7 +463,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public void setPodcastEpisodesSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript) {
+	public void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript) {
 		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
 		if (null != segment) {
 			var updated = this.db
@@ -479,7 +479,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public void refreshPodcastEpisodesSegmentTranscript(Long episodeSegmentId) {
+	public void transcribePodcastEpisodeSegment(Long episodeSegmentId) {
 		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
 		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
 		var mogul = this.mogulService.getCurrentMogul().id();

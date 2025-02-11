@@ -16,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+@SuppressWarnings("unchecked")
 @Controller
 class PublicationController<T extends Publishable> {
 
@@ -47,9 +47,7 @@ class PublicationController<T extends Publishable> {
 		this.mogulService = mogulService;
 		this.settings = settings;
 
-		for (var p : plugins.entrySet()) {
-			this.plugins.put(p.getKey(), (PublisherPlugin<T>) p.getValue());
-		}
+		plugins.forEach((k, v) -> this.plugins.put(k, (PublisherPlugin<T>) v));
 
 		for (var r : resolvers.entrySet()) {
 			var resolver = r.getValue();
@@ -59,71 +57,34 @@ class PublicationController<T extends Publishable> {
 		}
 	}
 
-	// todo make publish and unpublish work.
-	// todo remember to remove publish ad unpublush logic from the podcasts controller /
-	// service.
-
-	private Map<String, String> contextFromClient(String json) {
-		if (StringUtils.hasText(json)) {
-			// @formatter:off
-            return JsonUtils.read(json, new ParameterizedTypeReference<>() {});
-            // @formatter:on
-		}
-		return new HashMap<>();
-	}
-
 	@QueryMapping
-	boolean canPublish(@Argument String publishableType, @Argument Serializable id, @Argument String contextJson,
+	boolean canPublish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
 
 		var context = this.contextFromClient(contextJson);
-		var aClass = publishableClassForTypeName(publishableType);
-		if (id instanceof Number idAsNumber) {
-			var mogulId = this.mogulService.getCurrentMogul().id();
-			var publishable = this.publicationService.resolvePublishable(mogulId, idAsNumber.longValue(), aClass);
-			Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
-			var resolvedPlugin = this.plugins.get(plugin);
-			var configuration = this.settings.getAllValuesByCategory(mogulService.getCurrentMogul().id(), plugin);
-
-			// do NOT allow client side overrides of settings
-			var combinedContext = new HashMap<String, String>(configuration);
-			for (var k : context.keySet()) {
-				if (!combinedContext.containsKey(k)) {
-					combinedContext.put(k, context.get(k));
-				} //
-				else {
-					this.log.warn("refusing to add client specified context value '{}',"
-							+ "because it would override a user specified setting", k);
-				}
+		var publishable = (T) this.findPublishable(publishableId, publishableType);
+		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
+		var resolvedPlugin = this.plugins.get(plugin);
+		var configuration = this.settings.getAllValuesByCategory(mogulService.getCurrentMogul().id(), plugin);
+		var combinedContext = new HashMap<>(configuration);
+		for (var k : context.keySet()) {
+			if (!combinedContext.containsKey(k)) {
+				combinedContext.put(k, context.get(k));
+			} //
+			else {
+				this.log.warn("refusing to add client specified context value '{}',"
+						+ "because it would override a user specified setting", k);
 			}
-			return resolvedPlugin.canPublish(combinedContext, publishable);
 		}
-		throw new IllegalStateException(
-				"we should never arrive at this point, " + "but if we did it's because we can't find a "
-						+ Publishable.class.getName() + " of type " + aClass.getName());
-	}
+		return resolvedPlugin.canPublish(combinedContext, publishable);
 
-	@SuppressWarnings("unchecked")
-	private Class<T> publishableClassForTypeName(String type) {
-		var match = (Class<T>) this.publishableClasses.getOrDefault(type.toLowerCase(), null);
-		Assert.notNull(match, "couldn't find a matching class for type [" + type + "]");
-		return match;
-	}
-
-	private T find(Serializable id, String type) {
-		if (id instanceof Number idAsNumber) {
-			var aClass = publishableClassForTypeName(type);
-			var mogulId = this.mogulService.getCurrentMogul().id();
-			return this.publicationService.resolvePublishable(mogulId, idAsNumber.longValue(), aClass);
-		}
-		throw new IllegalStateException("could not load Publishable with id [" + id + "] and type [" + type + "]");
 	}
 
 	@MutationMapping
-	boolean publish(@Argument String publishableType, @Argument Serializable id, @Argument String contextJson,
+	boolean publish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var episode = this.find(id, publishableType);
+		var episode = (T) this.findPublishable(publishableId, publishableType);
 		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
 		var runnable = (Runnable) () -> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
@@ -135,9 +96,8 @@ class PublicationController<T extends Publishable> {
 		return true;
 	}
 
-	/// taken from the old episode code
 	@QueryMapping
-	Collection<Publication> publicationsForPublishable(@Argument String type, @Argument Serializable id) {
+	Collection<Publication> publicationsForPublishable(@Argument String type, @Argument Long id) {
 		var publishableClass = this.publishableClassForTypeName(type);
 		return this.publicationService.getPublicationsByPublicationKeyAndClass(id, publishableClass);
 	}
@@ -168,6 +128,30 @@ class PublicationController<T extends Publishable> {
 		};
 		this.executor.execute(runnable);
 		return true;
+	}
+
+	private <T extends Publishable> T findPublishable(Long id, String type) {
+		if (id instanceof Number idAsNumber) {
+			var aClass = publishableClassForTypeName(type);
+			var mogulId = this.mogulService.getCurrentMogul().id();
+			return (T) this.publicationService.resolvePublishable(mogulId, idAsNumber.longValue(), aClass);
+		}
+		throw new IllegalStateException("could not load Publishable with id [" + id + "] and type [" + type + "]");
+	}
+
+	private Map<String, String> contextFromClient(String json) {
+		if (StringUtils.hasText(json)) {
+			// @formatter:off
+			return JsonUtils.read(json, new ParameterizedTypeReference<>() {});
+			// @formatter:on
+		}
+		return new HashMap<>();
+	}
+
+	private <T extends Publishable> Class<T> publishableClassForTypeName(String type) {
+		var match = (Class<T>) this.publishableClasses.getOrDefault(type.toLowerCase(), null);
+		Assert.notNull(match, "couldn't find a matching class for type [" + type + "]");
+		return match;
 	}
 
 }

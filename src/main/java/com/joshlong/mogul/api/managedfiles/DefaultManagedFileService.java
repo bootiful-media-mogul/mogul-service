@@ -191,9 +191,9 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	}
 
 	@Override
-	public void setManagedFileVisibility(Long managedFile, boolean publicAccess) {
-		this.db.sql("update managed_file set visible = ? where id = ?").params(publicAccess, managedFile).update();
-		this.ensureVisibility(this.forceReadManagedFile(managedFile));
+	public void setManagedFileVisibility(Long managedFileId, boolean publicAccess) {
+		this.db.sql("update managed_file set visible = ? where id = ?").params(publicAccess, managedFileId).update();
+		this.ensureVisibility(this.forceReadManagedFile(managedFileId));
 	}
 
 	/**

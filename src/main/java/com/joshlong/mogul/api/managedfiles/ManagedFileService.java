@@ -10,7 +10,7 @@ import java.util.Collection;
 public interface ManagedFileService {
 
 	// some files can be referenced externally, and they are said to be {@code visible}.
-	void setManagedFileVisibility(Long managedFile, boolean visible);
+	void setManagedFileVisibility(Long managedFileId, boolean visible);
 
 	/**
 	 * this will delete the record _and_ queue it up for deletion by a separate process in
