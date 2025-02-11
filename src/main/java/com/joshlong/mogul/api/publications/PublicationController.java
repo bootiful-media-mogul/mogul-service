@@ -126,6 +126,7 @@ class PublicationController<T extends Publishable> {
 		Assert.notNull(resolvedPlugin, "you must specify an active plugin");
 		this.publicationService.unpublish(publicationById.mogulId(), publicationById, resolvedPlugin);
 		return true;
+
 	}
 
 	private <T extends Publishable> T findPublishable(Long id, String type) {
