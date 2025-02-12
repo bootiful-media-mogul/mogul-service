@@ -149,15 +149,17 @@ class DefaultPublicationService implements PublicationService {
 		// make sure the client sees the new state immediately.
 		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
-		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-				new PublicationStartedEvent(publicationId), Long.toString(publicationId), null, true, true));
+		// NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+		// new PublicationStartedEvent(publicationId), Long.toString(publicationId), null,
+		// true, true));
 
 		plugin.publish(context, payload);
 
 		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
-		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-				new PublicationCompletedEvent(publicationId), Long.toString(publicationId), null, true, true));
+		// NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+		// new PublicationCompletedEvent(publicationId), Long.toString(publicationId),
+		// null, true, true));
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 

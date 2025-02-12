@@ -53,6 +53,7 @@ type ManagedFile {
     visible : Boolean
     url : String
     visibleUrl: String
+    downloadableUrl: String
 }
 
 type Episode {
@@ -64,6 +65,7 @@ type Episode {
     description: String
     valid: Boolean
     graphic: ManagedFile
+    producedAudio: ManagedFile
     complete: Boolean
     created: Float
     segments : [Segment]

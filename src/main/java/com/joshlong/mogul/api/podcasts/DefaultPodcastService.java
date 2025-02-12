@@ -509,7 +509,7 @@ class DefaultPodcastService implements PodcastService {
 		var producedGraphic = this.managedFileService.createManagedFile(currentMogulId, uid, "produced-graphic.jpg", 0,
 				CommonMediaTypes.JPG, true);
 		var producedAudio = this.managedFileService.createManagedFile(currentMogulId, uid, "produced-audio.mp3", 0,
-				CommonMediaTypes.MP3, false);
+				CommonMediaTypes.MP3, true);
 		var episode = this.createPodcastEpisode(podcastId, title, description, image, producedGraphic, producedAudio);
 		var episodeId = episode.id();
 		var titleComp = this.getPodcastEpisodeTitleComposition(episodeId);

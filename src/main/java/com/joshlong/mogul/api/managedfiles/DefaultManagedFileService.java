@@ -67,7 +67,7 @@ class DefaultManagedFileServiceConfiguration {
  * file, but not the data of one. that is until the transaction finishes. at this point,
  * right before committing , we do one big query for all the managed files and then give
  * the data to each placeholder object, fleshing them out, in effect.
- *
+ * <p>
  * warning: do <EM>NOT</EM> make the entire class {@link Transactional}!
  */
 
@@ -313,7 +313,10 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString(),
 					visible)
 			.update(kh);
-		return this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
+		var mf = this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
+		if (visible)
+			this.ensureVisibility(mf);
+		return mf;
 	}
 
 	private void initializeManagedFile(ResultSet rs, ManagedFile managedFile) throws SQLException {

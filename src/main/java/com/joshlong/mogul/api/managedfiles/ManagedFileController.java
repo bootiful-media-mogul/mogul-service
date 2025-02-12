@@ -47,6 +47,15 @@ class ManagedFileController {
 	}
 
 	@SchemaMapping
+	String downloadableUrl(ManagedFile managedFile) {
+		if (managedFile.written() && managedFile.visible()) {
+			var publicUrl = this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
+			return publicUrl + "?download=true";
+		}
+		return null;
+	}
+
+	@SchemaMapping
 	String url(ManagedFile managedFile) {
 		return this.managedFileService.getPrivateUrlForManagedFile(managedFile.id());
 	}

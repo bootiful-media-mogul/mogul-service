@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.Episode;
@@ -48,6 +49,7 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 
 					var beanFactory = beanFactoryAtomicReference.get();
 
+					var managedFileService = beanFactory.getBean(ManagedFileService.class);
 					var podcastProducer = beanFactory.getBean(PodcastProducer.class);
 					var podcastService = beanFactory.getBean(PodcastService.class);
 					var transactionTemplate = beanFactory.getBean(TransactionTemplate.class);
@@ -68,6 +70,7 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
 									null, true, true));
 							var producedManagedFile = podcastProducer.produce(episode);
+							managedFileService.setManagedFileVisibility(producedManagedFile.id(), true);
 							this.log.debug(
 									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
 									episode, producedManagedFile, podcastProducer);

@@ -40,14 +40,14 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	boolean movePodcastEpisodeSegmentDown(@Argument Long podcastEpisodeId, @Argument Long segmentId) {
-		this.podcastService.movePodcastEpisodeSegmentDown(podcastEpisodeId, segmentId);
+	boolean movePodcastEpisodeSegmentDown(@Argument Long podcastEpisodeId, @Argument Long podcastEpisodeSegmentId) {
+		this.podcastService.movePodcastEpisodeSegmentDown(podcastEpisodeId, podcastEpisodeSegmentId);
 		return true;
 	}
 
 	@MutationMapping
-	boolean movePodcastEpisodeSegmentUp(@Argument Long podcastEpisodeId, @Argument Long segmentId) {
-		this.podcastService.movePodcastEpisodeSegmentUp(podcastEpisodeId, segmentId);
+	boolean movePodcastEpisodeSegmentUp(@Argument Long podcastEpisodeId, @Argument Long podcastEpisodeSegmentId) {
+		this.podcastService.movePodcastEpisodeSegmentUp(podcastEpisodeId, podcastEpisodeSegmentId);
 		return true;
 	}
 
