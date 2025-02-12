@@ -83,14 +83,19 @@ class PublicationController<T extends Publishable> {
 	@MutationMapping
 	boolean publish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
+		Assert.hasText(plugin, "the plugin named [" + plugin + "] does not exist!");
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
 		var episode = (T) this.findPublishable(publishableId, publishableType);
+		var publisherPlugin = this.plugins.get(plugin);
+		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
 		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
 		var runnable = (Runnable) () -> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.mogulService.assertAuthorizedMogul(currentMogulId);
 			var contextAndSettings = this.contextFromClient(contextJson);
-			this.publicationService.publish(currentMogulId, episode, contextAndSettings, this.plugins.get(plugin));
+			System.out.println(this.plugins);
+
+			this.publicationService.publish(currentMogulId, episode, contextAndSettings, publisherPlugin);
 		};
 		this.executor.execute(runnable);
 		return true;

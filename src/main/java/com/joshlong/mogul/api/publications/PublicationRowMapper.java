@@ -48,7 +48,7 @@ class PublicationRowMapper implements RowMapper<Publication> {
 		var stateEnum = Publication.State.valueOf(state);
 		Assert.notNull(state, "state must not be null");
 		Assert.notNull(stateEnum, "stateEnum must not be null");
-		var publication = new Publication( //
+		return new Publication( //
 				rs.getLong("mogul"), //
 				rs.getLong("id"), //
 				rs.getString("plugin"), //
@@ -58,8 +58,6 @@ class PublicationRowMapper implements RowMapper<Publication> {
 				payload, //
 				classFor(rs.getString("payload_class")), //
 				url, stateEnum);
-		this.log.debug("got a publication {}", publication.created().toInstant().toString());
-		return publication;
 
 	}
 

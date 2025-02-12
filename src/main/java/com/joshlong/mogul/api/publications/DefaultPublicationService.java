@@ -149,17 +149,15 @@ class DefaultPublicationService implements PublicationService {
 		// make sure the client sees the new state immediately.
 		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
-		// NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-		// new PublicationStartedEvent(publicationId), Long.toString(publicationId), null,
-		// true, true));
+		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+				new PublicationStartedEvent(publicationId), Long.toString(publicationId), null, false, false));
 
 		plugin.publish(context, payload);
 
 		this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
 
-		// NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-		// new PublicationCompletedEvent(publicationId), Long.toString(publicationId),
-		// null, true, true));
+		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+				new PublicationCompletedEvent(publicationId), Long.toString(publicationId), null, false, false));
 
 		this.log.debug("finished publishing with plugin {}.", plugin.name());
 
@@ -199,7 +197,6 @@ class DefaultPublicationService implements PublicationService {
 			.forEach(publication -> {
 				var key = this.buildPublicationCacheKey(publication.payloadClass(), publication.payload());
 				this.publicationsCache.computeIfAbsent(key, cacheKey -> new ArrayList<>()).add(publication);
-				this.log.debug("adding publication {} to publications cache for cache key {} ", publication, key);
 			});
 	}
 
