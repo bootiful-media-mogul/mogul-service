@@ -51,27 +51,12 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	@Override
 	public void publish(Map<String, String> context, Episode payload) {
 		this.log.debug("downloading the produced audio file for episode # {}", payload.id());
-		// we need to ensure for all older files that the produced audio is downloadable
-		// todo delete all of this!!! it shouldn't matter for anything but existing
-		// episodes!
 		this.managedFileService.setManagedFileVisibility(payload.producedAudio().id(), true);
-		var podcastById = this.podcastService.getPodcastById(payload.podcastId());
-		var mogulId = podcastById.mogulId();
-		this.podcastService.getAllPodcastsByMogul(mogulId).forEach(podcast -> {
-			this.podcastService.getPodcastEpisodesByPodcast(podcast.id()).forEach(ep -> {
-				var produced = ep.producedAudio();
-				if (produced != null && ep.complete()) {
-					this.managedFileService.setManagedFileVisibility(produced.id(), true);
-					System.out.println("setting the produced audio for episode #" + ep.id() + "to visible.");
-				}
-			});
-		});
-
 	}
 
 	@Override
 	public boolean unpublish(Map<String, String> context, Publication publication) {
-		// noop - a user can't 'undownload' a file...
+		this.log.debug("can't 'unpublish' a downloaded file for publication # {}", publication.id());
 		return true;
 	}
 
