@@ -3,11 +3,9 @@ package com.joshlong.mogul.api.podcasts.publication;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
-import com.joshlong.mogul.api.podcasts.PodcastService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.Set;
@@ -26,11 +24,13 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 
 	private final ManagedFileService managedFileService;
 
-	private final PodcastService podcastService;
-
-	AudioFileDownloadingPublisherPlugin(ManagedFileService managedFileService, PodcastService podcastService) {
+	AudioFileDownloadingPublisherPlugin(ManagedFileService managedFileService) {
 		this.managedFileService = managedFileService;
-		this.podcastService = podcastService;
+	}
+
+	@Override
+	public boolean shouldRecordPublication() {
+		return false;
 	}
 
 	@Override

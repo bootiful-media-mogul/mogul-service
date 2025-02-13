@@ -39,6 +39,15 @@ public interface PublisherPlugin<T extends Publishable> {
 		return isConfigurationValid(context) && payload != null;
 	}
 
+	/**
+	 * should we preserve record of this publication? If the publication produces
+	 * something we can't <em>revisit</em> or <em>review</em>, then there's no point in
+	 * recording it.
+	 */
+	default boolean shouldRecordPublication() {
+		return true;
+	}
+
 	void publish(Map<String, String> context, T payload);
 
 	boolean unpublish(Map<String, String> context, Publication publication);

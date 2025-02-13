@@ -93,8 +93,6 @@ class PublicationController<T extends Publishable> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.mogulService.assertAuthorizedMogul(currentMogulId);
 			var contextAndSettings = this.contextFromClient(contextJson);
-			System.out.println(this.plugins);
-
 			this.publicationService.publish(currentMogulId, episode, contextAndSettings, publisherPlugin);
 		};
 		this.executor.execute(runnable);

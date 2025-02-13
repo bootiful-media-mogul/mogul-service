@@ -28,21 +28,13 @@ TODO put these in github issues!
         should all be able to benefit from searchability. should we add a new interface - `Searchable`, etc? Maybe it exports
         indexable text and metadata for each asset type that we could show in the search results, query by the metadata, etc.,
         to drive feeds eg, of all mogul's content, of a particular mogul's content, or a particular mogul's blogs/podcasts/etc?
-
 * we need a mechanism by which to create tags and normalize them and so on so that we can
     support autocomplete for other blogs published by a given author
 *  we need a way to attach multiple mogul's to a particular blog post so that it
         would show up in both mogul's feeds.
 * we want to as friction-free as possible derive two things: the summary and the html
-** html: lets say the user just types plain text. is it markdown? do we support straight html?
-        do we want to allow a full WYSIWYG editor? I think we should normalize all text to Markdown, but that won't render.
-        so we need to recompute the HTML mark for publication / display on the web.
-** summary. we can compute  summary (eg, with the same mechanism in writing tools) for the post, or we can
-        let the user provide their own
-
-
+** summary. we can compute  summary (eg, with the same mechanism in writing tools) for the post, or we can let the user provide their own
 */
-
 @Service
 @Transactional
 class DefaultBlogService implements BlogService {
@@ -132,9 +124,9 @@ class DefaultBlogService implements BlogService {
 	@Override
 	public Post createPost(Long blogId, String title, String content, String[] tags, Set<Asset> assets) {
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql("""
-				 insert into blog_post(blog_id, title, content ,    tags) values  (?,?,?,?)
-				""").params(blogId, title, content, tags).update(gkh);
+		this.db.sql(" insert into blog_post(blog_id, title, content, tags) values  (?,?,?,?) ")
+			.params(blogId, title, content, tags)
+			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh);
 		return getPostById(id.longValue());
 	}
@@ -160,10 +152,6 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
 			var arr = rs.getArray("tags");
-			System.out.println("------------------------");
-			System.out.println(arr);
-			System.out.println(arr.getClass().getName());
-			System.out.println("------------------------");
 			var tags = new String[0];
 			if (arr.getArray() instanceof String[] tagsStringArray) {
 				tags = tagsStringArray;

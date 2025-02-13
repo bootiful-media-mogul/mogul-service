@@ -143,7 +143,6 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	// meant to make sure we've synchronized the file write
 	@ApplicationModuleListener
 	void onManagedFileUpdated(ManagedFileUpdatedEvent event) {
-		// time to make sure it's visible
 		var managedFile = event.managedFile();
 		this.ensureVisibility(managedFile);
 	}
