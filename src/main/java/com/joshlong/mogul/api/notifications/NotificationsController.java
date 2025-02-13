@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.notifications;
 
 import com.joshlong.mogul.api.mogul.MogulService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -22,6 +24,8 @@ class NotificationsController {
 
 	private final MogulService mogulService;
 
+	private final Logger log = LoggerFactory.getLogger(NotificationsController.class);
+
 	NotificationsController(MogulService mogulService) {
 		this.mogulService = mogulService;
 	}
@@ -31,6 +35,9 @@ class NotificationsController {
 		Assert.notNull(notification, "the notification must not be null");
 		var mogulId = notification.mogulId();
 		this.events.computeIfAbsent(mogulId, aLong -> new ConcurrentLinkedQueue<>()).add(notification);
+		this.log.debug("adding notification event {}. this is the collection: {}", notification,
+				this.events.get(mogulId));
+
 	}
 
 	@QueryMapping

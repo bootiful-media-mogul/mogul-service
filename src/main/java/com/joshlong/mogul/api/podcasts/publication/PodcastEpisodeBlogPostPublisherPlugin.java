@@ -22,10 +22,10 @@ import java.util.Set;
 
 // todo where should this class live? what if one day we decide to have the ability to
 // publish a podcast from a blog? will that create a tangle?
-@Component(PodcastEpisodeBlogPostPubliserPlugin.PLUGIN_NAME)
-class PodcastEpisodeBlogPostPubliserPlugin implements PodcastEpisodePublisherPlugin {
+@Component(PodcastEpisodeBlogPostPublisherPlugin.PLUGIN_NAME)
+class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	public static final String PLUGIN_NAME = "podcast-blog";
+	public static final String PLUGIN_NAME = "podcastEpisodeToBlogPost";
 
 	/**
 	 * the user needs to provide this in the event of publication.
@@ -36,7 +36,7 @@ class PodcastEpisodeBlogPostPubliserPlugin implements PodcastEpisodePublisherPlu
 
 	private final MogulService mogulService;
 
-	PodcastEpisodeBlogPostPubliserPlugin(BlogService blogService, MogulService mogulService) {
+	PodcastEpisodeBlogPostPublisherPlugin(BlogService blogService, MogulService mogulService) {
 		this.blogService = blogService;
 		this.mogulService = mogulService;
 	}

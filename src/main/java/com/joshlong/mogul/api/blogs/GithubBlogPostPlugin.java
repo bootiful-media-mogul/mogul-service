@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
 import com.joshlong.mogul.api.Publication;
-import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublisherPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -179,15 +180,15 @@ class PodcastController {
 	}
 
 	@ApplicationModuleListener
-	void broadcastPodcastEpisodeCompletionEventToClients(PodcastEpisodeCompletionEvent podcastEpisodeCompletionEvent) {
-		var episode = podcastEpisodeCompletionEvent.episode();
+	void broadcastPodcastEpisodeCompletionEventToClients(PodcastEpisodeCompletedEvent podcastEpisodeCompletedEvent) {
+		var episode = podcastEpisodeCompletedEvent.episode();
 		var id = episode.id();
 		try {
 			var map = Map.of("episodeId", id, "complete", episode.complete());
 			var json = JsonUtils.write(map);
-			var notificationEvent = NotificationEvent.notificationEventFor(podcastEpisodeCompletionEvent.mogulId(),
-					podcastEpisodeCompletionEvent, Long.toString(episode.id()), json, false, false);
-			this.publisher.publishEvent(notificationEvent);
+			var notificationEvent = NotificationEvent.notificationEventFor(podcastEpisodeCompletedEvent.mogulId(),
+					podcastEpisodeCompletedEvent, Long.toString(episode.id()), json, false, false);
+			NotificationEvents.notify(notificationEvent);
 		} //
 		catch (Exception e) {
 			this.log.warn("experienced an exception when trying to emit "

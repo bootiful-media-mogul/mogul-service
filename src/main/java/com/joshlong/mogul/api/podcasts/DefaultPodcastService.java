@@ -207,7 +207,7 @@ class DefaultPodcastService implements PodcastService {
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		var episodeById = this.getPodcastEpisodeById(episode.id());
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
-				new PodcastEpisodeCompletionEvent(mogulId, episodeById))) {
+				new PodcastEpisodeCompletedEvent(mogulId, episodeById))) {
 			this.publisher.publishEvent(e);
 		}
 
