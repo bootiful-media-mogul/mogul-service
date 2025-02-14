@@ -29,11 +29,6 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	}
 
 	@Override
-	public boolean shouldRecordPublication() {
-		return false;
-	}
-
-	@Override
 	public String name() {
 		return PLUGIN_NAME;
 	}

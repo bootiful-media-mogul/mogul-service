@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.podcasts.publication;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.blogs.Blog;
 import com.joshlong.mogul.api.blogs.BlogService;
-import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.Episode;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -20,8 +19,6 @@ import java.util.Set;
  * can proceed. Namely: in which blog should the post be made?
  */
 
-// todo where should this class live? what if one day we decide to have the ability to
-// publish a podcast from a blog? will that create a tangle?
 @Component(PodcastEpisodeBlogPostPublisherPlugin.PLUGIN_NAME)
 class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPlugin {
 
@@ -34,11 +31,8 @@ class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPl
 
 	private final BlogService blogService;
 
-	private final MogulService mogulService;
-
-	PodcastEpisodeBlogPostPublisherPlugin(BlogService blogService, MogulService mogulService) {
+	PodcastEpisodeBlogPostPublisherPlugin(BlogService blogService) {
 		this.blogService = blogService;
-		this.mogulService = mogulService;
 	}
 
 	@Override

@@ -105,15 +105,15 @@ class DefaultPublicationService implements PublicationService {
 			}
 		}
 		catch (Exception throwable) {
-			this.log.warn("couldn't unpublish " + publication.id() + " with url " + publication.url(), throwable);
+			this.log.warn("couldn't unpublish {} with url {}", publication.id(), publication.url(), throwable);
 		}
 		return this.getPublicationById(publication.id());
 
 	}
 
 	@Override
-	public <T extends Publishable> Optional<Publication> publish(Long mogulId, T payload,
-			Map<String, String> contextAndSettings, PublisherPlugin<T> plugin) {
+	public <T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
+			PublisherPlugin<T> plugin) {
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(payload, "the payload must not be null");
 		var configuration = this.settingsLookup.apply(new SettingsLookup(mogulId, plugin.name()));
@@ -136,42 +136,33 @@ class DefaultPublicationService implements PublicationService {
 			return JdbcUtils.getIdFromKeyHolder(kh).longValue();
 		}));
 
-		var publication = this.transactionTemplate
-			.execute(status -> this.finishPublication(mogulId, payload, plugin, publicationId, context));
-		return Optional.ofNullable(publication);
-	}
-
-	private <T extends Publishable> Publication finishPublication(Long mogulId, T payload, PublisherPlugin<T> plugin,
-			long publicationId, ConcurrentHashMap<String, String> context) {
-
-		var announce = plugin.shouldRecordPublication();
-
-		if (announce) {
-			NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-					new PublicationStartedEvent(publicationId), Long.toString(publicationId), null, false, false));
-		}
+		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(publicationId));
 
 		plugin.publish(context, payload);
 
-		this.db.sql(" update publication set state = ? , context = ?, published = ?  where id = ?")
-			.params(Publication.State.PUBLISHED.name(), this.textEncryptor.encrypt(JsonUtils.write(context)),
-					new Date(), publicationId)
-			.update();
+		return this.transactionTemplate.execute((status) -> {
 
-		var url = context.getOrDefault(CONTEXT_URL, null);
-		if (null != url) {
-			this.db.sql(" update publication set url = ? where id = ? ").params(url, publicationId).update();
-		}
+			this.db.sql(" update publication set state = ? , context = ?, published = ?  where id = ?")
+				.params(Publication.State.PUBLISHED.name(), textEncryptor.encrypt(JsonUtils.write(context)), new Date(),
+						publicationId)
+				.update();
 
-		if (announce) {
-			NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
-					new PublicationCompletedEvent(publicationId), Long.toString(publicationId), null, false, false));
-			this.publisher.publishEvent(new PublicationUpdatedEvent(publicationId));
+			var url = context.getOrDefault(CONTEXT_URL, null);
+			if (null != url) {
+				this.db.sql(" update publication set url = ? where id = ? ").params(url, publicationId).update();
+			}
+
+			this.doNotify(mogulId, publicationId, new PublicationCompletedEvent(publicationId));
+
 			return this.getPublicationById(publicationId);
-		} //
+		});
 
-		this.db.sql("delete from publication where id = ?").param(publicationId).update();
-		return null;
+	}
+
+	private void doNotify(Long mogulId, Long publicationId, Object event) {
+		this.publisher.publishEvent(event);
+		NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId, event,
+				Long.toString(publicationId), null, false, false));
 	}
 
 	@Override

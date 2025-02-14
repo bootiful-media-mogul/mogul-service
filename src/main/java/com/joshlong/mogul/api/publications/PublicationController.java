@@ -60,7 +60,6 @@ class PublicationController<T extends Publishable> {
 	@QueryMapping
 	boolean canPublish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
-
 		var context = this.contextFromClient(contextJson);
 		var publishable = (T) this.findPublishable(publishableId, publishableType);
 		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
@@ -77,7 +76,6 @@ class PublicationController<T extends Publishable> {
 			}
 		}
 		return resolvedPlugin.canPublish(combinedContext, publishable);
-
 	}
 
 	@MutationMapping

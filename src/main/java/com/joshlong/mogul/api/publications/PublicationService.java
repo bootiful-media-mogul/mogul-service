@@ -6,7 +6,6 @@ import com.joshlong.mogul.api.PublisherPlugin;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * handles preparing context, launching the {@link PublisherPlugin}, and noting the
@@ -20,8 +19,8 @@ public interface PublicationService {
 
 	Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz);
 
-	<T extends Publishable> Optional<Publication> publish(Long mogulId, T payload,
-			Map<String, String> contextAndSettings, PublisherPlugin<T> plugin);
+	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
+			PublisherPlugin<T> plugin);
 
 	<T extends Publishable> Publication unpublish(Long mogulId, Publication publication, PublisherPlugin<T> plugin);
 
