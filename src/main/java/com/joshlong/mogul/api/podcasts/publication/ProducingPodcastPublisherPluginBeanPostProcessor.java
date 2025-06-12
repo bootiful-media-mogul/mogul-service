@@ -66,6 +66,9 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 					return transactionTemplate.execute(status -> {
 
 						if (shouldProduceAudio) {
+							this.log.debug(
+									"should produce audio! " + "producing the audio for episode [{}] from scratch",
+									episode);
 							NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
 									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
 									null, true, true));
