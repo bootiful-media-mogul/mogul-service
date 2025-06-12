@@ -18,7 +18,7 @@ create table blog_post
     id       serial primary key not null,
     created  timestamp          not null default now(),
     title    text               not null,
-    content  text               not null,
+    content    text               not null,
     summary  text               not null default '',
     complete bool               not null default false,
     tags     text[]             null
