@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:25.04
 
 ARG APP_NAME
 ENV APP_NAME $APP_NAME
