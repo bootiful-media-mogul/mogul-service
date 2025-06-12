@@ -47,7 +47,8 @@ class ImageEncoder implements Encoder {
 		if (isValidType(in))
 			return in;
 		var converted = FileUtils.createRelativeTempFile(in, ".jpg");
-		var convert = new ProcessBuilder().command("convert", in.getAbsolutePath(), converted.getAbsolutePath())
+		var convert = new ProcessBuilder()
+			.command("magick", "convert", in.getAbsolutePath(), converted.getAbsolutePath())
 			.start();
 		Assert.state(convert.waitFor() == 0, "the process should exit normally");
 		return converted;
