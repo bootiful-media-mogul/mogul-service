@@ -7,7 +7,6 @@ import org.springframework.beans.factory.aot.BeanFactoryInitializationAotProcess
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.repository.ListCrudRepository;
 
 import java.io.Serializable;
 import java.util.HashSet;

@@ -135,7 +135,7 @@ type Mutation {
 
     # managed files
     setManagedFileVisibility(managedFileId: Int , visible: Boolean): Boolean
-    
+
     # settings
     updateSetting(category:String, name:String, value:String): Boolean
 }
@@ -146,7 +146,7 @@ type Query {
     # publications
     publicationsForPublishable( type : String, id: Int ) : [Publication]
     canPublish ( publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
-    
+
     # compositions
     compositionById ( compositionId:Int) : Composition
 

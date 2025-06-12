@@ -17,6 +17,8 @@ import org.springframework.util.StringUtils;
 @Controller
 class CompositionController {
 
+	private final static String NLS = System.lineSeparator() + System.lineSeparator();
+
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final CompositionService compositionService;
@@ -31,8 +33,6 @@ class CompositionController {
 		this.managedFileService = managedFileService;
 		this.mogulService = mogulService;
 	}
-
-	private final static String NLS = System.lineSeparator() + System.lineSeparator();
 
 	@SchemaMapping
 	String embedding(Attachment attachment) {

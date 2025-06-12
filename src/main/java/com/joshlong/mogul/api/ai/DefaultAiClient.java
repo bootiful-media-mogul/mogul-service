@@ -30,8 +30,8 @@ class DefaultAiClient implements AiClient {
 	public Resource render(String prompt, ImageSize imageSize) {
 		try {
 			var imageOptions = ImageOptionsBuilder.builder()
-				.withWidth(imageSize.width())
-				.withWidth(imageSize.height())
+				.width(imageSize.width())
+				.height(imageSize.height())
 				.build();
 			var imageResponse = this.imageModel.call(new ImagePrompt(new ImageMessage(prompt), imageOptions));
 			return new UrlResource(imageResponse.getResult().getOutput().getUrl());
