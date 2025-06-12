@@ -34,6 +34,7 @@ class ImageEncoder implements Encoder {
 			return output;
 		} //
 		catch (Throwable throwable) {
+			this.log.error(throwable.getMessage(), throwable);
 			throw new RuntimeException(throwable);
 		}
 	}
@@ -63,7 +64,8 @@ class ImageEncoder implements Encoder {
 		var quality = 100;
 		var size = 0L;
 		do {
-			var convert = ProcessUtils.runCommand("convert", original, "-quality", String.valueOf(quality), output);
+			var convert = ProcessUtils.runCommand("magick", "convert", original, "-quality", String.valueOf(quality),
+					output);
 			Assert.state(convert == 0, "the convert command failed to run.");
 			size = Files.size(Paths.get(output));
 			quality -= 5;
