@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
@@ -36,9 +37,29 @@ class PodcastController {
 	}
 
 	@QueryMapping
-	Collection<Episode> podcastEpisodesByPodcast(@Argument Long podcastId) {
-		return this.podcastService.getPodcastEpisodesByPodcast(podcastId);
+	Collection<Episode> podcastEpisodesByPodcast(@Argument Long podcastId,
+			DataFetchingEnvironment dataFetchingEnvironment) {
+		var graphic = isFieldRequested(dataFetchingEnvironment, "graphic");
+		var segments = isFieldRequested(dataFetchingEnvironment, "segments");
+		return this.podcastService.getPodcastEpisodesByPodcast(podcastId, graphic && segments);
 	}
+
+	private boolean isFieldRequested(DataFetchingEnvironment env, String fieldName) {
+		return env.getSelectionSet().contains(fieldName);
+	}
+
+	// @SchemaMapping(typeName = "Query", field = "podcasts")
+	// public List<Podcast> getPodcasts(DataFetchingEnvironment env) {
+	// boolean wantsSegments = isFieldRequested(env, "segments");
+	//
+	// if (wantsSegments) {
+	// // do JOIN to fetch segments eagerly
+	// } else {
+	// // do lightweight query
+	// }
+	//
+	// return podcastRepository.findPodcasts(wantsSegments);
+	// }
 
 	@MutationMapping
 	boolean movePodcastEpisodeSegmentDown(@Argument Long podcastEpisodeId, @Argument Long podcastEpisodeSegmentId) {
@@ -105,11 +126,11 @@ class PodcastController {
 		return this.podcastService.getAllPodcastsByMogul(currentMogul.id());
 	}
 
-	@SchemaMapping
-	Collection<Episode> episodes(Podcast podcast) {
-		this.mogulService.assertAuthorizedMogul(podcast.mogulId());
-		return this.podcastService.getPodcastEpisodesByPodcast(podcast.id());
-	}
+	// @SchemaMapping
+	// Collection<Episode> episodes(Podcast podcast) {
+	// this.mogulService.assertAuthorizedMogul(podcast.mogulId());
+	// return this.podcastService.getPodcastEpisodesByPodcast(podcast.id());
+	// }
 
 	@MutationMapping
 	boolean deletePodcastEpisode(@Argument Long podcastEpisodeId) {

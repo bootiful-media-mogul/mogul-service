@@ -42,7 +42,7 @@ public interface PodcastService {
 
 	Collection<Podcast> getAllPodcastsByMogul(Long mogulId);
 
-	Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId);
+	Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep);
 
 	Podcast createPodcast(Long mogulId, String title);
 

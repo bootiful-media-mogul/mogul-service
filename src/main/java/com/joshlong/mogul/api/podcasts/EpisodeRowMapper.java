@@ -11,8 +11,11 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 
 	private final Function<Long, ManagedFile> managedFileFunction;
 
-	EpisodeRowMapper(Function<Long, ManagedFile> managedFileFunction) {
+	private final boolean deep;
+
+	EpisodeRowMapper(boolean deep, Function<Long, ManagedFile> managedFileFunction) {
 		this.managedFileFunction = managedFileFunction;
+		this.deep = deep;
 	}
 
 	@Override

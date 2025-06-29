@@ -223,9 +223,19 @@ class DefaultPodcastService implements PodcastService {
 		}
 	}
 
+	/**
+	 * returns a graph of all the episodes for a given podcast. if you specify
+	 * {@code deep}, then it'll return a highly complicated graph of objects which will
+	 * take considerably longer to load (but will have everything)
+	 * @param podcastId the id for which you want to load episodes.
+	 * @param deep whether to return the full graph of objects or just the results
+	 * sufficient to display the search results
+	 * @return
+	 */
+
 	@Override
-	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId) {
-		var episodeRowMapper = new EpisodeRowMapper(this.managedFileService::getManagedFile);
+	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
+		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFile);
 		return this.db//
 			.sql(" select * from podcast_episode pe where pe.podcast  = ? ") //
 			.param(podcastId)//
@@ -291,7 +301,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Episode getPodcastEpisodeById(Long episodeId) {
-		var erm = new EpisodeRowMapper(this.managedFileService::getManagedFile);//
+		var erm = new EpisodeRowMapper(true, this.managedFileService::getManagedFile);//
 		var res = this.db //
 			.sql("select * from podcast_episode where id =?")//
 			.param(episodeId)//
@@ -357,7 +367,7 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public void deletePodcast(Long podcastId) {
 		var podcast = this.getPodcastById(podcastId);
-		for (var episode : this.getPodcastEpisodesByPodcast(podcastId)) {
+		for (var episode : this.getPodcastEpisodesByPodcast(podcastId, true)) {
 			this.deletePodcastEpisode(episode.id());
 		}
 		this.db.sql(" delete from podcast where id = ?").param(podcastId).update();
@@ -563,7 +573,7 @@ class DefaultPodcastService implements PodcastService {
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
 		var ids = episodeIds.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
 		return this.db.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )")
-			.query(new EpisodeRowMapper(managedFileService::getManagedFile))
+			.query(new EpisodeRowMapper(false, managedFileService::getManagedFile))
 			.list();
 	}
 

@@ -65,7 +65,7 @@ class PodcastEpisodeFeedTest {
                 });
         when(mogulService.getMogulById(mogulId)).thenReturn(mogul);
         when(podcastService.getPodcastById(podcastId)).thenReturn(podcast);
-        when(podcastService.getPodcastEpisodesByPodcast(podcastId)).thenReturn(episodes);
+        when(podcastService.getPodcastEpisodesByPodcast( podcastId ,true )).thenReturn(episodes);
         for (var episode : episodes)
             when(publicationService.getPublicationsByPublicationKeyAndClass(episode.id(),
                     Episode.class)).thenReturn(List.of(new Publication(mogulId, counter.incrementAndGet(),

@@ -65,7 +65,7 @@ class DefaultManagedFileServiceConfiguration {
  * note of all the ids of the managed files and then to hand the user code back a
  * placeholder {@link ManagedFile} which knows only its ID. It has the shape of a managed
  * file, but not the data of one. that is until the transaction finishes. at this point,
- * right before committing , we do one big query for all the managed files and then give
+ * right before committing, we do one big query for all the managed files and then give
  * the data to each placeholder object, fleshing them out, in effect.
  * <p>
  * warning: do <EM>NOT</EM> make the entire class {@link Transactional}!
@@ -301,8 +301,8 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	@Override
 	@Transactional
-	public ManagedFile createManagedFile(Long mogulId, /* String bucket, */ String folder, String fileName, long size,
-			MediaType mediaType, boolean visible) {
+	public ManagedFile createManagedFile(Long mogulId, String folder, String fileName, long size, MediaType mediaType,
+			boolean visible) {
 		var kh = new GeneratedKeyHolder();
 		var sql = """
 				insert into managed_file( storage_filename, mogul , bucket, folder, filename, size,content_type, visible)
