@@ -4,6 +4,8 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
@@ -64,4 +66,17 @@ class NotificationsController {
 		return null;
 	}
 
+	@MutationMapping
+	boolean notify(@Argument boolean visible, @Argument boolean modal) {
+		var object = new TestEvent("sent a " + (modal ? "modal" : "") + (visible ? "" : ", and visible") + " message");
+		var id = mogulService.getCurrentMogul().id();
+		var notificationEvent = NotificationEvent.notificationEventFor(id, object, id.toString(), null, modal, visible);
+		NotificationEvents.notify(notificationEvent);
+		this.log.debug("sent notification event {}", notificationEvent);
+		return true;
+	}
+
+}
+
+record TestEvent(String message) {
 }
