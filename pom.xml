@@ -19,7 +19,11 @@
         <spring-modulith.version>1.4.0</spring-modulith.version>
     </properties>
     <dependencies>
-
+        <dependency>
+            <groupId>io.ably</groupId>
+            <artifactId>ably-java</artifactId>
+            <version>1.2.33</version>
+        </dependency>
         <dependency>
             <groupId>com.joshlong</groupId>
             <artifactId>feed-spring-boot-starter</artifactId>
