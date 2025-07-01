@@ -48,7 +48,7 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 		var transactionTemplate = transactionTemplate();
 		Assert.notNull(executor, "the executor must not be null");
 		Assert.notNull(transactionTemplate, "the transaction template must not be null");
-		executor.execute(() -> transactionTemplate.executeWithoutResult(transactionStatus -> notify(event)));
+		executor.execute(() -> transactionTemplate.executeWithoutResult(_ -> notify(event)));
 	}
 
 	/**
@@ -60,9 +60,6 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 		var eventPublisher = eventPublisher();
 		Assert.notNull(eventPublisher, "the publisher must not be null");
 		eventPublisher.publishEvent(event);
-		if (log.isDebugEnabled()) {
-			log.debug("published {} [{}]", NotificationEvent.class.getName(), event);
-		}
 	}
 
 	@Override

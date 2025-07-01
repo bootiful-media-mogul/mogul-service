@@ -19,13 +19,13 @@ import java.util.function.Supplier;
  *
  * @author Josh Long
  */
-public class AblyOutboundMessageHandler implements MessageHandler {
+public class AblyMessageHandler implements MessageHandler {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Channel channel;
 
-	public AblyOutboundMessageHandler(Channel channel) {
+	public AblyMessageHandler(Channel channel) {
 		this.channel = channel;
 		Assert.notNull(this.channel, "the Ably realtime channel must not be null");
 	}

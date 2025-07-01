@@ -72,7 +72,7 @@ class AblyMessageListenerContainer implements SmartLifecycle, BeanNameAware, Dis
 	@Override
 	public void stop() {
 		if (this.running.compareAndSet(true, false)) {
-			log.info("stopped listening for messages on {}", this.beanName.get());
+			log.debug("stopped listening for messages on {}", this.beanName.get());
 		}
 	}
 

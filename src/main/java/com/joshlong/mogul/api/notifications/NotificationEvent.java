@@ -38,7 +38,6 @@ public record NotificationEvent(Long mogulId, String category, String key, Date 
 		Assert.notNull(object, "object cannot be null");
 		Assert.notNull(mogulId, "mogulId cannot be null");
 		var cat = categoryFromClassName(object.getClass());
-		System.out.println("the category is " + cat + " and the key is " + key + " and the context is " + context);
 		return new NotificationEvent(mogulId, cat, key, new Date(), context, modal, visible);
 	}
 
