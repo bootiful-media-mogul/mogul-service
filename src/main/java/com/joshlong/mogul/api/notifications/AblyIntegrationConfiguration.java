@@ -54,10 +54,15 @@ class AblyIntegrationConfiguration {
 			.transform(new AbstractTransformer() {
 				@Override
 				protected Object doTransform(Message<?> message) {
+					// todo once we have this all working, let's look at how to setup
+					// encryption / decryption for the values sent to/from Ably.
+					// but how would the in-browser client decrypt a value we encrypted
+					// here on the server?
 					if (message.getPayload() instanceof NotificationEvent notificationEvent) {
-						return MessageBuilder.withPayload(notificationEvent.mogulId() + ':' + notificationEvent.key())
-							.setHeader(AblyHeaders.ABLY_NAME,
-									AblyNotificationsUtils.ablyNoticationsDestinationFor(notificationEvent.mogulId()))
+						var topic = AblyNotificationsUtils.ablyNoticationsDestinationFor(notificationEvent.mogulId());
+						return MessageBuilder //
+							.withPayload(notificationEvent.mogulId() + ':' + notificationEvent.key()) //
+							.setHeader(AblyHeaders.ABLY_NAME, topic)//
 							.build();
 					}
 					return null;
