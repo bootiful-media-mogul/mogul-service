@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api.notifications;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -17,8 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class NotificationEvents implements BeanFactoryAware, ApplicationEventPublisherAware {
-
-	private final static Logger log = LoggerFactory.getLogger(NotificationEvents.class);
 
 	private static final AtomicReference<ApplicationEventPublisher> PUBLISHER_ATOMIC_REFERENCE = new AtomicReference<>();
 

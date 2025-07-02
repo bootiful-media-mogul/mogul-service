@@ -18,7 +18,8 @@ public class AblyMessageListeningMessageProducer extends MessageProducerSupport 
 	public AblyMessageListeningMessageProducer(Channel channel) {
 		super();
 		var messageListener = (MessageListener) message -> {
-			var msg = getMessageBuilderFactory().withPayload(message.getPayload()) //
+			var msg = getMessageBuilderFactory()//
+				.withPayload(message.getPayload()) //
 				.copyHeadersIfAbsent(message.getHeaders()) //
 				.build();
 			sendMessage(msg);
@@ -44,14 +45,12 @@ public class AblyMessageListeningMessageProducer extends MessageProducerSupport 
 	protected void doStart() {
 		super.doStart();
 		this.ablyMessageListenerContainer.start();
-		this.logger.info("doStart");
 	}
 
 	@Override
 	protected void doStop() {
 		super.doStop();
 		this.ablyMessageListenerContainer.stop();
-		this.logger.info("doStop");
 	}
 
 }

@@ -40,7 +40,6 @@ class AblyMessageListenerContainer implements SmartLifecycle, BeanNameAware, Dis
 	}
 
 	private void listenForMessages() throws Exception {
-
 		try {
 			this.channel.subscribe(message -> {
 				var msg = MessageBuilder //
@@ -65,6 +64,7 @@ class AblyMessageListenerContainer implements SmartLifecycle, BeanNameAware, Dis
 		}
 		catch (Throwable throwable) {
 			log.warn("caught an exception while listening for messages on {}", this.beanName.get(), throwable);
+			throw new RuntimeException(throwable);
 		}
 
 	}

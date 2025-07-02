@@ -3,16 +3,14 @@ package com.joshlong.mogul.api.notifications.ably.integration;
 import io.ably.lib.realtime.Channel;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.MessageExtras;
-import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.util.Assert;
 
-import java.util.function.Supplier;
+import static com.joshlong.mogul.api.notifications.ably.integration.AblyHeaders.*;
 
 /**
  * Support for sending Ably messages as outbound messages.
@@ -32,26 +30,20 @@ public class AblyMessageHandler implements MessageHandler {
 
 	@Override
 	public void handleMessage(Message<?> message) throws MessagingException {
-		var name = valueOrNull(message.getHeaders(), String.class, AblyHeaders.ABLY_NAME, () -> null);
-		var ablyMessage = new io.ably.lib.types.Message(name, message.getPayload(),
-				valueOrNull(message.getHeaders(), String.class, AblyHeaders.ABLY_CLIENT_ID, () -> null),
-				valueOrNull(message.getHeaders(), MessageExtras.class, AblyHeaders.ABLY_MESSAGE_EXTRAS, () -> null));
-
+		var headers = message.getHeaders();
+		var name = headers.get(ABLY_NAME, String.class);
+		var clientId = headers.get(ABLY_CLIENT_ID, String.class);
+		var extras = headers.get(ABLY_MESSAGE_EXTRAS, MessageExtras.class);
+		var ablyMessage = new io.ably.lib.types.Message(name, message.getPayload(), clientId, extras);
 		try {
 			this.channel.publish(new io.ably.lib.types.Message[] { ablyMessage });
-			log.info("published {}:{}", name, message.getPayload());
+			if (this.log.isDebugEnabled())
+				this.log.debug("published {}:{}", name, message.getPayload());
 		} //
 		catch (AblyException e) {
 			this.log.error("oops!", e);
 			throw new RuntimeException(e);
 		}
-	}
-
-	private @Nullable <T> T valueOrNull(MessageHeaders messageHeaders, Class<T> clzz, String headerName,
-			Supplier<T> defaultSupplier) {
-		if (messageHeaders.containsKey(headerName))
-			return messageHeaders.get(headerName, clzz);
-		return null == defaultSupplier ? null : defaultSupplier.get();
 	}
 
 }
