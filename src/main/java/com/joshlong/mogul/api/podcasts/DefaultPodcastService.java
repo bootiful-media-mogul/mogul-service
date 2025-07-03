@@ -196,11 +196,32 @@ class DefaultPodcastService implements PodcastService {
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 		var graphicsWritten = episode.graphic().written() && episode.producedGraphic().written();
+		var allSegmentsHaveWritteAndProducedAudio = segments.stream()
+			.allMatch(se -> se.audio().written() && se.producedAudio().written());
 		var complete = StringUtils.hasText(episode.title()) && StringUtils.hasText(episode.description())
-				&& graphicsWritten && !segments.isEmpty()
-				&& (segments.stream().allMatch(se -> se.audio().written() && se.producedAudio().written()));
+				&& graphicsWritten && !segments.isEmpty() && allSegmentsHaveWritteAndProducedAudio;
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		var episodeById = this.getPodcastEpisodeById(episode.id());
+
+		var detailsOnSegments = "";
+		if (!allSegmentsHaveWritteAndProducedAudio) {
+			for (var s : segments) {
+				detailsOnSegments += s.id() + ": written audio? " + s.audio().written() + " produced audio? "
+						+ s.producedAudio().written() + "\n";
+			}
+		}
+
+		// let's build up a report to help us understand what's gone wrong
+
+		var msg = Map.of("graphic written", graphicsWritten, "graphic produced", episode.producedGraphic().written(),
+				"segments not empty?", !segments.isEmpty(), "has a title", StringUtils.hasText(episode.title()),
+				"all segments have written and produced audio", allSegmentsHaveWritteAndProducedAudio,
+				"details on segments", detailsOnSegments);
+		var finalMsg = "";
+		for (var k : msg.keySet())
+			finalMsg += k + ' ' + msg.get(k) + '\n';
+		log.info(finalMsg);
+
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletedEvent(mogulId, episodeById))) {
 			this.publisher.publishEvent(e);
