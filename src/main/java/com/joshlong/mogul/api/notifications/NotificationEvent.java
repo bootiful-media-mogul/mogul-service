@@ -33,12 +33,25 @@ import java.util.Date;
 public record NotificationEvent(Long mogulId, String category, String key, Date when, String context, boolean modal,
 		boolean visible) {
 
-	public static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
+	public static NotificationEvent systemNotificationEventFor(Long mogulId, Object object, String key,
+			String context) {
+		return notificationEventFor(mogulId, object, key, context, false, false);
+	}
+
+	public static NotificationEvent visibleNotificationEventFor(Long mogulId, Object object, String key,
+			String context) {
+		return notificationEventFor(mogulId, object, key, context, false, true);
+	}
+
+	public static NotificationEvent modalNotificationEventFor(Long mogulId, Object object, String key, String context) {
+		return notificationEventFor(mogulId, object, key, context, true, false);
+	}
+
+	static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
 			boolean modal, boolean visible) {
 		Assert.notNull(object, "object cannot be null");
 		Assert.notNull(mogulId, "mogulId cannot be null");
 		var cat = categoryFromClassName(object.getClass());
-		System.out.println("the category is " + cat + " and the key is " + key + " and the context is " + context);
 		return new NotificationEvent(mogulId, cat, key, new Date(), context, modal, visible);
 	}
 

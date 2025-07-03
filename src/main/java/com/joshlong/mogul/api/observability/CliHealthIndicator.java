@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.observability;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
@@ -10,6 +11,8 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 
 class CliHealthIndicator implements HealthIndicator {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<Health> health = new AtomicReference<>();
 
@@ -37,11 +40,13 @@ class CliHealthIndicator implements HealthIndicator {
 			var error = FileCopyUtils.copyToString(new InputStreamReader(process.getErrorStream()));
 			var exit = process.waitFor();
 			var health = exit == 0 ? Health.up() : Health.down();
-			return health.withDetail(this.name + "-output", output).withDetail(this.name + "error", error).build();
+			return health //
+				.withDetail(this.name + "-output", output) //
+				.withDetail(this.name + "error", error) //
+				.build();
 		} //
 		catch (Throwable throwable) {
-			LoggerFactory.getLogger(getClass())
-				.warn("could not capture the health for the command " + Arrays.toString(this.command), throwable);
+			this.log.warn("could not capture the health for the command {}", Arrays.toString(this.command), throwable);
 		}
 		return Health.unknown().build();
 	}

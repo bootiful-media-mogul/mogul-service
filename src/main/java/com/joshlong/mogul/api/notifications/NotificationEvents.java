@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api.notifications;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -17,8 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class NotificationEvents implements BeanFactoryAware, ApplicationEventPublisherAware {
-
-	private final static Logger log = LoggerFactory.getLogger(NotificationEvents.class);
 
 	private static final AtomicReference<ApplicationEventPublisher> PUBLISHER_ATOMIC_REFERENCE = new AtomicReference<>();
 
@@ -48,7 +44,7 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 		var transactionTemplate = transactionTemplate();
 		Assert.notNull(executor, "the executor must not be null");
 		Assert.notNull(transactionTemplate, "the transaction template must not be null");
-		executor.execute(() -> transactionTemplate.executeWithoutResult(transactionStatus -> notify(event)));
+		executor.execute(() -> transactionTemplate.executeWithoutResult(_ -> notify(event)));
 	}
 
 	/**
@@ -60,9 +56,6 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 		var eventPublisher = eventPublisher();
 		Assert.notNull(eventPublisher, "the publisher must not be null");
 		eventPublisher.publishEvent(event);
-		if (log.isDebugEnabled()) {
-			log.debug("published {} [{}]", NotificationEvent.class.getName(), event);
-		}
 	}
 
 	@Override

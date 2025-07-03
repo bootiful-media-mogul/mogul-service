@@ -69,17 +69,17 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 							this.log.debug(
 									"should produce audio! " + "producing the audio for episode [{}] from scratch",
 									episode);
-							NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+							NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
 									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
-									null, true, true));
+									null));
 							var producedManagedFile = podcastProducer.produce(episode);
 							managedFileService.setManagedFileVisibility(producedManagedFile.id(), true);
 							this.log.debug(
 									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
 									episode, producedManagedFile, podcastProducer);
-							NotificationEvents.notifyAsync(NotificationEvent.notificationEventFor(mogulId,
+							NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
 									new PodcastEpisodeRenderFinishedEvent(episode.id()), Long.toString(episode.id()),
-									null, true, true));
+									null));
 						}
 						var updatedEpisode = podcastService.getPodcastEpisodeById(episode.id());
 						Assert.notNull(updatedEpisode.producedAudioUpdated(), "the producedAudioUpdated field is null");

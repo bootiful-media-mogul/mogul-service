@@ -7,7 +7,14 @@ import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
 public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcriptions transcriptions, Podcasts podcasts,
-		Settings settings, boolean debug) {
+		Notifications notifications, Settings settings, boolean debug) {
+
+	public record Notifications(Ably ably) {
+
+		public record Ably(String apiKey) {
+		}
+
+	}
 
 	public record Transcriptions(File root) {
 	}

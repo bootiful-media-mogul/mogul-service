@@ -89,7 +89,7 @@ class DefaultPodcastService implements PodcastService {
 			.list();
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
 		for (var s : segments) {
-			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), sk -> new ArrayList<>()).add(s);
+			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
 		}
 		return episodeToSegmentsMap;
 	}
@@ -184,15 +184,10 @@ class DefaultPodcastService implements PodcastService {
 			this.setPodcastEpisodeSegmentTranscript(id, true, txt);
 		}
 
-		// todo publish a notification event back down to the client that it then
-		// interprets to reload the transcripton component _IF_ the transcript
-		// for this particular segment happens to be loaded!
-		// maybe we should also gray out the text box to disallow text input while this
-		// transcription is happening server-side?
-		// this event (on(TranscriptProcessedEvent) will be called both when manually
-		// updating a transcript and when re-initializing it
-		var notificationEvent = NotificationEvent.notificationEventFor(mogulId, processedEvent,
-				processedEvent.key().toString(), processedEvent.transcript(), false, false);
+		// todo publish a notification event back down to the client to signal that a
+		// transcription has finished.
+		var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId, processedEvent,
+				processedEvent.key().toString(), processedEvent.transcript());
 		NotificationEvents.notify(notificationEvent);
 	}
 
@@ -579,15 +574,15 @@ class DefaultPodcastService implements PodcastService {
 
 	@EventListener
 	void podcastDeletedEventNotifyingListener(PodcastDeletedEvent event) {
-		var notificationEvent = NotificationEvent.notificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title(), false, true);
+		var notificationEvent = NotificationEvent.visibleNotificationEventFor(event.podcast().mogulId(), event,
+				Long.toString(event.podcast().id()), event.podcast().title());
 		NotificationEvents.notify(notificationEvent);
 	}
 
 	@EventListener
 	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
-		var notificationEvent = NotificationEvent.notificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title(), false, true);
+		var notificationEvent = NotificationEvent.visibleNotificationEventFor(event.podcast().mogulId(), event,
+				Long.toString(event.podcast().id()), event.podcast().title());
 		NotificationEvents.notify(notificationEvent);
 	}
 
