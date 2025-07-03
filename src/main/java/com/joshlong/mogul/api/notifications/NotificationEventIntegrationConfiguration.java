@@ -1,15 +1,9 @@
 package com.joshlong.mogul.api.notifications;
 
-import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.ably.integration.AblyHeaders;
 import com.joshlong.mogul.api.notifications.ably.integration.AblyMessageHandler;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import io.ably.lib.realtime.AblyRealtime;
-import io.ably.lib.realtime.Channel;
-import org.aopalliance.intercept.MethodInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -80,10 +74,6 @@ class NotificationEventIntegrationConfiguration {
 				protected Object doTransform(Message<?> message) {
 					var notificationEvent = (NotificationEvent) message.getPayload();
 					var json = JsonUtils.write(notificationEvent);
-					// todo once we have this all working, let's look at how to setup
-					// encryption / decryption for the values sent to/from Ably.
-					// but how would the in-browser client decrypt a value we encrypted
-					// here on the server?
 					var topic = AblyNotificationsUtils.ablyNoticationsChannelFor(notificationEvent.mogulId());
 					return MessageBuilder //
 						.withPayload(json) //

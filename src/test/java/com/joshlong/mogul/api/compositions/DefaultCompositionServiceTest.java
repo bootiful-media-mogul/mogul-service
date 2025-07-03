@@ -50,7 +50,6 @@ class DefaultCompositionServiceTest {
 	void composeAndCreateCompositionAttachment(@Autowired CompositionService compositionService,
 			@Autowired PodcastService podcastService, @Autowired ManagedFileService managedFileService,
 			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
-		// todo login
 		var mogulId = transactionTemplate.execute(status -> {
 			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
 			assertNotNull(login, "the login should not be null");

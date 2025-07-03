@@ -17,15 +17,8 @@ public interface PodcastService {
 
 	Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade);
 
-	// todo could we genericize this so that there's a chain of responsibility on the
-	// server side, event listeners, that handle updating a particular type of entity's
-	// transcript?
 	void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript);
 
-	// forces the server to re-initialize the transcript for this podcast episode segment.
-	// todo could we genericize this so that there's a chain of responsibility on the
-	// server side, event listeners, that handle refreshing a particular type of entity's
-	// transcript?
 	void transcribePodcastEpisodeSegment(Long episodeSegmentId);
 
 	void movePodcastEpisodeSegmentUp(Long episode, Long segment);

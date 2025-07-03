@@ -60,13 +60,9 @@ class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPl
 		Assert.state(this.confirmMogulHasRightsToBlog(targetBlog),
 				"the mogul does not have the right " + "to publish content to this blog");
 
-		// todo
-		// get transcript of all segments
-		// concatenate them
-		// get title , description
-
-		var title = payload.title();
-		var description = payload.description();
+		// todo get transcript of all segments, concatenate them, get title , description
+		// var title = payload.title();
+		// var description = payload.description();
 
 	}
 

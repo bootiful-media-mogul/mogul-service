@@ -107,10 +107,6 @@ class DefaultPodcastService implements PodcastService {
 		return new ArrayList<>(episodeSegmentsFromDb);
 	}
 
-	// todo should i also be doing transcription in this method?
-	// this method knows when a file has been written and is in an ideal position
-	// to update the record.
-
 	@ApplicationModuleListener
 	void podcastManagedFileUpdated(ManagedFileUpdatedEvent managedFileUpdatedEvent) throws Exception {
 		var mf = managedFileUpdatedEvent.managedFile();
@@ -184,8 +180,6 @@ class DefaultPodcastService implements PodcastService {
 			this.setPodcastEpisodeSegmentTranscript(id, true, txt);
 		}
 
-		// todo publish a notification event back down to the client to signal that a
-		// transcription has finished.
 		var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId, processedEvent,
 				processedEvent.key().toString(), processedEvent.transcript());
 		NotificationEvents.notify(notificationEvent);
@@ -196,31 +190,36 @@ class DefaultPodcastService implements PodcastService {
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 		var graphicsWritten = episode.graphic().written() && episode.producedGraphic().written();
-		var allSegmentsHaveWritteAndProducedAudio = segments.stream()
+		var allSegmentsHaveWrittenAndProducedAudio = segments.stream()
 			.allMatch(se -> se.audio().written() && se.producedAudio().written());
 		var complete = StringUtils.hasText(episode.title()) && StringUtils.hasText(episode.description())
-				&& graphicsWritten && !segments.isEmpty() && allSegmentsHaveWritteAndProducedAudio;
+				&& graphicsWritten && !segments.isEmpty() && allSegmentsHaveWrittenAndProducedAudio;
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		var episodeById = this.getPodcastEpisodeById(episode.id());
 
-		var detailsOnSegments = "";
-		if (!allSegmentsHaveWritteAndProducedAudio) {
+		var detailsOnSegments = new StringBuilder();
+		if (!allSegmentsHaveWrittenAndProducedAudio) {
 			for (var s : segments) {
-				detailsOnSegments += s.id() + ": written audio? " + s.audio().written() + " produced audio? "
-						+ s.producedAudio().written() + "\n";
+				detailsOnSegments.append(s.id())
+					.append(": written audio? ")
+					.append(s.audio().written())
+					.append(" produced audio? ")
+					.append(s.producedAudio().written())
+					.append("\n");
 			}
 		}
 
 		// let's build up a report to help us understand what's gone wrong
+		// it would be nice to produce a publication report or something
 
 		var msg = Map.of("graphic written", graphicsWritten, "graphic produced", episode.producedGraphic().written(),
 				"segments not empty?", !segments.isEmpty(), "has a title", StringUtils.hasText(episode.title()),
-				"all segments have written and produced audio", allSegmentsHaveWritteAndProducedAudio,
-				"details on segments", detailsOnSegments);
-		var finalMsg = "";
+				"all segments have written and produced audio", allSegmentsHaveWrittenAndProducedAudio,
+				"details on segments", detailsOnSegments.toString());
+		var finalMsg = new StringBuilder();
 		for (var k : msg.keySet())
-			finalMsg += k + ' ' + msg.get(k) + '\n';
-		log.info(finalMsg);
+			finalMsg.append(k).append(' ').append(msg.get(k)).append(System.lineSeparator());
+		this.log.info(finalMsg.toString());
 
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletedEvent(mogulId, episodeById))) {

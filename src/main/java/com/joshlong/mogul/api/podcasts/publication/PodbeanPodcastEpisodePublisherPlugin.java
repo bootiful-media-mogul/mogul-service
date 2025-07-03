@@ -76,8 +76,6 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public void publish(Map<String, String> context, Episode payload) {
 		log.debug("publishing to podbean with context [{}] and payload [{}]. produced audio is [{}]", context, payload,
 				payload.producedAudio());
-		// todo some sort of thread local in which to stash the context
-		// to make it available to the multitenant TokenProvider
 
 		var tempProducedAudioFile = this.download(this.managedFileService.read(payload.producedAudio().id()),
 				FileUtils.tempFileWithExtension("mp3"));
