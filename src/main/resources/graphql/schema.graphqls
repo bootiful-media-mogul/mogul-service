@@ -138,11 +138,6 @@ type Mutation {
 
     # settings
     updateSetting(category:String, name:String, value:String): Boolean
-
-
-    # test endpoints (to be deleted at a moment's notice)
-    # notify(visible: Boolean, modal: Boolean) : Boolean
-
 }
 
 
