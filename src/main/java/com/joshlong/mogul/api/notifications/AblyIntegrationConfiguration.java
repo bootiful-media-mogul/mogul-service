@@ -1,9 +1,15 @@
 package com.joshlong.mogul.api.notifications;
 
+import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.ably.integration.AblyHeaders;
 import com.joshlong.mogul.api.notifications.ably.integration.AblyMessageHandler;
 import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.realtime.Channel;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.dsl.IntegrationFlow;
@@ -24,9 +30,19 @@ import org.springframework.messaging.support.MessageBuilder;
 @Configuration
 class AblyIntegrationConfiguration {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	@Bean
-	Channel channel(AblyRealtime ablyRealtime) {
-		return ablyRealtime.channels.get("notifications");
+	Channel notificationsChannel(AblyRealtime ablyRealtime, MogulService mogulService) {
+		var pfb = new ProxyFactoryBean();
+		pfb.setTargetClass(Channel.class);
+		pfb.setProxyTargetClass(true);
+		pfb.addAdvice((MethodInterceptor) _ -> {
+			var channelName = AblyNotificationsUtils.ablyNoticationsChannelFor(mogulService.getCurrentMogul());
+			log.debug("resolving notification channel name {}", channelName);
+			return ablyRealtime.channels.get(channelName);
+		});
+		return (Channel) pfb.getObject();
 	}
 
 	@Bean
@@ -37,8 +53,8 @@ class AblyIntegrationConfiguration {
 	}
 
 	@Bean
-	AblyMessageHandler ablyMessageHandler(Channel channel) {
-		return new AblyMessageHandler(channel);
+	AblyMessageHandler ablyMessageHandler(AblyRealtime ablyRealtime) {
+		return new AblyMessageHandler(ablyRealtime);
 	}
 
 	// i have a hackney'd version of the code that publishes messages to a named topic
@@ -59,10 +75,11 @@ class AblyIntegrationConfiguration {
 					// but how would the in-browser client decrypt a value we encrypted
 					// here on the server?
 					if (message.getPayload() instanceof NotificationEvent notificationEvent) {
-						var topic = AblyNotificationsUtils.ablyNoticationsDestinationFor(notificationEvent.mogulId());
+						var topic = AblyNotificationsUtils.ablyNoticationsChannelFor(notificationEvent.mogulId());
 						return MessageBuilder //
 							.withPayload(notificationEvent.mogulId() + ':' + notificationEvent.key()) //
 							.setHeader(AblyHeaders.ABLY_NAME, topic)//
+							.setHeader(AblyHeaders.ABLY_CHANNEL_NAME, topic)//
 							.build();
 					}
 					return null;

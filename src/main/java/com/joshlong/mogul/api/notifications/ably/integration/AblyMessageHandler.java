@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.notifications.ably.integration;
 
-import io.ably.lib.realtime.Channel;
+import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.MessageExtras;
 import org.slf4j.Logger;
@@ -21,11 +21,10 @@ public class AblyMessageHandler implements MessageHandler {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Channel channel;
+	private final AblyRealtime ably;
 
-	public AblyMessageHandler(Channel channel) {
-		this.channel = channel;
-		Assert.notNull(this.channel, "the Ably realtime channel must not be null");
+	public AblyMessageHandler(AblyRealtime ablyRealtime) {
+		this.ably = ablyRealtime;
 	}
 
 	@Override
@@ -36,7 +35,10 @@ public class AblyMessageHandler implements MessageHandler {
 		var extras = headers.get(ABLY_MESSAGE_EXTRAS, MessageExtras.class);
 		var ablyMessage = new io.ably.lib.types.Message(name, message.getPayload(), clientId, extras);
 		try {
-			this.channel.publish(new io.ably.lib.types.Message[] { ablyMessage });
+			var channelName = headers.get(ABLY_CHANNEL_NAME, String.class);
+			Assert.hasText(channelName, "the Ably channel name header must be set");
+			var channel = this.ably.channels.get(channelName);
+			channel.publish(new io.ably.lib.types.Message[] { ablyMessage });
 			if (this.log.isDebugEnabled())
 				this.log.debug("published {}:{}", name, message.getPayload());
 		} //

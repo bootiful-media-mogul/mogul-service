@@ -9,6 +9,8 @@ public interface AblyHeaders {
 
 	String ABLY_NAME = "ably_name";
 
+	String ABLY_CHANNEL_NAME = "ably_channel_name";
+
 	String ABLY_MESSAGE_EXTRAS = "ably_messageExtras";
 
 	String ABLY_ID = "ably_id";
