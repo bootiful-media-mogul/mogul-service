@@ -207,9 +207,8 @@ class PodcastController {
 		try {
 			var map = Map.of("episodeId", id, "complete", episode.complete());
 			var json = JsonUtils.write(map);
-			var notificationEvent = NotificationEvent.visibleNotificationEventFor(
-					podcastEpisodeCompletedEvent.mogulId(), podcastEpisodeCompletedEvent, Long.toString(episode.id()),
-					json);
+			var notificationEvent = NotificationEvent.systemNotificationEventFor(podcastEpisodeCompletedEvent.mogulId(),
+					podcastEpisodeCompletedEvent, Long.toString(episode.id()), json);
 			NotificationEvents.notify(notificationEvent);
 		} //
 		catch (Exception e) {

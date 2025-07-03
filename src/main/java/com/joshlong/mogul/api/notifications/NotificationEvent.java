@@ -47,7 +47,7 @@ public record NotificationEvent(Long mogulId, String category, String key, Date 
 		return notificationEventFor(mogulId, object, key, context, true, false);
 	}
 
-	static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
+	private static NotificationEvent notificationEventFor(Long mogulId, Object object, String key, String context,
 			boolean modal, boolean visible) {
 		Assert.notNull(object, "object cannot be null");
 		Assert.notNull(mogulId, "mogulId cannot be null");
