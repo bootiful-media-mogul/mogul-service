@@ -141,7 +141,7 @@ type Mutation {
 
 
     # test endpoints (to be deleted at a moment's notice)
-    notify(visible: Boolean, modal: Boolean) : Boolean
+    # notify(visible: Boolean, modal: Boolean) : Boolean
 
 }
 

@@ -20,20 +20,22 @@ class NotificationsController {
 		this.transactionTemplate = transactionTemplate;
 	}
 
-	// todo remove this once we've integrated Ably!
-	@MutationMapping
-	@SuppressWarnings("ConstantConditions")
-	boolean notify(@Argument boolean visible, @Argument boolean modal) {
-		var object = new TestEvent("sent a " + (modal ? "modal" : "") + (visible ? "" : ", and visible") + " message");
-		var id = this.mogulService.getCurrentMogul().id();
-		return this.transactionTemplate.execute(_ -> {
-			var notificationEvent = NotificationEvent.notificationEventFor(id, object, id.toString(), null, modal,
-					visible);
-			NotificationEvents.notify(notificationEvent);
-			return true;
-		});
-
-	}
+	// // todo remove this once we've integrated Ably!
+	// @MutationMapping
+	// @SuppressWarnings("ConstantConditions")
+	// boolean notify(@Argument boolean visible, @Argument boolean modal) {
+	// var object = new TestEvent("sent a " + (modal ? "modal" : "") + (visible ? "" : ",
+	// and visible") + " message");
+	// var id = this.mogulService.getCurrentMogul().id();
+	// return this.transactionTemplate.execute(_ -> {
+	// var notificationEvent = NotificationEvent.notificationEventFor(id, object,
+	// id.toString(), null, modal,
+	// visible);
+	// NotificationEvents.notify(notificationEvent);
+	// return true;
+	// });
+	//
+	// }
 
 	// todo i dont think we'll need this endpoint nor the client side code that queries it
 	// since we have Ably now. Ably can give you history, too. So it'd make more sense to
