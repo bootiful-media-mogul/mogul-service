@@ -28,9 +28,3 @@ class AblyController {
 	}
 
 }
-
-record TokenRequest(String keyName, String nonce, String mac, String timestamp, String ttl, String capability) {
-}
-
-record NotificationContext(String ablyChannel, TokenRequest ablyTokenRequest) {
-}
