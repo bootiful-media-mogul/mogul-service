@@ -154,7 +154,7 @@ type Query {
     renderedMarkdown( markdown : String) : String
 
     # notifications
-    notifications: NotificationEvent
+    notificationContext : NotificationContext
 
     # settings
     settings: [SettingsPage]
@@ -173,4 +173,18 @@ type Query {
 
     # managedFiles
     managedFileById( managedFileId: Int ) : ManagedFile
+}
+
+type NotificationContext  {
+    ablyChannel : String
+    ablyTokenRequest : TokenRequest
+}
+
+type TokenRequest {
+    keyName:String
+    nonce: String
+    mac:String
+    ttl: String
+    capability:String
+    timestamp: String
 }
