@@ -168,11 +168,11 @@ type Query {
     # podcasts
     podcastById(podcastId: Int ): Podcast
     podcasts: [Podcast]
-    podcastEpisodeById(  podcastEpisodeId:Int ): Episode
-    podcastEpisodesByPodcast (podcastId: Int ) : [Episode]
+    podcastEpisodeById(podcastEpisodeId:Int):Episode
+    podcastEpisodesByPodcast(podcastId:Int):[Episode]
 
     # managedFiles
-    managedFileById( managedFileId: Int ) : ManagedFile
+    managedFileById( managedFileId: Int) : ManagedFile
 }
 
 type NotificationContext  {
