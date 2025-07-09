@@ -4,7 +4,6 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.ably.AblyTokenService;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
-import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 @Controller
 class AblyController {
