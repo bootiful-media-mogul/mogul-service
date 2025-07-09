@@ -48,19 +48,6 @@ class PodcastController {
 		return env.getSelectionSet().contains(fieldName);
 	}
 
-	// @SchemaMapping(typeName = "Query", field = "podcasts")
-	// public List<Podcast> getPodcasts(DataFetchingEnvironment env) {
-	// boolean wantsSegments = isFieldRequested(env, "segments");
-	//
-	// if (wantsSegments) {
-	// // do JOIN to fetch segments eagerly
-	// } else {
-	// // do lightweight query
-	// }
-	//
-	// return podcastRepository.findPodcasts(wantsSegments);
-	// }
-
 	@MutationMapping
 	boolean movePodcastEpisodeSegmentDown(@Argument Long podcastEpisodeId, @Argument Long podcastEpisodeSegmentId) {
 		this.podcastService.movePodcastEpisodeSegmentDown(podcastEpisodeId, podcastEpisodeSegmentId);
@@ -125,12 +112,6 @@ class PodcastController {
 		var currentMogul = this.mogulService.getCurrentMogul();
 		return this.podcastService.getAllPodcastsByMogul(currentMogul.id());
 	}
-
-	// @SchemaMapping
-	// Collection<Episode> episodes(Podcast podcast) {
-	// this.mogulService.assertAuthorizedMogul(podcast.mogulId());
-	// return this.podcastService.getPodcastEpisodesByPodcast(podcast.id());
-	// }
 
 	@MutationMapping
 	boolean deletePodcastEpisode(@Argument Long podcastEpisodeId) {

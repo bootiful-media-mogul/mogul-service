@@ -80,6 +80,7 @@ type Segment {
     producedAudio : ManagedFile
     order : Int
     crossFadeDuration : Int
+#    pending :[String]
 }
 
 type Podcast {
@@ -166,7 +167,7 @@ type Query {
     aiChat(prompt:String): String
 
     # podcasts
-    podcastById(podcastId: Int ): Podcast
+    podcastById(podcastId: Int): Podcast
     podcasts: [Podcast]
     podcastEpisodeById(podcastEpisodeId:Int):Episode
     podcastEpisodesByPodcast(podcastId:Int):[Episode]
