@@ -9,7 +9,6 @@ import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.graphql.data.method.annotation.*;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
@@ -24,14 +23,11 @@ class PodcastController {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final ApplicationEventPublisher publisher;
-
 	private final MogulService mogulService;
 
 	private final PodcastService podcastService;
 
-	PodcastController(ApplicationEventPublisher publisher, MogulService mogulService, PodcastService podcastService) {
-		this.publisher = publisher;
+	PodcastController(MogulService mogulService, PodcastService podcastService) {
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
 	}

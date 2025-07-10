@@ -1,8 +1,7 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
@@ -26,11 +25,10 @@ import org.springframework.web.client.RestClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -40,9 +38,14 @@ class DefaultMogulService implements MogulService {
 
 	private final RestClient userinfoHttpRestClient = RestClient.builder().build();
 
-	private final Map<Long, Mogul> mogulsById = evictingConcurrentMap();
+	private final int maxEntries = 100;
 
-	private final Map<String, Mogul> mogulsByName = evictingConcurrentMap();
+	private final Duration tenMins = Duration.ofMinutes(10);
+
+	private final Map<Long, Mogul> mogulsById = CollectionUtils.evictingConcurrentMap(this.maxEntries, this.tenMins);
+
+	private final Map<String, Mogul> mogulsByName = CollectionUtils.evictingConcurrentMap(this.maxEntries,
+			this.tenMins);
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -63,11 +66,6 @@ class DefaultMogulService implements MogulService {
 		this.db = jdbcClient;
 		this.publisher = publisher;
 		Assert.notNull(this.db, "the db is null");
-	}
-
-	private static <K> ConcurrentMap<K, Mogul> evictingConcurrentMap() {
-		Cache<K, Mogul> build = Caffeine.newBuilder().maximumSize(100).expireAfterWrite(10, TimeUnit.MINUTES).build();
-		return build.asMap();
 	}
 
 	@Override

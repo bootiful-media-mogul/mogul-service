@@ -3,6 +3,8 @@ package com.joshlong.mogul.api;
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -10,11 +12,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
@@ -70,6 +75,18 @@ public class ApiApplication {
 			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
 		}
 
+	}
+
+}
+
+@Component
+class Listener implements ApplicationListener {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	@Override
+	public void onApplicationEvent(ApplicationEvent event) {
+		this.log.info("received event [{}]: {} with source {}", event.getClass().getName(), event, event.getSource());
 	}
 
 }
