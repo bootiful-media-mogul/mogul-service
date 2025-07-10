@@ -86,7 +86,9 @@ class Listener implements ApplicationListener {
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
-		this.log.info("received event [{}]: {} with source {}", event.getClass().getName(), event, event.getSource());
+		if (this.log.isDebugEnabled())
+			this.log.debug("received event [{}]: {} with source {}", event.getClass().getName(), event,
+					event.getSource());
 	}
 
 }
