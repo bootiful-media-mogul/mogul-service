@@ -275,6 +275,11 @@ class DefaultPodcastService implements PodcastService {
 	public Podcast updatePodcast(Long podcastId, String title) {
 		this.db.sql(" update podcast   set title = ? where id = ? ").params(title, podcastId).update();
 		var podcast = this.getPodcastById(podcastId);
+		if (this.log.isDebugEnabled())
+			this.log.debug("updated podcast {} with title {}", podcastId, title);
+
+		Assert.state((null != podcast.title() && title != null), "you must provide a valid title");
+		Assert.state(title.equals(podcast.title()), "you must provide a valid title");
 		this.publisher.publishEvent(new PodcastUpdatedEvent(podcast));
 		return podcast;
 	}
@@ -601,7 +606,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@EventListener
 	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
-		var notificationEvent = NotificationEvent.visibleNotificationEventFor(event.podcast().mogulId(), event,
+		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.podcast().mogulId(), event,
 				Long.toString(event.podcast().id()), event.podcast().title());
 		NotificationEvents.notify(notificationEvent);
 	}
