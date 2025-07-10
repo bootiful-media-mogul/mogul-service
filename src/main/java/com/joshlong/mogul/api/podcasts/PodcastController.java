@@ -179,10 +179,6 @@ class PodcastController {
 
 	@ApplicationModuleListener
 	void broadcastPodcastUpdatedEventToClients(PodcastUpdatedEvent podcastUpdatedEvent) {
-		// var write = JsonUtils.write(Map.of("podcastId",
-		// podcastUpdatedEvent.podcast().id(), "context",
-		// podcastUpdatedEvent.podcast().title(),
-		// "title", podcastUpdatedEvent.podcast().title()));
 		var ne = NotificationEvent.visibleNotificationEventFor(podcastUpdatedEvent.podcast().mogulId(),
 				podcastUpdatedEvent, Long.toString(podcastUpdatedEvent.podcast().id()),
 				podcastUpdatedEvent.podcast().title());
