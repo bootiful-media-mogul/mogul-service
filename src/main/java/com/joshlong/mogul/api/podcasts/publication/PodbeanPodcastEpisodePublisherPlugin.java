@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin, BeanNameAware {
 
 	/**
-	 * well known values written to the context after publication.
+	 * well-known values written to the context after publication.
 	 */
 	public static final String CONTEXT_PODBEAN_PODCAST_ID = "podbeanPodcastId";
 
@@ -74,40 +74,40 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 
 	@Override
 	public void publish(Map<String, String> context, Episode payload) {
-		log.debug("publishing to podbean with context [{}] and payload [{}]. produced audio is [{}]", context, payload,
-				payload.producedAudio());
+		this.log.debug("publishing to podbean with context [{}] and payload [{}]. produced audio is [{}]", context,
+				payload, payload.producedAudio());
 
 		var tempProducedAudioFile = this.download(this.managedFileService.read(payload.producedAudio().id()),
 				FileUtils.tempFileWithExtension("mp3"));
-		log.debug("downloaded the produced audio file for the podcast episode {}", payload.id());
+		this.log.debug("downloaded the produced audio file for the podcast episode {}", payload.id());
 		var tempGraphicFile = this.download(this.managedFileService.read(payload.producedGraphic().id()),
 				FileUtils.tempFileWithExtension("jpg"));
-		log.debug("downloaded the produced graphic for the episode {}", payload.id());
+		this.log.debug("downloaded the produced graphic for the episode {}", payload.id());
 
 		var producedAudioAuthorization = this.podbeanClient.upload(CommonMediaTypes.MP3, tempProducedAudioFile);
-		log.debug("got the podcast audio authorization from podbean: {}", producedAudioAuthorization);
+		this.log.debug("got the podcast audio authorization from podbean: {}", producedAudioAuthorization);
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
-		log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
+		this.log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
 		// this used to be DRAFT/PUBLIC, but YOLO..
 		var podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
 				EpisodeStatus.PUBLISH, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
 				producedGraphicAuthorization.getFileKey());
-		log.debug("published the episode to podbean {}", podbeanEpisode.toString());
+		this.log.debug("published the episode to podbean {}", podbeanEpisode.toString());
 
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
 		if (permalinkUrl != null) {
 			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
-			log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
+			this.log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
 		} //
 		else {
-			log.debug("the published episode's (Episode#{}) podbean url is null", payload.id());
+			this.log.debug("the published episode's (Episode#{}) podbean url is null", payload.id());
 		}
 		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
 		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
 		context.put(CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS,
 				Long.toString(podbeanEpisode.getPublishTime().getTime()));
-		log.debug("published episode to podbean: [{}]", podbeanEpisode);
+		this.log.debug("published episode to podbean: [{}]", podbeanEpisode);
 	}
 
 	private File download(Resource resource, File file) {
@@ -117,7 +117,8 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 			FileCopyUtils.copy(bin, bout);
 		} //
 		catch (Throwable throwable) {
-			log.error("could not download the resource {} to file {} ", resource.getFilename(), file.getAbsolutePath());
+			this.log.error("could not download the resource {} to file {} ", resource.getFilename(),
+					file.getAbsolutePath());
 			throw new RuntimeException("could not download a resource ", throwable);
 		}
 		return file;
@@ -135,7 +136,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 				this.podbeanClient.updateEpisode(episodeId, episode.getTitle(), episode.getContent(),
 						EpisodeStatus.DRAFT, EpisodeType.PUBLIC, null, null);
 				done.set(true);
-				log.debug("unpublishing podbean publication for episode #{}", publication.payload());
+				this.log.debug("unpublishing podbean publication for episode #{}", publication.payload());
 			});
 		return done.get();
 	}

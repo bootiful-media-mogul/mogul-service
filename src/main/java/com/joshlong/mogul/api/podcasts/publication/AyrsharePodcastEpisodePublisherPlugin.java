@@ -1,13 +1,15 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
 import com.joshlong.mogul.api.Publication;
+import com.joshlong.mogul.api.ayrshare.Ayrshare;
+import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
 import com.joshlong.mogul.api.podcasts.Episode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
-
-import static com.joshlong.mogul.api.podcasts.publication.AyrsharePodcastEpisodePublisherPlugin.PLUGIN_NAME;
 
 /**
  * this will show the user the possible social accounts they could target and, in
@@ -18,25 +20,32 @@ import static com.joshlong.mogul.api.podcasts.publication.AyrsharePodcastEpisode
  *
  * @author Josh Long
  */
-@Component(value = PLUGIN_NAME)
+@Component(value = AyrshareConstants.PLUGIN_NAME)
 class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	private static final String API_KEY = "ayrshareKey";
+	private final Ayrshare ayrshare;
 
-	static final String PLUGIN_NAME = "ayrshare";
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	AyrsharePodcastEpisodePublisherPlugin(Ayrshare ayrshare) {
+		this.ayrshare = ayrshare;
+	}
 
 	@Override
 	public String name() {
-		return PLUGIN_NAME;
+		return AyrshareConstants.PLUGIN_NAME;
 	}
 
 	@Override
 	public Set<String> getRequiredSettingKeys() {
-		return Set.of(API_KEY);
+		return Set.of(AyrshareConstants.API_KEY_SETTING_KEY);
 	}
 
 	@Override
 	public void publish(Map<String, String> context, Episode payload) {
+
+		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
+				payload.toString());
 
 	}
 
