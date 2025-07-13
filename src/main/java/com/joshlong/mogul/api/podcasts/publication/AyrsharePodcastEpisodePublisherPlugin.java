@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.podcasts.Episode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 
 import java.util.Map;
 import java.util.Set;
@@ -44,8 +45,23 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	@Override
 	public void publish(Map<String, String> context, Episode payload) {
 
+		// todo compositions, when we get them working, will be a natural fit with
+		// ayrshare's media_urls capability
 		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
 				payload.toString());
+
+		// todo could we be a little intelligent here? let's say we visit all the posts
+		// and they're identical ? batch the post.
+		// we can map post to 0..N platforms and send that post to all the platforms that
+		// have the same post, in a batch
+		for (var p : ayrshare.platforms()) {
+			var key = p.name().toLowerCase();
+			if (context.containsKey(key)) {
+				var post = context.get(key);
+				var reply = this.ayrshare.post(post, Ayrshare.Platform.of(p));
+				Assert.isTrue(reply.status().contains("success"), "the post should have been posted");
+			}
+		}
 
 	}
 
