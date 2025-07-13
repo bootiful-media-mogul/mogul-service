@@ -9,8 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * this will show the user the possible social accounts they could target and, in
@@ -54,13 +57,45 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 		// and they're identical ? batch the post.
 		// we can map post to 0..N platforms and send that post to all the platforms that
 		// have the same post, in a batch
+		if (false) {
+			for (var p : ayrshare.platforms()) {
+				var key = p.name().toLowerCase();
+				if (context.containsKey(key)) {
+					var post = context.get(key);
+					var reply = this.ayrshare.post(post, Ayrshare.Platform.of(p));
+					Assert.isTrue(reply.status().contains("success"), "the post should have been posted");
+				}
+			}
+		}
+
+		/// take 2
+
+		var optimizedMapping = new HashMap<String, Set<Ayrshare.Platform>>();
 		for (var p : ayrshare.platforms()) {
 			var key = p.name().toLowerCase();
 			if (context.containsKey(key)) {
 				var post = context.get(key);
-				var reply = this.ayrshare.post(post, Ayrshare.Platform.of(p));
-				Assert.isTrue(reply.status().contains("success"), "the post should have been posted");
+				optimizedMapping.computeIfAbsent(post.trim(), k -> new HashSet<>()).add(p);
 			}
+		}
+
+		this.log.debug("optimized mapping is {}", optimizedMapping);
+
+		for (var post : optimizedMapping.keySet()) {
+			var targets = optimizedMapping.getOrDefault(post, new HashSet<>()).toArray(new Ayrshare.Platform[0]);
+			if (targets.length > 0) {
+
+				this.ayrshare.post(post, targets);
+
+				var platformNames = Stream //
+					.of(targets) //
+					.map(p -> p.name().toLowerCase()) //
+					.toList();
+				var platformNamesJoined = String.join(",", platformNames);
+				this.log.debug("going to post to {} platforms for episode #{} - {} having post content {}",
+						platformNamesJoined, payload.id(), payload.title(), post);
+			}
+
 		}
 
 	}
