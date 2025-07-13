@@ -91,6 +91,7 @@ class PodcastEpisodeFeedController {
 
 		var mogul = this.mogulService.getMogulById(mogulId);
 		var podcast = this.podcastService.getPodcastById(podcastId);
+
 		var episodes = this.podcastService.getPodcastEpisodesByPodcast(podcastId, true);
 		var author = mogul.givenName() + ' ' + mogul.familyName();
 		var url = PODCAST_FEED_URL;

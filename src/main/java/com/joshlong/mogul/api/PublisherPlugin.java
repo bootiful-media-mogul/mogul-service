@@ -8,7 +8,7 @@ import java.util.Set;
 public interface PublisherPlugin<T extends Publishable> {
 
 	/**
-	 * well known headers for the encrypted context data.
+	 * well-known headers for the encrypted context data.
 	 */
 	String CONTEXT_URL = "url";
 

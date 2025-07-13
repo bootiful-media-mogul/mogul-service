@@ -65,7 +65,7 @@ class PublishableConfiguration {
 			for (var clzz : classes) {
 				generics.addAll(ReflectionUtils.genericsFor(clzz));
 			}
-			return (generationContext, beanFactoryInitializationCode) -> {
+			return (generationContext, _) -> {
 				var mcs = MemberCategory.values();
 				var hints = generationContext.getRuntimeHints();
 				for (var c : generics) {

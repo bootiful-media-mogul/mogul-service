@@ -78,17 +78,3 @@ public class ApiApplication {
 	}
 
 }
-
-@Component
-class Listener implements ApplicationListener {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	@Override
-	public void onApplicationEvent(ApplicationEvent event) {
-		if (this.log.isDebugEnabled())
-			this.log.debug("received event [{}]: {} with source {}", event.getClass().getName(), event,
-					event.getSource());
-	}
-
-}
