@@ -7,15 +7,12 @@ import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -24,11 +21,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
@@ -36,12 +30,7 @@ import java.util.function.Function;
 		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
 class DefaultPublicationService implements PublicationService {
 
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
-
 	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private final Map<String, Collection<Publication>> publicationsCache = CollectionUtils.evictingConcurrentMap(10_000,
-			Duration.ofHours(1));
 
 	private final Function<SettingsLookup, Map<String, String>> settingsLookup;
 
@@ -181,26 +170,12 @@ class DefaultPublicationService implements PublicationService {
 
 	@Override
 	public Publication getPublicationById(Long publicationId) {
-		for (var pc : this.publicationsCache.values())
-			for (var p : pc)
-				if (p.id().equals(publicationId))
-					return p;
-		throw new IllegalStateException(
-				"we shouldn't get to this point. what are you doing looking up a publication whose ID (" + publicationId
-						+ ") doesn't match? ");
-	}
-
-	private void refreshCache() {
-
-		this.publicationsCache.clear();
-
-		this.db.sql("select * from publication") //
+		return this.db //
+			.sql("select * from publication where id = ?") //
+			.param(publicationId) //
 			.query(this.publicationRowMapper) //
-			.stream()//
-			.forEach(publication -> {
-				var key = this.buildPublicationCacheKey(publication.payloadClass(), publication.payload());
-				this.publicationsCache.computeIfAbsent(key, cacheKey -> new ArrayList<>()).add(publication);
-			});
+			.single();
+
 	}
 
 	private String buildPublicationCacheKey(Class<?> c, Serializable s) {
@@ -209,36 +184,12 @@ class DefaultPublicationService implements PublicationService {
 
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz) {
-		var key = this.buildPublicationCacheKey(clazz, publicationKey);
-		if (this.publicationsCache.containsKey(key)) {
-			return this.publicationsCache//
-				.get(key)//
-				.stream()//
-				.sorted(Comparator.comparing(Publication::created).reversed())//
-				.toList();
-		}
-		return List.of();
-	}
+		return this.db //
+			.sql("select * from publication where payload = ? and payload_class = ? order by created desc") //
+			.params(Long.toString(publicationKey), clazz.getName())//
+			.query(this.publicationRowMapper) //
+			.list();
 
-	@EventListener
-	void applicationReady(ApplicationReadyEvent are) {
-		this.scheduledExecutorService.submit(this::refreshCache);
-	}
-
-	@EventListener
-	void updated(PublicationUpdatedEvent pue) {
-		this.log.info("publicationUpdatedEvent");
-		this.refreshCache();
-	}
-
-	@EventListener
-	void started(PublicationStartedEvent pse) {
-		this.refreshCache();
-	}
-
-	@EventListener
-	void completed(PublicationCompletedEvent pce) {
-		this.refreshCache();
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {

@@ -20,6 +20,12 @@ class PodcastEpisodePublisherPluginConfiguration {
 
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+
+			hints.proxies()
+				.registerJdkProxy(PodcastEpisodePublisherPlugin.class, org.springframework.aop.SpringProxy.class,
+						org.springframework.aop.framework.Advised.class,
+						org.springframework.core.DecoratingProxy.class);
+
 			hints.proxies()
 				.registerJdkProxy(PodcastEpisodePublisherPlugin.class,
 						org.springframework.beans.factory.BeanNameAware.class,
