@@ -166,13 +166,6 @@ class DefaultPublicationService implements PublicationService {
 					.update();
 			});
 
-			//
-			// var url = context.getOrDefault(CONTEXT_URL, null);
-			// if (null != url) {
-			// this.db.sql(" update publication set url = ? where id = ? ").params(url,
-			// publicationId).update();
-			// }
-			//
 			this.doNotify(mogulId, publicationId, new PublicationCompletedEvent(publicationId));
 
 			return this.getPublicationById(publicationId);

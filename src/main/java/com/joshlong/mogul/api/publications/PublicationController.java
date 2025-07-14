@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -102,6 +103,17 @@ class PublicationController<T extends Publishable> {
 	Collection<Publication> publicationsForPublishable(@Argument String type, @Argument Long id) {
 		var publishableClass = this.publishableClassForTypeName(type);
 		return this.publicationService.getPublicationsByPublicationKeyAndClass(id, publishableClass);
+	}
+
+	@SchemaMapping
+	String url(Publication publication) {
+		if (publication.outcomes() != null && !publication.outcomes().isEmpty()) {
+			var uri = publication.outcomes().iterator().next().uri();
+			if (null == uri)
+				return null;
+			return uri.toString();
+		}
+		return null;
 	}
 
 	@SchemaMapping
