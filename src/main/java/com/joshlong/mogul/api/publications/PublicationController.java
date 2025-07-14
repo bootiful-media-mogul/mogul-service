@@ -108,7 +108,7 @@ class PublicationController<T extends Publishable> {
 	@SchemaMapping
 	String url(Publication publication) {
 		if (publication.outcomes() != null && !publication.outcomes().isEmpty()) {
-			var uri = publication.outcomes().iterator().next().uri();
+			var uri = publication.outcomes().iterator().next().url();
 			if (null == uri)
 				return null;
 			return uri.toString();

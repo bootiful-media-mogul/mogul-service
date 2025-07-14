@@ -1,8 +1,11 @@
 package com.joshlong.mogul.api;
 
+import com.joshlong.mogul.api.settings.SettingWrittenEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
@@ -12,13 +15,16 @@ import java.util.Map;
 
 public class Settings {
 
+	private final ApplicationEventPublisher publisher;
+
 	private final JdbcClient db;
 
 	private final TextEncryptor encryptor;
 
 	private final SettingsRowMapper rowMapper;
 
-	public Settings(JdbcClient db, TextEncryptor encryptor) {
+	public Settings(ApplicationEventPublisher publisher, JdbcClient db, TextEncryptor encryptor) {
+		this.publisher = publisher;
 		this.db = db;
 		this.encryptor = encryptor;
 		Assert.notNull(this.encryptor, "the encryptor must be non-null");
@@ -63,6 +69,7 @@ public class Settings {
 		return null;
 	}
 
+	@Transactional
 	public void set(Long mogulId, String category, String key, String value) {
 		this.db.sql("""
 				insert into settings(mogul , category, key, value)
@@ -72,6 +79,8 @@ public class Settings {
 				""") //
 			.params(mogulId, category, key, this.encryptor.encrypt(value))//
 			.update();
+
+		this.publisher.publishEvent(new SettingWrittenEvent(mogulId, category, key, value));
 
 	}
 

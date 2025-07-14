@@ -26,6 +26,18 @@ type Publication {
     created: Float
     published: Float
     state : String
+    outcomes: [PublicationOutcome]
+}
+
+type PublicationOutcome  {
+
+    id: Int
+    created:Float
+    success:Boolean
+    url:String
+    key:String
+    #    public record Outcome(int id, Date created, boolean success, URI uri, String key) {
+
 }
 
 type SettingsPage {

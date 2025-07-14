@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import java.net.URI;
+import java.net.URL;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,6 @@ public record Publication(Long mogulId, Long id, String plugin, Date created, Da
 
 	}
 
-	public record Outcome(int id, Date created, boolean success, URI uri, String key) {
+	public record Outcome(int id, Date created, boolean success, URL url, String key) {
 	}
 }

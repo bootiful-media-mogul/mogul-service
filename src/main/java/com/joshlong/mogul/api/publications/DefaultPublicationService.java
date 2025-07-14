@@ -77,7 +77,7 @@ class DefaultPublicationService implements PublicationService {
 			.sql("select * from publication_outcome where publication_id = ? order by created ") //
 			.param(publicationId)//
 			.query((rs, rowNum) -> new Publication.Outcome(rs.getInt("id"), rs.getDate("created"),
-					rs.getBoolean("success"), JdbcUtils.uri(rs, "uri"), rs.getString("key")))
+					rs.getBoolean("success"), JdbcUtils.url(rs, "uri"), rs.getString("key")))
 			.list();
 	}
 
@@ -160,7 +160,7 @@ class DefaultPublicationService implements PublicationService {
 						publicationId)
 				.update();
 
-			pc.outcomes().forEach((key, outcome) -> {
+			pc.outcomes().forEach((outcome) -> {
 				this.db.sql("insert into publication_outcome(publication_id,success, uri , key ) values (?,?,?,?)")
 					.params(publicationId, outcome.success(), outcome.uri().toString(), outcome.key())
 					.update();

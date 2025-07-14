@@ -2,7 +2,9 @@ package com.joshlong.mogul.api.utils;
 
 import org.springframework.jdbc.support.KeyHolder;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.sql.ResultSet;
 import java.util.Objects;
 
@@ -11,6 +13,15 @@ public abstract class JdbcUtils {
 
 	public static Number getIdFromKeyHolder(KeyHolder kh) {
 		return (Number) Objects.requireNonNull(kh.getKeys()).get("id");
+	}
+
+	public static URL url(ResultSet rs, String columnName) {
+		try {
+			return Objects.requireNonNull(uri(rs, columnName)).toURL();
+		}
+		catch (MalformedURLException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/*

@@ -3,10 +3,15 @@ package com.joshlong.mogul.api.settings;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
+import org.springframework.context.event.EventListener;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -39,6 +44,14 @@ class SettingsController {
 	boolean updateSetting(@Argument String category, @Argument String name, @Argument String value) {
 		this.settings.set(this.mogulService.getCurrentMogul().id(), category, name, value);
 		return true;
+	}
+
+	@ApplicationModuleListener
+	void written(SettingWrittenEvent settingWrittenEvent) {
+		var object = new SettingWrittenEvent(settingWrittenEvent.mogulId(), settingWrittenEvent.category(),
+				settingWrittenEvent.key(), null); // remove the sensitive value.
+		NotificationEvents.notify(NotificationEvent.visibleNotificationEventFor(settingWrittenEvent.mogulId(), object,
+				settingWrittenEvent.key(), settingWrittenEvent.category() + '/' + settingWrittenEvent.key()));
 	}
 
 	@QueryMapping

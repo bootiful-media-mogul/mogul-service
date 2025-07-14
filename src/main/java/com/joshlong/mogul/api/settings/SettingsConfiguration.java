@@ -2,6 +2,7 @@ package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.Settings;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -17,8 +18,8 @@ class SettingsConfiguration {
 	}
 
 	@Bean
-	Settings settings(JdbcClient jdbcClient, TextEncryptor textEncryptor) {
-		return new Settings(jdbcClient, textEncryptor);
+	Settings settings(JdbcClient jdbcClient, ApplicationEventPublisher publisher, TextEncryptor textEncryptor) {
+		return new Settings(publisher, jdbcClient, textEncryptor);
 	}
 
 }

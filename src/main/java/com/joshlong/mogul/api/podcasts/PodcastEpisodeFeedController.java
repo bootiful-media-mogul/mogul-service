@@ -125,7 +125,7 @@ class PodcastEpisodeFeedController {
 				.getFirst();
 			var outcomes = publication.outcomes();
 			if (outcomes.size() == 1)
-				return outcomes.getFirst().uri().toString();
+				return outcomes.getFirst().url().toString();
 		}
 		return null;
 	}

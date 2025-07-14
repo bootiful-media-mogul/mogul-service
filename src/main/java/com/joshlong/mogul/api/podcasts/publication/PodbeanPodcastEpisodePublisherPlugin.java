@@ -89,7 +89,6 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
 		this.log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
-		// this used to be DRAFT/PUBLIC, but YOLO..
 		var podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
 				EpisodeStatus.PUBLISH, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
 				producedGraphicAuthorization.getFileKey());
@@ -97,8 +96,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
 		if (permalinkUrl != null) {
-			// context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
-			pc.outcome("podbeanUrl", true, permalinkUrl);
+			pc.outcome("podbean", true, permalinkUrl);
 			this.log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
 		} //
 		else {

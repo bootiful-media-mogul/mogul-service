@@ -48,20 +48,19 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 
 	@Override
 	public void publish(PublishContext<Episode> publishContext) {
-
 		var payload = publishContext.payload();
 		log.debug("start: publishing episode {} with context {}", payload.id(), publishContext.context());
 		try {
-			Thread.sleep(20_000);
+			Thread.sleep(5_000);
 		} //
 		catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-
 		log.debug("middle: publishing episode {} with context {}", payload.id(), publishContext.context());
-
-		publishContext.outcome("mock", true, URI.create("https://spring.io"));
-
+		var count = (int) Math.max(Math.random() * 5.0, 2.0);
+		for (var c = 0; c < count; c++) {
+			publishContext.outcome("mock", Math.random() > .5, URI.create("https://spring.io"));
+		}
 		log.debug("stop: publishing episode {} with context {}", payload.id(), publishContext.context());
 	}
 

@@ -3,10 +3,7 @@ package com.joshlong.mogul.api;
 import org.springframework.lang.NonNull;
 
 import java.net.URI;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public interface PublisherPlugin<T extends Publishable> {
@@ -75,7 +72,9 @@ public interface PublisherPlugin<T extends Publishable> {
 
 		private final T payload;
 
-		private final Map<String, Outcome> outcomes = new ConcurrentHashMap<>();
+		private final List<Outcome> outcomes = new ArrayList<>();
+
+		// private final Map<String, Outcome> outcomes = new ConcurrentHashMap<>();
 
 		PublishContext(T payload, Map<String, String> inputContext) {
 			super(inputContext);
@@ -91,12 +90,12 @@ public interface PublisherPlugin<T extends Publishable> {
 		}
 
 		public PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome) {
-			this.outcomes.put(outcomeKey, new Outcome(outcome, outcomeKey, success));
+			this.outcomes.add(new Outcome(outcome, outcomeKey, success));
 			return this;
 		}
 
 		@NonNull
-		public Map<String, Outcome> outcomes() {
+		public List<Outcome> outcomes() {
 			return this.outcomes;
 		}
 
