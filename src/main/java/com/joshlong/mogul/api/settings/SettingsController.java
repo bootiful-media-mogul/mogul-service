@@ -1,17 +1,16 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.PublisherPlugin;
+import com.joshlong.mogul.api.SettingWrittenEvent;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import org.springframework.context.event.EventListener;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;

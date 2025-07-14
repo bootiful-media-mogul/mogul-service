@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.settings.SettingWrittenEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
