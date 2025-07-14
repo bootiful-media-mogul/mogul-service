@@ -1,13 +1,11 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -34,8 +32,8 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	}
 
 	@Override
-	public boolean canPublish(Map<String, String> context, Episode payload) {
-		return PodcastEpisodePublisherPlugin.super.canPublish(context, payload) && payload.complete();
+	public boolean canPublish(PublishContext<Episode> context) {
+		return PodcastEpisodePublisherPlugin.super.canPublish(context) && context.payload().complete();
 	}
 
 	@Override
@@ -44,14 +42,14 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	}
 
 	@Override
-	public void publish(Map<String, String> context, Episode payload) {
-		this.log.debug("downloading the produced audio file for episode # {}", payload.id());
-		this.managedFileService.setManagedFileVisibility(payload.producedAudio().id(), true);
+	public void publish(PublishContext<Episode> payload) {
+		this.log.debug("downloading the produced audio file for episode # {}", payload.payload().id());
+		this.managedFileService.setManagedFileVisibility(payload.payload().producedAudio().id(), true);
 	}
 
 	@Override
-	public boolean unpublish(Map<String, String> context, Publication publication) {
-		this.log.debug("can't 'unpublish' a downloaded file for publication # {}", publication.id());
+	public boolean unpublish(UnpublishContext<Episode> context) {
+		this.log.debug("can't 'unpublish' a downloaded file for publication # {}", context.publication().id());
 		return true;
 	}
 

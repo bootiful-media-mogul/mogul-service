@@ -118,12 +118,14 @@ class PodcastEpisodeFeedController {
 		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
 				Episode.class);
 		if (episode.complete() && !publications.isEmpty()) {
-			return publications//
+			var publication = publications//
 				.stream()//
 				.sorted(this.publicationComparator)//
 				.toList()
-				.getFirst()
-				.url();
+				.getFirst();
+			var outcomes = publication.outcomes();
+			if (outcomes.size() == 1)
+				return outcomes.getFirst().uri().toString();
 		}
 		return null;
 	}

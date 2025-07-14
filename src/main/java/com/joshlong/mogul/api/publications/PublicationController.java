@@ -75,7 +75,8 @@ class PublicationController<T extends Publishable> {
 						+ "because it would override a user specified setting", k);
 			}
 		}
-		return resolvedPlugin.canPublish(combinedContext, publishable);
+		var pc = PublisherPlugin.PublishContext.of(publishable, combinedContext);
+		return resolvedPlugin.canPublish(pc);
 	}
 
 	@MutationMapping

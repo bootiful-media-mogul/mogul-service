@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -23,23 +24,24 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 
-import static com.joshlong.mogul.api.PublisherPlugin.CONTEXT_URL;
-
 @SuppressWarnings("unused")
-@RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class })
+@RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
+		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
 class DefaultPublicationService implements PublicationService {
 
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Map<String, Collection<Publication>> publicationsCache = new ConcurrentHashMap<>();
+	private final Map<String, Collection<Publication>> publicationsCache = CollectionUtils.evictingConcurrentMap(10_000,
+			Duration.ofHours(1));
 
 	private final Function<SettingsLookup, Map<String, String>> settingsLookup;
 
@@ -65,9 +67,18 @@ class DefaultPublicationService implements PublicationService {
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
-		this.publicationRowMapper = new PublicationRowMapper(textEncryptor);
+		this.publicationRowMapper = new PublicationRowMapper(textEncryptor, this::outcomes);
 		this.publisher = publisher;
 		this.publishableRepositories = publishableRepositories;
+	}
+
+	private List<Publication.Outcome> outcomes(Long publicationId) {
+		return this.db //
+			.sql("select * from publication_outcome where publication_id = ? order by created ") //
+			.param(publicationId)//
+			.query((rs, rowNum) -> new Publication.Outcome(rs.getInt("id"), rs.getDate("created"),
+					rs.getBoolean("success"), JdbcUtils.uri(rs, "uri"), rs.getString("key")))
+			.list();
 	}
 
 	@Override
@@ -95,7 +106,8 @@ class DefaultPublicationService implements PublicationService {
 		var newContext = new HashMap<>(context);
 
 		try {
-			if (plugin.unpublish(newContext, publication)) {
+			var uc = new PublisherPlugin.UnpublishContext<T>(newContext, publication);
+			if (plugin.unpublish(uc)) {
 				var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
 				this.db.sql("update publication set state = ?, context = ? where id =? ")
 					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
@@ -105,7 +117,7 @@ class DefaultPublicationService implements PublicationService {
 			}
 		}
 		catch (Exception throwable) {
-			this.log.warn("couldn't unpublish {} with url {}", publication.id(), publication.url(), throwable);
+			this.log.warn("couldn't unpublish {} ", publication.id(), throwable);
 		}
 		return this.getPublicationById(publication.id());
 
@@ -138,7 +150,8 @@ class DefaultPublicationService implements PublicationService {
 
 		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(publicationId));
 
-		plugin.publish(context, payload);
+		var pc = PublisherPlugin.PublishContext.of(payload, context);
+		plugin.publish(pc);
 
 		return this.transactionTemplate.execute((status) -> {
 
@@ -147,11 +160,19 @@ class DefaultPublicationService implements PublicationService {
 						publicationId)
 				.update();
 
-			var url = context.getOrDefault(CONTEXT_URL, null);
-			if (null != url) {
-				this.db.sql(" update publication set url = ? where id = ? ").params(url, publicationId).update();
-			}
+			pc.outcomes().forEach((key, outcome) -> {
+				this.db.sql("insert into publication_outcome(publication_id,success, uri , key ) values (?,?,?,?)")
+					.params(publicationId, outcome.success(), outcome.uri().toString(), outcome.key())
+					.update();
+			});
 
+			//
+			// var url = context.getOrDefault(CONTEXT_URL, null);
+			// if (null != url) {
+			// this.db.sql(" update publication set url = ? where id = ? ").params(url,
+			// publicationId).update();
+			// }
+			//
 			this.doNotify(mogulId, publicationId, new PublicationCompletedEvent(publicationId));
 
 			return this.getPublicationById(publicationId);

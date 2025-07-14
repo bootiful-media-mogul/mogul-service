@@ -1,13 +1,11 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.blogs.Blog;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.podcasts.Episode;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -52,8 +50,8 @@ class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public void publish(Map<String, String> context, Episode payload) {
-
+	public void publish(PublishContext<Episode> c) {
+		var context = c.context();
 		var blogId = Long.parseLong(context.get(CONTEXT_BLOG_ID));
 		var targetBlog = blogService.getBlogById(blogId);
 		Assert.notNull(targetBlog, "the blog must exist");
@@ -67,7 +65,7 @@ class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public boolean unpublish(Map<String, String> context, Publication publication) {
+	public boolean unpublish(UnpublishContext<Episode> e) {
 		return false;
 	}
 

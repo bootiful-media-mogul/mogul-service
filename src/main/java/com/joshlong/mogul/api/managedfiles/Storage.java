@@ -51,7 +51,7 @@ class Storage {
 	 */
 	private void doWriteForLargeFiles(String bucketName, String keyName, Resource resource, DataSize maxSize,
 			MediaType mediaType) throws Exception {
-		try (var inputStream = new BufferedInputStream(resource.getInputStream());) {
+		try (var inputStream = new BufferedInputStream(resource.getInputStream())) {
 			var chunkSize = (int) maxSize.toBytes();
 			var builder = CreateMultipartUploadRequest.builder().bucket(bucketName).key(keyName);
 			if (mediaType != null)

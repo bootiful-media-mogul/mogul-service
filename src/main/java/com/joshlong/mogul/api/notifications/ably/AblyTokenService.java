@@ -7,6 +7,12 @@ import io.ably.lib.types.AblyException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+public interface AblyTokenService {
+
+	Auth.TokenRequest createTokenFor(String topicName, long ttl) throws AblyException;
+
+}
+
 @Configuration
 class AblyTokenServiceConfiguration {
 
@@ -14,12 +20,6 @@ class AblyTokenServiceConfiguration {
 	DefaultAblyTokenService defaultAblyTokenService(ApiProperties properties, AblyRealtime ablyRealtime) {
 		return new DefaultAblyTokenService(properties.notifications().ably().apiKey(), ablyRealtime);
 	}
-
-}
-
-public interface AblyTokenService {
-
-	Auth.TokenRequest createTokenFor(String topicName, long ttl) throws AblyException;
 
 }
 

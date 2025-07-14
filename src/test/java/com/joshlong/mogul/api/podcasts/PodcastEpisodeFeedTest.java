@@ -14,6 +14,8 @@ import org.mockito.stubbing.Answer;
 import org.springframework.http.MediaType;
 
 import java.io.File;
+import java.net.URI;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +72,8 @@ class PodcastEpisodeFeedTest {
             when(publicationService.getPublicationsByPublicationKeyAndClass(episode.id(),
                     Episode.class)).thenReturn(List.of(new Publication(mogulId, counter.incrementAndGet(),
                     "mock", new Date(), new Date(), Map.of(), "", Episode.class,
-                    "https://bootifulpodcast.fm/episodes/" + episode.id(), Publication.State.PUBLISHED)));
+                    Publication.State.PUBLISHED, List.of(new Publication.Outcome(0, new Date(), true, URI.create("https://bootifulpodcast.fm/episodes/" + episode.id()),
+                    "mock")))));
 
     }
 

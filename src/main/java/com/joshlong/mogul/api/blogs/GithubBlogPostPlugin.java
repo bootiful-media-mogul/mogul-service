@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.blogs;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.PublisherPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +38,17 @@ class GithubBlogPostPlugin implements PublisherPlugin<Post>, BeanNameAware {
 	}
 
 	@Override
-	public boolean canPublish(Map<String, String> context, Post payload) {
-		return PublisherPlugin.super.canPublish(context, payload);
+	public boolean canPublish(PublishContext<Post> c) {
+		return PublisherPlugin.super.canPublish(c);
 	}
 
 	@Override
-	public void publish(Map<String, String> context, Post payload) {
+	public void publish(PublishContext<Post> p) {
 
 	}
 
 	@Override
-	public boolean unpublish(Map<String, String> context, Publication publication) {
+	public boolean unpublish(UnpublishContext<Post> context) {
 		return false;
 	}
 

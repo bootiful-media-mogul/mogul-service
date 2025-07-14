@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.ayrshare;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -14,6 +16,8 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -21,20 +25,9 @@ import java.util.stream.Stream;
 @ImportRuntimeHints(SimpleAyrshare.Hints.class)
 public class SimpleAyrshare implements Ayrshare {
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			var mcs = MemberCategory.values();
-			for (var c : new Class<?>[] { JsonNode.class, Response.class, Ayrshare.PostContext.class,
-					Ayrshare.Platform.class })
-				hints.reflection().registerType(c, mcs);
-
-		}
-
-	}
-
 	private static final DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ISO_INSTANT;
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final RestClient http;
 
@@ -44,6 +37,28 @@ public class SimpleAyrshare implements Ayrshare {
 			h.setContentType(MediaType.APPLICATION_JSON);
 		}).build();
 
+	}
+
+	private static Response.Status from(String string) {
+		if (string != null) {
+			if (string.equalsIgnoreCase("success")) {
+				return Response.Status.SUCCESS;
+			}
+			if (string.equalsIgnoreCase("scheduled")) {
+				return Response.Status.SCHEDULED;
+			}
+		}
+		return Response.Status.ERRORS;
+	}
+
+	private static <T> T nullOrNode(JsonNode node, String name, Function<JsonNode, T> function) {
+		Assert.notNull(node, "the node against which to evaluate tests should not be null");
+		var jsonNode = node.get(name);
+		if (jsonNode == null || jsonNode.isNull()) {
+			return null;
+		}
+		Assert.notNull(function, "the mapping function should not be null");
+		return function.apply(jsonNode);
 	}
 
 	@Override
@@ -58,6 +73,10 @@ public class SimpleAyrshare implements Ayrshare {
 	protected Response doPost(String idempotencyKey, String post, Ayrshare.Platform[] platforms, URI[] mediaUris,
 			Instant scheduledDate) {
 
+		// todo remove this next line just for testing!
+		post = post + List.of(post.toCharArray()).reversed().toString() + ":" + Instant.now() + " "
+				+ System.lineSeparator();
+		// todo
 		Assert.hasText(post, "the post should not be empty!");
 		Assert.state(platforms.length > 0, "there should be at least one platform specified!");
 
@@ -89,16 +108,35 @@ public class SimpleAyrshare implements Ayrshare {
 		var validate = nullOrNode(json, "validate", JsonNode::asBoolean);
 		var scheduleDate = nullOrNode(json, "scheduleDate",
 				j -> Instant.from(ISO_INSTANT.parse(j.get("scheduleDate").asText())));
-		return new Response(status, scheduleDate, id, refId, post, Boolean.TRUE.equals(validate));
+		var postIdsResult = nullOrNode(json, "postIds", (Function<JsonNode, Map<Platform, Response.Post>>) jsonNode -> {
+			var postIds = new HashMap<Platform, Response.Post>();
+			jsonNode.iterator().forEachRemaining(n -> {
+				var status1 = from(nullOrNode(n, "status", JsonNode::asText));
+				var id1 = nullOrNode(n, "id", JsonNode::asText);
+				var postUrl = nullOrNode(n, "postUrl", jn -> URI.create(jn.asText()));
+				var platform = nullOrNode(n, "platform", jn -> Platform.of(jn.asText()));
+				var type = nullOrNode(n, "type", JsonNode::asText);
+				var cid = nullOrNode(n, "cid", JsonNode::asText);
+				var value = new Response.Post(type, status1, id1, cid, postUrl, platform);
+				postIds.put(platform, value);
+			});
+			return postIds;
+		});
+		return new Response(from(status), postIdsResult, scheduleDate, id, refId, post, Boolean.TRUE.equals(validate));
 	}
 
-	private static <T> T nullOrNode(JsonNode node, String name, Function<JsonNode, T> function) {
-		var jsonNode = node.get(name);
-		if (jsonNode == null || jsonNode.isNull()) {
-			return null;
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var mcs = MemberCategory.values();
+			for (var c : new Class<?>[] { JsonNode.class, Response.class, Ayrshare.PostContext.class,
+					Ayrshare.Response.class, Ayrshare.Response.Post.class, Ayrshare.Response.Status.class,
+					Ayrshare.Platform.class })
+				hints.reflection().registerType(c, mcs);
+
 		}
-		Assert.notNull(function, "the mapping function should not be null");
-		return function.apply(jsonNode);
+
 	}
 
 }

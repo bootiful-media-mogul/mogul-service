@@ -1,19 +1,16 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.ayrshare.Ayrshare;
 import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
 import com.joshlong.mogul.api.podcasts.Episode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 /**
  * this will show the user the possible social accounts they could target and, in
@@ -31,8 +28,11 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	AyrsharePodcastEpisodePublisherPlugin(Ayrshare ayrshare) {
+	private final ResourceLoader resourceLoader;
+
+	AyrsharePodcastEpisodePublisherPlugin(Ayrshare ayrshare, ResourceLoader resourceLoader) {
 		this.ayrshare = ayrshare;
+		this.resourceLoader = resourceLoader;
 	}
 
 	@Override
@@ -46,45 +46,35 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public void publish(Map<String, String> context, Episode payload) {
+	public void publish(PublishContext<Episode> context) {
 
 		// todo compositions, when we get them working, will be a natural fit with
 		// ayrshare's media_urls capability
 		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
-				payload.toString());
+				context.payload().toString());
 
 		var optimizedMapping = new HashMap<String, Set<Ayrshare.Platform>>();
 		for (var p : ayrshare.platforms()) {
 			var key = p.name().toLowerCase();
-			if (context.containsKey(key)) {
-				var post = context.get(key);
+			if (context.context().containsKey(key)) {
+				var post = context.context().get(key);
 				optimizedMapping.computeIfAbsent(post.trim(), k -> new HashSet<>()).add(p);
 			}
 		}
 
-		this.log.debug("optimized mapping is {}", optimizedMapping);
-
 		for (var post : optimizedMapping.keySet()) {
 			var targets = optimizedMapping.getOrDefault(post, new HashSet<>()).toArray(new Ayrshare.Platform[0]);
 			if (targets.length > 0) {
-
-				this.ayrshare.post(post, targets);
-
-				var platformNames = Stream //
-					.of(targets) //
-					.map(p -> p.name().toLowerCase()) //
-					.toList();
-				var platformNamesJoined = String.join(",", platformNames);
-				this.log.debug("going to post to {} platforms for episode #{} - {} having post content {}",
-						platformNamesJoined, payload.id(), payload.title(), post);
+				var response = this.ayrshare.post(post, targets);
+				response.postIds().forEach((platform, postId) -> {
+					context.outcome(platform.platformCode(), response.status().success(), postId.postUrl());
+				});
 			}
-
 		}
-
 	}
 
 	@Override
-	public boolean unpublish(Map<String, String> context, Publication publication) {
+	public boolean unpublish(UnpublishContext<Episode> context) {
 		return false;
 	}
 

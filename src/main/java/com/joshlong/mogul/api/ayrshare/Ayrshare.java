@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -12,6 +13,16 @@ import java.util.function.Consumer;
  * client [for this api](https://www.ayrshare.com/docs/apis/post/post)
  */
 public interface Ayrshare {
+
+	default Platform[] platforms() {
+		return Platform.values();
+	}
+
+	Response post(String post, Platform[] platforms, Consumer<PostContext> contextConsumer);
+
+	default Response post(String post, Ayrshare.Platform[] platforms) {
+		return this.post(post, platforms, null);
+	}
 
 	enum Platform {
 
@@ -26,12 +37,20 @@ public interface Ayrshare {
 			this.platformCodename = platformCodename;
 		}
 
-		public String platformCode() {
-			return this.platformCodename;
+		public static Platform of(String platformCode) {
+			for (var p : Platform.values()) {
+				if (p.platformCode().equalsIgnoreCase(platformCode))
+					return p;
+			}
+			return null;
 		}
 
 		public static Platform[] of(Platform... platformCode) {
 			return platformCode;
+		}
+
+		public String platformCode() {
+			return this.platformCodename;
 		}
 
 	}
@@ -62,17 +81,28 @@ public interface Ayrshare {
 
 	}
 
-	record Response(String status, Instant scheduleDate, String id, String refId, String post, boolean validate) {
-	}
+	record Response(Status status, Map<Platform, Post> postIds, Instant scheduleDate, String id, String refId,
+			String post, boolean validate) {
 
-	default Platform[] platforms() {
-		return Platform.values();
-	}
+		public enum Status {
 
-	Response post(String post, Platform[] platforms, Consumer<PostContext> contextConsumer);
+			ERRORS(false), SUCCESS(true), SCHEDULED(true);
 
-	default Response post(String post, Ayrshare.Platform[] platforms) {
-		return this.post(post, platforms, null);
+			private final boolean success;
+
+			Status(boolean success) {
+				this.success = success;
+			}
+
+			public boolean success() {
+				return this.success;
+			}
+
+		}
+
+		public record Post(String type, Status status, String id, String cid, URI postUrl, Platform platform) {
+
+		}
 	}
 
 }

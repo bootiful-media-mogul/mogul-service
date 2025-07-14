@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
+import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -17,7 +18,6 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -55,15 +55,15 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 					var transactionTemplate = beanFactory.getBean(TransactionTemplate.class);
 
 					this.log.debug("found the publish method on the plugin bean named {}", beanName);
-					var context = (Map<String, String>) invocation.getArguments()[0];
-					var episode = (Episode) invocation.getArguments()[1];
+					var context = (PublisherPlugin.PublishContext<Episode>) invocation.getArguments()[0];
+					var episode = context.payload();
 
 					var shouldProduceAudio = episode.producedAudioUpdated() == null
 							|| episode.producedAudioUpdated().before(episode.producedAudioAssetsUpdated());
 					this.log.debug("should produce the audio for episode [{}] from scratch? [{}]",
 							"#" + episode.id() + " / " + episode.title(), shouldProduceAudio);
 					var mogulId = podcastService.getPodcastById(episode.podcastId()).mogulId();
-					return transactionTemplate.execute(status -> {
+					return transactionTemplate.execute(_ -> {
 
 						if (shouldProduceAudio) {
 							this.log.debug("should produce audio! producing the audio for episode [{}] from scratch",
@@ -82,7 +82,7 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 						}
 						var updatedEpisode = podcastService.getPodcastEpisodeById(episode.id());
 						Assert.notNull(updatedEpisode.producedAudioUpdated(), "the producedAudioUpdated field is null");
-						plugin.publish(context, updatedEpisode);
+						plugin.publish(context);
 						return null;
 					});
 

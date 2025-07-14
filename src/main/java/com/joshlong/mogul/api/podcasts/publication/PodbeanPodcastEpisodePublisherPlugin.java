@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
@@ -20,7 +19,6 @@ import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -63,8 +61,8 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public boolean canPublish(Map<String, String> context, Episode payload) {
-		return this.isConfigurationValid(context) && payload != null && payload.complete();
+	public boolean canPublish(PublishContext<Episode> pc) {
+		return this.isConfigurationValid(pc.context()) && pc.payload() != null && pc.payload().complete();
 	}
 
 	@Override
@@ -73,7 +71,9 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public void publish(Map<String, String> context, Episode payload) {
+	public void publish(PublishContext<Episode> pc) {
+		var context = pc.context();
+		var payload = pc.payload();
 		this.log.debug("publishing to podbean with context [{}] and payload [{}]. produced audio is [{}]", context,
 				payload, payload.producedAudio());
 
@@ -97,7 +97,8 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 
 		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
 		if (permalinkUrl != null) {
-			context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
+			// context.put(PublisherPlugin.CONTEXT_URL, permalinkUrl.toString());
+			pc.outcome("podbeanUrl", true, permalinkUrl);
 			this.log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
 		} //
 		else {
@@ -125,7 +126,9 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public boolean unpublish(Map<String, String> context, Publication publication) {
+	public boolean unpublish(UnpublishContext<Episode> uc) {
+		var context = uc.context();
+		var publication = uc.publication();
 		var done = new AtomicBoolean(false);
 		var episodeId = context.get(CONTEXT_PODBEAN_EPISODE_ID);
 		this.podbeanClient//

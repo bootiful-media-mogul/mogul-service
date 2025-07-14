@@ -28,13 +28,11 @@ import org.springframework.messaging.support.MessageBuilder;
 @ImportRuntimeHints(NotificationEventIntegrationConfiguration.Hints.class)
 class NotificationEventIntegrationConfiguration {
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			hints.reflection().registerType(NotificationEvent.class, MemberCategory.values());
-		}
-
+	@Bean
+	ApplicationEventListeningMessageProducer applicationEventListeningMessageProducer() {
+		var applicationEventListeningMessageProducer = new ApplicationEventListeningMessageProducer();
+		applicationEventListeningMessageProducer.setEventTypes(NotificationEvent.class);
+		return applicationEventListeningMessageProducer;
 	}
 
 	/*
@@ -50,13 +48,6 @@ class NotificationEventIntegrationConfiguration {
 	 * ablyRealtime.channels.get(channelName); }); return (Channel) pfb.getObject(); }
 	 *
 	 */
-
-	@Bean
-	ApplicationEventListeningMessageProducer applicationEventListeningMessageProducer() {
-		var applicationEventListeningMessageProducer = new ApplicationEventListeningMessageProducer();
-		applicationEventListeningMessageProducer.setEventTypes(NotificationEvent.class);
-		return applicationEventListeningMessageProducer;
-	}
 
 	@Bean
 	AblyMessageHandler ablyMessageHandler(AblyRealtime ablyRealtime) {
@@ -84,6 +75,15 @@ class NotificationEventIntegrationConfiguration {
 			})//
 			.handle(messageHandler)//
 			.get();
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			hints.reflection().registerType(NotificationEvent.class, MemberCategory.values());
+		}
+
 	}
 
 }
