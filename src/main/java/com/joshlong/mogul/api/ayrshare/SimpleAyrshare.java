@@ -72,11 +72,6 @@ public class SimpleAyrshare implements Ayrshare {
 
 	protected Response doPost(String idempotencyKey, String post, Ayrshare.Platform[] platforms, URI[] mediaUris,
 			Instant scheduledDate) {
-
-		// todo remove this next line just for testing!
-		post = post + List.of(post.toCharArray()).reversed().toString() + ":" + Instant.now() + " "
-				+ System.lineSeparator();
-		// todo
 		Assert.hasText(post, "the post should not be empty!");
 		Assert.state(platforms.length > 0, "there should be at least one platform specified!");
 
