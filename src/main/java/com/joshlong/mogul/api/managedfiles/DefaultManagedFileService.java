@@ -128,7 +128,8 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		if (managedFile.visible()) {
 			url = this.cloudfrontDomain.toString() + "/"
 					+ this.fqn(managedFile.folder(), managedFile.storageFilename());
-			this.log.debug("getting public url for managed file [{}]: {}", managedFile.id(), url);
+			// this.log.debug("getting public url for managed file [{}]: {}",
+			// managedFile.id(), url);
 		}
 		return url;
 	}

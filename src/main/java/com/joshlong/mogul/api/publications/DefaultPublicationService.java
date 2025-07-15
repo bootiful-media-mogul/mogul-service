@@ -13,14 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -38,8 +36,6 @@ class DefaultPublicationService implements PublicationService {
 
 	private final MogulService mogulService;
 
-	private final RowMapper<Publication> publicationRowMapper;
-
 	private final TextEncryptor textEncryptor;
 
 	private final TransactionTemplate transactionTemplate;
@@ -56,18 +52,10 @@ class DefaultPublicationService implements PublicationService {
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
-		this.publicationRowMapper = new PublicationRowMapper(textEncryptor, this::outcomes);
+		// this.publicationRowMapper = new PublicationRowMapper(textEncryptor,
+		// this::outcomes);
 		this.publisher = publisher;
 		this.publishableRepositories = publishableRepositories;
-	}
-
-	private List<Publication.Outcome> outcomes(Long publicationId) {
-		return this.db //
-			.sql("select * from publication_outcome where publication_id = ? order by created ") //
-			.param(publicationId)//
-			.query((rs, rowNum) -> new Publication.Outcome(rs.getInt("id"), rs.getDate("created"),
-					rs.getBoolean("success"), JdbcUtils.url(rs, "uri"), rs.getString("key")))
-			.list();
 	}
 
 	@Override
@@ -168,18 +156,18 @@ class DefaultPublicationService implements PublicationService {
 				NotificationEvent.systemNotificationEventFor(mogulId, event, Long.toString(publicationId), null));
 	}
 
+	private PublicationRowMapper publicationRowMapper() {
+		return new PublicationRowMapper(this.db, this.textEncryptor);
+	}
+
 	@Override
 	public Publication getPublicationById(Long publicationId) {
 		return this.db //
 			.sql("select * from publication where id = ?") //
 			.param(publicationId) //
-			.query(this.publicationRowMapper) //
+			.query(this.publicationRowMapper()) //
 			.single();
 
-	}
-
-	private String buildPublicationCacheKey(Class<?> c, Serializable s) {
-		return c.getName() + ":" + s.toString();
 	}
 
 	@Override
@@ -187,9 +175,8 @@ class DefaultPublicationService implements PublicationService {
 		return this.db //
 			.sql("select * from publication where payload = ? and payload_class = ? order by created desc") //
 			.params(Long.toString(publicationKey), clazz.getName())//
-			.query(this.publicationRowMapper) //
+			.query(this.publicationRowMapper()) //
 			.list();
-
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {
