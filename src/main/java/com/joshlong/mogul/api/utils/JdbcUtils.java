@@ -17,8 +17,11 @@ public abstract class JdbcUtils {
 
 	public static URL url(ResultSet rs, String columnName) {
 		try {
-			return Objects.requireNonNull(uri(rs, columnName)).toURL();
-		}
+			var uri = uri(rs, columnName);
+			if (null == uri)
+				return null;
+			return uri.toURL();
+		} //
 		catch (MalformedURLException e) {
 			throw new RuntimeException(e);
 		}
