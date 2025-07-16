@@ -91,7 +91,6 @@ class PublicationRowMapper implements RowMapper<Publication> {
 		var collect = publicationIds.toArray(Long[]::new);
 		var placeholders = publicationIds.stream().map(_ -> "?").collect(Collectors.joining(","));
 		var sql = "select * from publication_outcome where publication_id in (" + placeholders + ")  ";
-		log.debug("executing the following SQL: [{}]", sql);
 		var outcomes = this.db.sql(sql).params((Object[]) collect).query(this.outcomeRowMapper).list();
 		this.publicationToOutcomes.forEach((publicationId, list) -> {
 			outcomes.stream() //
