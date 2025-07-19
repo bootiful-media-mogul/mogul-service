@@ -24,10 +24,10 @@ class ManagedFilesConfiguration {
 
 		return IntegrationFlow
 			.from(messageSource,
-					pc -> pc.poller(pm -> PollerFactory.fixedRate(Duration.ofMinutes(1), Duration.ofMinutes(1))))
+					pc -> pc.poller(_ -> PollerFactory.fixedRate(Duration.ofMinutes(10), Duration.ofMinutes(1))))
 			.split()
 			// this does the dirty work of deleting the bits from s3.
-			.handle(ManagedFileDeletionRequest.class, (payload, headers) -> {
+			.handle(ManagedFileDeletionRequest.class, (payload, _) -> {
 				managedFileService.completeManagedFileDeletion(payload.id());
 				return null;
 			})

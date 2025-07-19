@@ -11,17 +11,17 @@ import java.util.Set;
 @Controller
 class AyrshareController {
 
-	private final Ayrshare client;
+	private final AyrshareService ayrshareService;
 
-	AyrshareController(Ayrshare client) {
-		this.client = client;
+	AyrshareController(AyrshareService ayrshareService) {
+		this.ayrshareService = ayrshareService;
 	}
 
 	@QueryMapping
 	Set<String> ayrsharePlatforms() {
-		var ps = Arrays.stream(this.client.platforms()) //
-			.sorted(Comparator.comparing(Ayrshare.Platform::platformCode)) //
-			.toArray(Ayrshare.Platform[]::new);
+		var ps = Arrays.stream(this.ayrshareService.platforms()) //
+			.sorted(Comparator.comparing(Platform::platformCode)) //
+			.toArray(Platform[]::new);
 		var unique = new LinkedHashSet<String>(ps.length);
 		for (var p : ps)
 			unique.add(p.platformCode());

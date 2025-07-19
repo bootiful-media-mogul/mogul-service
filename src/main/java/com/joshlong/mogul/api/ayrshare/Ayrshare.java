@@ -1,108 +1,137 @@
 package com.joshlong.mogul.api.ayrshare;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.http.MediaType;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+
 import java.net.URI;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
-/**
- * client [for this api](https://www.ayrshare.com/docs/apis/post/post)
- */
-public interface Ayrshare {
+@ImportRuntimeHints(Ayrshare.Hints.class)
+class Ayrshare {
 
-	default Platform[] platforms() {
-		return Platform.values();
+	private static final DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ISO_INSTANT;
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	private final RestClient http;
+
+	Ayrshare(String apiKey) {
+		this.http = RestClient.builder() //
+			.baseUrl("https://api.ayrshare.com/api/") //
+			.defaultHeaders(h -> {
+				h.setBearerAuth(apiKey); //
+				h.setContentType(MediaType.APPLICATION_JSON); //
+			}) //
+			.build();
+
 	}
 
-	Response post(String post, Platform[] platforms, Consumer<PostContext> contextConsumer);
-
-	default Response post(String post, Ayrshare.Platform[] platforms) {
-		return this.post(post, platforms, null);
-	}
-
-	enum Platform {
-
-		BLUESKY("bluesky"), FACEBOOK("facebook"), META("facebook"), GOOGLE_BUSINESS_PROFILE("gmb"),
-		INSTAGRAM("instagram"), LINKEDIN("linkedin"), PINTEREST("pinterest"), REDDIT("reddit"), SNAPCHAT("snapchat"),
-		TELEGRAM("telegram"), THREADS("threads"), TIKTOK("tiktok"), X("twitter"), TWITTER("twitter"),
-		YOUTUBE("youtube");
-
-		private final String platformCodename;
-
-		Platform(String platformCodename) {
-			this.platformCodename = platformCodename;
-		}
-
-		public static Platform of(String platformCode) {
-			for (var p : Platform.values()) {
-				if (p.platformCode().equalsIgnoreCase(platformCode))
-					return p;
+	private static Response.Status from(String string) {
+		if (string != null) {
+			if (string.equalsIgnoreCase("success")) {
+				return Response.Status.SUCCESS;
 			}
+			if (string.equalsIgnoreCase("scheduled")) {
+				return Response.Status.SCHEDULED;
+			}
+		}
+		return Response.Status.ERRORS;
+	}
+
+	private static <T> T nullOrNode(JsonNode node, String name, Function<JsonNode, T> function) {
+		Assert.notNull(node, "the node against which to evaluate tests should not be null");
+		var jsonNode = node.get(name);
+		if (jsonNode == null || jsonNode.isNull()) {
 			return null;
 		}
-
-		public static Platform[] of(Platform... platformCode) {
-			return platformCode;
-		}
-
-		public String platformCode() {
-			return this.platformCodename;
-		}
-
+		Assert.notNull(function, "the mapping function should not be null");
+		return function.apply(jsonNode);
 	}
 
-	class PostContext {
-
-		final AtomicReference<Instant> scheduledDate = new AtomicReference<>();
-
-		final AtomicReference<String> idempotencyKey = new AtomicReference<>();
-
-		final List<URI> mediaUris = new ArrayList<>();
-
-		public PostContext scheduledDate(Instant scheduledDate) {
-			this.scheduledDate.set(scheduledDate);
-			return this;
-		}
-
-		public PostContext idempotencyKey(String idempotencyKey) {
-			this.idempotencyKey.set(idempotencyKey);
-			return this;
-		}
-
-		public PostContext media(URI... mediaUris) {
-			if (mediaUris != null)
-				this.mediaUris.addAll(Arrays.asList(mediaUris));
-			return this;
-		}
-
+	Response post(String post, Platform[] platforms, Consumer<PostContext> contextConsumer) {
+		var ctx = new PostContext();
+		if (contextConsumer != null)
+			contextConsumer.accept(ctx);
+		return this.doPost(ctx.idempotencyKey.get(), post, platforms, ctx.mediaUris.toArray(new URI[0]),
+				ctx.scheduledDate.get());
 	}
 
-	record Response(Status status, Map<Platform, Post> postIds, Instant scheduleDate, String id, String refId,
-			String post, boolean validate) {
+	private Response doPost(String idempotencyKey, String post, Platform[] platforms, URI[] mediaUris,
+			Instant scheduledDate) {
+		Assert.hasText(post, "the post should not be empty!");
+		Assert.state(platforms.length > 0, "there should be at least one platform specified!");
 
-		public enum Status {
+		if (mediaUris == null)
+			mediaUris = new URI[0];
 
-			ERRORS(false), SUCCESS(true), SCHEDULED(true);
+		var body = new HashMap<String, Object>();
+		body.put("post", post);
 
-			private final boolean success;
+		if (StringUtils.hasText(idempotencyKey)) {
+			body.put("idempotencyKey", idempotencyKey);
+		}
 
-			Status(boolean success) {
-				this.success = success;
-			}
+		var platformsArray = Stream.of(platforms).map(Platform::platformCode).toArray(String[]::new);
+		body.put("platforms", platformsArray);
+		if (scheduledDate != null) {
+			body.put("scheduleDate", ISO_INSTANT.format(scheduledDate));
+		}
 
-			public boolean success() {
-				return this.success;
-			}
+		var mediaUrlsArray = Stream.of(mediaUris).map(URI::toString).toArray(String[]::new);
+		if (mediaUrlsArray.length > 0) {
+			body.put("mediaUrls", mediaUrlsArray);
+		}
+		var json = this.http.post().uri("/post").body(body).retrieve().body(JsonNode.class);
+		Assert.notNull(json, "the json response should not be null");
+		var status = nullOrNode(json, "status", JsonNode::asText);
+		var id = nullOrNode(json, "id", JsonNode::asText);
+		var refId = nullOrNode(json, "refId", JsonNode::asText);
+		var validate = nullOrNode(json, "validate", JsonNode::asBoolean);
+		var scheduleDate = nullOrNode(json, "scheduleDate",
+				j -> Instant.from(ISO_INSTANT.parse(j.get("scheduleDate").asText())));
+		var postIdsResult = nullOrNode(json, "postIds", (Function<JsonNode, Map<Platform, Response.Post>>) jsonNode -> {
+			var postIds = new HashMap<Platform, Response.Post>();
+			jsonNode.iterator().forEachRemaining(n -> {
+				var status1 = from(nullOrNode(n, "status", JsonNode::asText));
+				var id1 = nullOrNode(n, "id", JsonNode::asText);
+				var postUrl = nullOrNode(n, "postUrl", jn -> URI.create(jn.asText()));
+				var platform = nullOrNode(n, "platform", jn -> Platform.of(jn.asText()));
+				var type = nullOrNode(n, "type", JsonNode::asText);
+				var cid = nullOrNode(n, "cid", JsonNode::asText);
+				var value = new Response.Post(type, status1, id1, cid, postUrl, platform);
+				postIds.put(platform, value);
+			});
+			return postIds;
+		});
+		return new Response(from(status), postIdsResult, scheduleDate, id, refId, post, Boolean.TRUE.equals(validate));
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			var mcs = MemberCategory.values();
+			for (var c : new Class<?>[] { JsonNode.class, Response.class, PostContext.class, Response.class,
+					Response.Post.class, Response.Status.class, Platform.class })
+				hints.reflection().registerType(c, mcs);
 
 		}
 
-		public record Post(String type, Status status, String id, String cid, URI postUrl, Platform platform) {
-
-		}
 	}
 
 }
