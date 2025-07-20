@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api;
 
-import java.net.URI;
 import java.net.URL;
 import java.util.Date;
 import java.util.List;

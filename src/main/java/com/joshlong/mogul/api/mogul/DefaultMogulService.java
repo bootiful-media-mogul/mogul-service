@@ -1,14 +1,12 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.context.event.EventListener;
@@ -18,7 +16,6 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
@@ -32,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-//@Service
 @Transactional
 @ImportRuntimeHints(DefaultMogulService.Hints.class)
 class DefaultMogulService implements MogulService {

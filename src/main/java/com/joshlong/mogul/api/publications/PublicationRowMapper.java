@@ -34,6 +34,12 @@ class PublicationRowMapper implements RowMapper<Publication> {
 
 	private final JdbcClient db;
 
+	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, rowNum) -> {
+		var outcome = new Publication.Outcome(rs.getInt("id"), rs.getDate("created"), rs.getBoolean("success"),
+				JdbcUtils.url(rs, "uri"), rs.getString("key"));
+		return new PublicationOutcome(rs.getLong("publication_id"), outcome);
+	};
+
 	PublicationRowMapper(JdbcClient db, TextEncryptor textEncryptor) {
 		this.textEncryptor = textEncryptor;
 		this.db = db;
@@ -104,11 +110,5 @@ class PublicationRowMapper implements RowMapper<Publication> {
 
 	private record PublicationOutcome(Long publicationId, Publication.Outcome outcome) {
 	}
-
-	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, rowNum) -> {
-		var outcome = new Publication.Outcome(rs.getInt("id"), rs.getDate("created"), rs.getBoolean("success"),
-				JdbcUtils.url(rs, "uri"), rs.getString("key"));
-		return new PublicationOutcome(rs.getLong("publication_id"), outcome);
-	};
 
 }

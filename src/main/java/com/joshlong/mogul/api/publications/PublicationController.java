@@ -16,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;

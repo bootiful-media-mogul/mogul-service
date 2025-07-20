@@ -18,6 +18,12 @@ import java.util.Set;
 @ImportRuntimeHints({ MogulConfiguration.MogulHints.class })
 class MogulConfiguration {
 
+	@Bean
+	DefaultMogulService defaultMogulService(TransactionTemplate tt, JdbcClient db, ApplicationEventPublisher publisher,
+			@Value("${auth0.userinfo}") String authUserInfo, ApiProperties apiProperties) {
+		return new DefaultMogulService(authUserInfo, db, publisher, tt, apiProperties.cache().maxEntries());
+	}
+
 	static class MogulHints implements RuntimeHintsRegistrar {
 
 		@Override
@@ -26,12 +32,6 @@ class MogulConfiguration {
 				hints.reflection().registerType(c, MemberCategory.values());
 		}
 
-	}
-
-	@Bean
-	DefaultMogulService defaultMogulService(TransactionTemplate tt, JdbcClient db, ApplicationEventPublisher publisher,
-			@Value("${auth0.userinfo}") String authUserInfo, ApiProperties apiProperties) {
-		return new DefaultMogulService(authUserInfo, db, publisher, tt, apiProperties.cache().maxEntries());
 	}
 
 }

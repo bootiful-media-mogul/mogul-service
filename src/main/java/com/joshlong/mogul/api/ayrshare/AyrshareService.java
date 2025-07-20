@@ -1,12 +1,8 @@
 package com.joshlong.mogul.api.ayrshare;
 
-import java.util.*;
+import java.util.Collection;
 import java.util.function.Consumer;
 
-/**
- * we will implement what's described
- * <a href="https://github.com/bootiful-media-mogul/mogul-service/issues/101">here</a>.
- */
 public interface AyrshareService {
 
 	Platform[] platforms();
