@@ -1,11 +1,11 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.ayrshare.Ayrshare;
 import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
+import com.joshlong.mogul.api.ayrshare.AyrshareService;
+import com.joshlong.mogul.api.ayrshare.Platform;
 import com.joshlong.mogul.api.podcasts.Episode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -24,15 +24,12 @@ import java.util.Set;
 @Component(value = AyrshareConstants.PLUGIN_NAME)
 class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	private final Ayrshare ayrshare;
+	private final AyrshareService ayrshare;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final ResourceLoader resourceLoader;
-
-	AyrsharePodcastEpisodePublisherPlugin(Ayrshare ayrshare, ResourceLoader resourceLoader) {
+	AyrsharePodcastEpisodePublisherPlugin(AyrshareService ayrshare) {
 		this.ayrshare = ayrshare;
-		this.resourceLoader = resourceLoader;
 	}
 
 	@Override
@@ -53,9 +50,16 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
 				context.payload().toString());
 
-		var optimizedMapping = new HashMap<String, Set<Ayrshare.Platform>>();
+		// if the user types in different text for each platform, then we'll publish a
+		// different message for each
+		// platform, which will involve multiple calls to Ayrshare. but if the text is the
+		// same for all of them,
+		// then we can detect that and simply call Ayrshare once with multiple target
+		// platforms specified.
+
+		var optimizedMapping = new HashMap<String, Set<Platform>>();
 		for (var p : ayrshare.platforms()) {
-			var key = p.name().toLowerCase();
+			var key = p.platformCode().toLowerCase();
 			if (context.context().containsKey(key)) {
 				var post = context.context().get(key);
 				optimizedMapping.computeIfAbsent(post.trim(), k -> new HashSet<>()).add(p);
@@ -63,7 +67,7 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 		}
 
 		for (var post : optimizedMapping.keySet()) {
-			var targets = optimizedMapping.getOrDefault(post, new HashSet<>()).toArray(new Ayrshare.Platform[0]);
+			var targets = optimizedMapping.getOrDefault(post, new HashSet<>()).toArray(new Platform[0]);
 			if (targets.length > 0) {
 				var response = this.ayrshare.post(post, targets);
 				response.postIds().forEach((platform, postId) -> {

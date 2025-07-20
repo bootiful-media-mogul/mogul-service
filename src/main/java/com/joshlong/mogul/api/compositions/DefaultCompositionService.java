@@ -35,10 +35,11 @@ class DefaultCompositionService implements CompositionService {
 
 	private final RowMapper<Attachment> attachmentRowMapper;
 
-	DefaultCompositionService(JdbcClient db, ManagedFileService managedFileService) {
+	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db,
+			ManagedFileService managedFileService) {
 		this.db = db;
 		this.managedFileService = managedFileService;
-		this.attachmentRowMapper = new AttachmentRowMapper(this.managedFileService::getManagedFile);
+		this.attachmentRowMapper = attachmentRowMapper;
 		this.compositionRowMapper = new CompositionRowMapper(this::getAttachmentsByComposition);
 	}
 
@@ -52,12 +53,11 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
-	public boolean deleteCompositionAttachment(Long id) {
+	public void deleteCompositionAttachment(Long id) {
 		var attachmentById = this.getAttachmentById(id);
 		var mf = attachmentById.managedFile();
 		this.db.sql("delete from composition_attachment where id = ?").params(id).update();
 		this.managedFileService.deleteManagedFile(mf.id());
-		return true;
 	}
 
 	@Override
@@ -105,10 +105,12 @@ class DefaultCompositionService implements CompositionService {
 			.single();
 	}
 
-	private Collection<Attachment> getAttachmentsByComposition(Long compositionId) {
-		return this.db.sql("select * from composition_attachment where composition_id = ?")
-			.params(compositionId)
-			.query(this.attachmentRowMapper)
+	@Override
+	public Collection<Attachment> getAttachmentsByComposition(Long compositionId) {
+		return this.db//
+			.sql("select * from composition_attachment where composition_id = ?") //
+			.params(compositionId)//
+			.query(this.attachmentRowMapper)//
 			.list();
 	}
 

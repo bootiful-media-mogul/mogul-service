@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,21 +32,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Service
+//@Service
 @Transactional
 @ImportRuntimeHints(DefaultMogulService.Hints.class)
 class DefaultMogulService implements MogulService {
 
 	private final RestClient userinfoHttpRestClient = RestClient.builder().build();
 
-	private final int maxEntries = 100;
+	private final Map<Long, Mogul> mogulsById;
 
-	private final Duration tenMins = Duration.ofMinutes(10);
-
-	private final Map<Long, Mogul> mogulsById = CollectionUtils.evictingConcurrentMap(this.maxEntries, this.tenMins);
-
-	private final Map<String, Mogul> mogulsByName = CollectionUtils.evictingConcurrentMap(this.maxEntries,
-			this.tenMins);
+	private final Map<String, Mogul> mogulsByName;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -59,12 +55,15 @@ class DefaultMogulService implements MogulService {
 
 	private final String auth0Userinfo;
 
-	DefaultMogulService(@Value("${auth0.userinfo}") String auth0Userinfo, JdbcClient jdbcClient,
-			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate) {
+	DefaultMogulService(String auth0Userinfo, JdbcClient jdbcClient, ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate, int maxEntries) {
 		this.auth0Userinfo = auth0Userinfo;
 		this.transactionTemplate = transactionTemplate;
 		this.db = jdbcClient;
 		this.publisher = publisher;
+		Duration tenMins = Duration.ofMinutes(10);
+		this.mogulsById = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
+		this.mogulsByName = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
 		Assert.notNull(this.db, "the db is null");
 	}
 

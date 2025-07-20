@@ -152,8 +152,16 @@ type Mutation {
     updateSetting(category:String, name:String, value:String): Boolean
 }
 
+type AyrsharePublicationComposition {
+    id: Int
+    composition: Composition
+    publication: Publication
+    platform: String
+}
 
 type Query {
+
+    ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
     # publications
     publicationsForPublishable( type : String, id: Int ) : [Publication]

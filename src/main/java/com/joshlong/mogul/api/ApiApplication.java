@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.mogul.Mogul;
-import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -17,12 +15,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Set;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @IntegrationComponentScan
-@ImportRuntimeHints({ ApiApplication.MogulHints.class, ApiApplication.FlywayHints.class })
+@ImportRuntimeHints({ ApiApplication.FlywayHints.class })
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
@@ -49,16 +46,6 @@ public class ApiApplication {
 	@Bean
 	DateTimeFormatter dateTimeFormatter() {
 		return DateTimeFormatter.BASIC_ISO_DATE;
-	}
-
-	static class MogulHints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
-				hints.reflection().registerType(c, MemberCategory.values());
-		}
-
 	}
 
 	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 todo can we
