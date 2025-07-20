@@ -3,14 +3,19 @@ package com.joshlong.mogul.api.ayrshare;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.publications.PublicationCompletedEvent;
 import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.mogul.api.publications.PublicationStartedEvent;
 import com.joshlong.mogul.api.utils.CollectionUtils;
+import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.*;
@@ -114,31 +119,8 @@ class DefaultAyrshareService implements AyrshareService {
 			.list();
 	}
 
-	@EventListener
-	void onAyrsharePublication(PublicationStartedEvent pse) throws Exception {
-		var ayrshare = pse.publication().plugin().equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
-		if (!ayrshare)
-			return;
-		var mogul = pse.publication().mogulId();
-		var ctx = pse.publication().context();
-		for (var platform : this.platforms()) {
-			var platformCode = platform.platformCode();
-			if (ctx.containsKey(platformCode)) {
-				var compositionIdKey = platformCode + "CompositionId";
-				Assert.state(ctx.containsKey(compositionIdKey), "the context must "
-						+ "contain a valid composition id for " + platformCode + " and mogul " + mogul);
-				var compositionId = Long.parseLong(ctx.get(compositionIdKey));
-				this.db.sql(
-						"update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?")
-					.params(pse.publication().id(), compositionId, mogul, platformCode)
-					.update();
-			}
-			// todo should we send a NotificationEvent telling the Ayrshare plugin to
-			// reload so it gets new draft APCs?
-			// or should the Ayrshare plugin simply listen for the
-			// publication-completed-event ?
-		}
-
+	private boolean isAyrshare(String pluginName) {
+		return StringUtils.hasText(pluginName) && pluginName.equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
 	}
 
 	@Override
@@ -162,4 +144,48 @@ class DefaultAyrshareService implements AyrshareService {
 		return getAyrsharePublicationCompositionsFor(ids);
 	}
 
+	@EventListener
+	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) throws Exception {
+		if (!isAyrshare(pce.publication().plugin()))
+			return;
+		for (var platform : this.platforms()) {
+			var pc = platform.platformCode();
+			if (pce.publication().context().containsKey(pc)) {
+				var apce = new AyrsharePublicationCompletionEvent(pc);
+				var event = NotificationEvent.systemNotificationEventFor(pce.publication().mogulId(), apce,
+						Long.toString(pce.publication().id()), JsonUtils.write(Map.of("platform", pc)));
+				NotificationEvents.notify(event);
+			}
+		}
+	}
+
+	@EventListener
+	void onAyrsharePublicationStartedEvent(PublicationStartedEvent pse) throws Exception {
+		if (!isAyrshare(pse.publication().plugin()))
+			return;
+		var mogul = pse.publication().mogulId();
+		var ctx = pse.publication().context();
+		for (var platform : this.platforms()) {
+			var platformCode = platform.platformCode();
+			if (ctx.containsKey(platformCode)) {
+				var compositionIdKey = platformCode + "CompositionId";
+				Assert.state(ctx.containsKey(compositionIdKey), "the context must "
+						+ "contain a valid composition id for " + platformCode + " and mogul " + mogul);
+				var compositionId = Long.parseLong(ctx.get(compositionIdKey));
+				this.db.sql(
+						"update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?")
+					.params(pse.publication().id(), compositionId, mogul, platformCode)
+					.update();
+			}
+			// todo should we send a NotificationEvent telling the Ayrshare plugin to
+			// reload so it gets new draft APCs?
+			// or should the Ayrshare plugin simply listen for the
+			// publication-completed-event ?
+		}
+
+	}
+
+}
+
+record AyrsharePublicationCompletionEvent(String platform) {
 }
