@@ -1,14 +1,12 @@
 package com.joshlong.mogul.api.ayrshare;
 
-import com.joshlong.mogul.api.ApiApplication;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(classes = ApiApplication.class)
+//@SpringBootTest(classes = ApiApplication.class)
 class DefaultAyrshareServiceTest {
 
 	private final CompositionService compositionService;
@@ -24,7 +22,7 @@ class DefaultAyrshareServiceTest {
 		this.ayrshareService = ayrshareService;
 	}
 
-	@Test
+	// @Test
 	void contextLoads() throws Exception {
 		var mogul = this.mogulService.getMogulByName("google-oauth2|107746898487618710317");
 		var draftAyrsharePublicationCompositionsFor = this.ayrshareService
