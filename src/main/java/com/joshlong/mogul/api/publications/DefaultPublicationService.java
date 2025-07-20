@@ -89,7 +89,7 @@ class DefaultPublicationService implements PublicationService {
 				this.db.sql("update publication set state = ?, context = ? where id =? ")
 					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
 					.update();
-				this.publisher.publishEvent(new PublicationUpdatedEvent(publication.id()));
+				this.publisher.publishEvent(new PublicationUpdatedEvent(publication));
 
 			}
 		}
@@ -125,7 +125,7 @@ class DefaultPublicationService implements PublicationService {
 			return JdbcUtils.getIdFromKeyHolder(kh).longValue();
 		}));
 
-		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(publicationId));
+		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(this.getPublicationById(publicationId)));
 
 		var pc = PublisherPlugin.PublishContext.of(payload, context);
 		plugin.publish(pc);
@@ -143,7 +143,8 @@ class DefaultPublicationService implements PublicationService {
 					.update();
 			});
 
-			this.doNotify(mogulId, publicationId, new PublicationCompletedEvent(publicationId));
+			this.doNotify(mogulId, publicationId,
+					new PublicationCompletedEvent(this.getPublicationById(publicationId)));
 
 			return this.getPublicationById(publicationId);
 		});

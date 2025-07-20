@@ -5,6 +5,5 @@ create table ayrshare_publication_composition
     composition_id bigint  null references composition (id),
     mogul_id       bigint  not null references mogul (id),
     platform       text    not null,
-    draft          boolean not null default true,
-    unique (mogul_id,  platform,draft)
+    draft          boolean not null default true
 );

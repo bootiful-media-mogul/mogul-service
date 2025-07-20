@@ -1,4 +1,6 @@
 package com.joshlong.mogul.api.publications;
 
-public record PublicationCompletedEvent(long publicationId) {
+import com.joshlong.mogul.api.Publication;
+
+public record PublicationCompletedEvent(Publication publication) {
 }

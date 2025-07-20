@@ -50,9 +50,16 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
 				context.payload().toString());
 
+		// if the user types in different text for each platform, then we'll publish a
+		// different message for each
+		// platform, which will involve multiple calls to Ayrshare. but if the text is the
+		// same for all of them,
+		// then we can detect that and simply call Ayrshare once with multiple target
+		// platforms specified.
+
 		var optimizedMapping = new HashMap<String, Set<Platform>>();
 		for (var p : ayrshare.platforms()) {
-			var key = p.name().toLowerCase();
+			var key = p.platformCode().toLowerCase();
 			if (context.context().containsKey(key)) {
 				var post = context.context().get(key);
 				optimizedMapping.computeIfAbsent(post.trim(), k -> new HashSet<>()).add(p);
