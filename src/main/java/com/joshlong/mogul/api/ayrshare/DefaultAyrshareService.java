@@ -81,33 +81,6 @@ class DefaultAyrshareService implements AyrshareService {
 		return Platform.of(platformCode);
 	}
 
-	private Long doUpsert(Long mogulId, Platform platform) {
-		Assert.notNull(platform, "platform is null");
-		Assert.notNull(mogulId, "mogulId is null");
-
-		// new code
-		var apc = this.db
-			.sql("select * from ayrshare_publication_composition where mogul_id = ? and platform = ? and draft = true")
-			.params(mogulId, platform.platformCode())
-			.query(this.ayrsharePublicationCompositionRowMapper)
-			.list();
-		if (apc.size() == 1) { // either one's already been created...
-			return apc.getFirst().id();
-		}
-		// or we need to create one...
-		else {
-			Assert.isTrue(apc.isEmpty(),
-					"there should be no more than one draft APC for " + mogulId + " and " + platform.platformCode());
-			var gkh = new GeneratedKeyHolder();
-			this.db.sql(
-					"insert into ayrshare_publication_composition( mogul_id, platform ,draft ) values (?,?,true) returning id")
-				.params(mogulId, platform.platformCode())
-				.update(gkh);
-			return Objects.requireNonNull(gkh.getKey()).longValue();
-		}
-
-	}
-
 	private List<AyrsharePublicationComposition> getAyrsharePublicationCompositionsFor(List<Long> aspcIds) {
 		var idsPlaceholders = aspcIds.stream().map(_ -> "?").collect(Collectors.joining(","));
 		var idsParams = aspcIds.toArray(_ -> new Long[0]);
@@ -119,34 +92,56 @@ class DefaultAyrshareService implements AyrshareService {
 			.list();
 	}
 
-	private boolean isAyrshare(String pluginName) {
-		return StringUtils.hasText(pluginName) && pluginName.equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
+	private boolean isNotAyrshare(String pluginName) {
+		return !StringUtils.hasText(pluginName) || !pluginName.equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
 	}
 
 	@Override
 	@Transactional
 	public Collection<AyrsharePublicationComposition> getDraftAyrsharePublicationCompositionsFor(Long mogulId) {
-		var ids = new ArrayList<Long>();
-		// let's do some upserts for the compositions based on Platform
-		for (var platform : this.platforms()) {
-			ids.add(this.doUpsert(mogulId, platform));
+		var accountedForPlatforms = new HashMap<String, Boolean>();
+		var list = db.sql("select * from ayrshare_publication_composition where mogul_id = ? and draft = true")
+			.param(mogulId)
+			.query(this.ayrsharePublicationCompositionRowMapper)
+			.list();
+		for (var p : platforms()) {
+			accountedForPlatforms.put(p.platformCode(), false);
 		}
-		for (var ayrsharePublicationComposition : getAyrsharePublicationCompositionsFor(ids)) {
-			if (ayrsharePublicationComposition.composition() == null) {
-				var composition = this.compositionService.compose(ayrsharePublicationComposition,
-						ayrsharePublicationComposition.platform().platformCode());
-				Assert.notNull(composition, "the composition must not be null");
+
+		for (var ayrsharePublicationComposition : list) {
+			accountedForPlatforms.put(ayrsharePublicationComposition.platform().platformCode(), true);
+		}
+
+		// whatever's left needs a new ayrshare_publication_composition AND a composition.
+		// this is the slow case, but it only happens IF there r no records.
+		var newIds = new ArrayList<Long>();
+		for (var platform : accountedForPlatforms.keySet()) {
+			if (!accountedForPlatforms.get(platform)) {
+				var gkh = new GeneratedKeyHolder();
+				this.db.sql(
+						"insert into ayrshare_publication_composition( mogul_id, platform ,draft ) values (?,?,true) returning id")
+					.params(mogulId, platform)
+					.update(gkh);
+				var newId = Objects.requireNonNull(gkh.getKey()).longValue();
+				var payload = new AyrsharePublicationComposition(newId, true, null, Platform.of(platform), null);
+				var composition = this.compositionService.compose(payload, platform);
 				this.db.sql("update ayrshare_publication_composition set composition_id = ? where id = ?")
-					.params(composition.id(), ayrsharePublicationComposition.id())
+					.params(composition.id(), newId)
 					.update();
+				newIds.add(newId);
 			}
 		}
-		return getAyrsharePublicationCompositionsFor(ids);
+
+		var allIds = new ArrayList<Long>();
+		allIds.addAll(newIds);
+		for (var oid : list)
+			allIds.add(oid.id());
+		return getAyrsharePublicationCompositionsFor(allIds);
 	}
 
 	@EventListener
 	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) throws Exception {
-		if (!isAyrshare(pce.publication().plugin()))
+		if (isNotAyrshare(pce.publication().plugin()))
 			return;
 		for (var platform : this.platforms()) {
 			var pc = platform.platformCode();
@@ -161,7 +156,7 @@ class DefaultAyrshareService implements AyrshareService {
 
 	@EventListener
 	void onAyrsharePublicationStartedEvent(PublicationStartedEvent pse) throws Exception {
-		if (!isAyrshare(pse.publication().plugin()))
+		if (isNotAyrshare(pse.publication().plugin()))
 			return;
 		var mogul = pse.publication().mogulId();
 		var ctx = pse.publication().context();
@@ -177,10 +172,6 @@ class DefaultAyrshareService implements AyrshareService {
 					.params(pse.publication().id(), compositionId, mogul, platformCode)
 					.update();
 			}
-			// todo should we send a NotificationEvent telling the Ayrshare plugin to
-			// reload so it gets new draft APCs?
-			// or should the Ayrshare plugin simply listen for the
-			// publication-completed-event ?
 		}
 
 	}

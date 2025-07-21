@@ -38,13 +38,10 @@ import java.util.stream.Collectors;
 @Configuration
 class DefaultManagedFileServiceConfiguration {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	@Bean
 	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher,
 			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties) {
 		var bucket = properties.managedFiles().s3().bucket();
-
 		return new DefaultManagedFileService(bucket, db, storage, publisher, transactionTemplate,
 				properties.aws().cloudfront().domain());
 	}
@@ -128,8 +125,6 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		if (managedFile.visible()) {
 			url = this.cloudfrontDomain.toString() + "/"
 					+ this.fqn(managedFile.folder(), managedFile.storageFilename());
-			// this.log.debug("getting public url for managed file [{}]: {}",
-			// managedFile.id(), url);
 		}
 		return url;
 	}
@@ -285,7 +280,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	public Resource read(Long managedFileId) {
 		// the call to getManagedFile needs to be in a transaction. the reading of bytes
 		// does not.
-		var mf = this.transactionTemplate.execute(status -> this.getManagedFile(managedFileId));
+		var mf = this.transactionTemplate.execute(_ -> this.getManagedFile(managedFileId));
 		var fn = this.fqn(mf.folder(), mf.storageFilename());
 		var bucket = mf.bucket();
 		return this.storage.read(bucket, fn);
