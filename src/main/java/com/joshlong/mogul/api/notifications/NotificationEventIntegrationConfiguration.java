@@ -35,20 +35,6 @@ class NotificationEventIntegrationConfiguration {
 		return applicationEventListeningMessageProducer;
 	}
 
-	/*
-	 *
-	 * private final Logger log = LoggerFactory.getLogger(getClass());
-	 *
-	 * @Bean Channel notificationsChannel(AblyRealtime ablyRealtime, MogulService
-	 * mogulService) { var pfb = new ProxyFactoryBean();
-	 * pfb.setTargetClass(Channel.class); pfb.setProxyTargetClass(true);
-	 * pfb.addAdvice((MethodInterceptor) _ -> { var channelName =
-	 * AblyNotificationsUtils.ablyNoticationsChannelFor(mogulService.getCurrentMogul());
-	 * log.debug("resolving notification channel name {}", channelName); return
-	 * ablyRealtime.channels.get(channelName); }); return (Channel) pfb.getObject(); }
-	 *
-	 */
-
 	@Bean
 	AblyMessageHandler ablyMessageHandler(AblyRealtime ablyRealtime) {
 		return new AblyMessageHandler(ablyRealtime);
