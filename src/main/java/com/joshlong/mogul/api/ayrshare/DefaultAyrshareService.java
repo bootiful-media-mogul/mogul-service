@@ -35,8 +35,6 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
 
 class DefaultAyrshareService implements AyrshareService {
 
-	private final Logger logger = LoggerFactory.getLogger(DefaultAyrshareService.class);
-
 	private final PublicationService publicationService;
 
 	private final CompositionService compositionService;
@@ -126,7 +124,9 @@ class DefaultAyrshareService implements AyrshareService {
 		Assert.state(
 				drafts.stream().map(AyrsharePublicationComposition::id).collect(Collectors.toSet()).containsAll(allIds),
 				"allIds == drafts");
-		return drafts;
+		return drafts.stream() //
+			.sorted(Comparator.comparing(AyrsharePublicationComposition::platform))//
+			.collect(Collectors.toList());
 	}
 
 	private AyrsharePublicationCompositionResultSetExtractor buildResultSetExtractor() {
