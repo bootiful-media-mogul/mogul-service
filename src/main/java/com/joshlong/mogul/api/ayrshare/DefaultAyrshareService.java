@@ -135,6 +135,18 @@ class DefaultAyrshareService implements AyrshareService {
 	}
 
 	private Collection<AyrsharePublicationComposition> getDrafts(Long mogulId) {
+
+		System.out.println("----");
+		db.sql("select * from ayrshare_publication_composition where mogul_id = ? ")
+			.param(mogulId)
+			.query(this.buildResultSetExtractor())
+			.forEach(apc -> {
+				if (apc.publication() != null)
+					System.out.println("apc: " + apc);
+			});
+
+		System.out.println("----");
+
 		return db.sql("select * from ayrshare_publication_composition where mogul_id = ? and draft = true")
 			.param(mogulId)
 			.query(this.buildResultSetExtractor());

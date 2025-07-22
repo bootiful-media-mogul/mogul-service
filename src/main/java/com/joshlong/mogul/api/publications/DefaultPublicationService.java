@@ -180,12 +180,12 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	@Override
-	public Map<Long, Publication> getPublicationsByIds(Collection<Long> ids) {
+	public Map<Long, Publication> getPublicationsByIds(Collection<Long> badIds) {
+		var ids = badIds.stream().filter(id -> id > 0).collect(Collectors.toSet());
 		if (ids.isEmpty() || ids.stream().noneMatch(id -> id > 0))
 			return Collections.emptyMap();
-
 		var map = new HashMap<Long, Publication>();
-		var collectedIds = ids.stream().map(l -> l.toString()).collect(Collectors.joining(","));
+		var collectedIds = ids.stream().map(Object::toString).collect(Collectors.joining(","));
 		var pubs = this.db.sql("select * from publication p where p.id in (" + collectedIds + ") ")
 			.query(this.getPublicationRowMapper())
 			.list();
