@@ -14,12 +14,4 @@ class CompositionConfiguration {
 		return new AttachmentRowMapper(managedFileService::getManagedFile);
 	}
 
-	// todo fix this. the CompositionService depends on the CompositionRowMapper! so the
-	// RowMapepr cant depend on the CompositionService
-	// @Bean
-	// CompositionRowMapper compositionRowMapper(DefaultCompositionService
-	// compositionService) {
-	// return new CompositionRowMapper(compositionService::getAttachmentsByComposition);
-	// }
-
 }

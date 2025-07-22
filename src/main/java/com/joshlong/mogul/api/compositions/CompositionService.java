@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.compositions;
 
 import java.util.Collection;
+import java.util.Map;
 
 public interface CompositionService {
 
@@ -15,8 +16,8 @@ public interface CompositionService {
 
 	Composition getCompositionById(Long id);
 
-	void deleteCompositionAttachment(Long id);
+	Map<Long, Composition> getCompositionsByIds(Collection<Long> ids);
 
-	Collection<Attachment> getAttachmentsByComposition(Long compositionId);
+	void deleteCompositionAttachment(Long id);
 
 }

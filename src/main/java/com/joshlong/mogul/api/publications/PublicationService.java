@@ -17,6 +17,8 @@ public interface PublicationService {
 
 	Publication getPublicationById(Long id);
 
+	Map<Long, Publication> getPublicationsByIds(Collection<Long> ids);
+
 	Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz);
 
 	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
