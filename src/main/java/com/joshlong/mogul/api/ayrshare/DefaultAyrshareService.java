@@ -10,6 +10,8 @@ import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.mogul.api.publications.PublicationStartedEvent;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -33,6 +35,10 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
 
 class DefaultAyrshareService implements AyrshareService {
 
+	private final Logger logger = LoggerFactory.getLogger(DefaultAyrshareService.class);
+
+	private final PublicationService publicationService;
+
 	private final CompositionService compositionService;
 
 	private final JdbcClient db;
@@ -43,8 +49,6 @@ class DefaultAyrshareService implements AyrshareService {
 
 	private final MogulService mogulService;
 
-	private final AyrsharePublicationCompositionRowMapper ayrsharePublicationCompositionRowMapper;
-
 	private final Platform[] platforms;
 
 	DefaultAyrshareService(MogulService mogulService, JdbcClient db, Settings settings, int maxCache,
@@ -54,8 +58,7 @@ class DefaultAyrshareService implements AyrshareService {
 		this.compositionService = compositionService;
 		this.settings = settings;
 		this.clients = CollectionUtils.evictingConcurrentMap(maxCache, Duration.ofMinutes(10));
-		this.ayrsharePublicationCompositionRowMapper = new AyrsharePublicationCompositionRowMapper(
-				compositionService::getCompositionById, publicationService::getPublicationById, this::platform);
+		this.publicationService = publicationService;
 		this.platforms = Platform.values();
 	}
 
@@ -81,17 +84,6 @@ class DefaultAyrshareService implements AyrshareService {
 		return Platform.of(platformCode);
 	}
 
-	private List<AyrsharePublicationComposition> getAyrsharePublicationCompositionsFor(List<Long> aspcIds) {
-		var idsPlaceholders = aspcIds.stream().map(_ -> "?").collect(Collectors.joining(","));
-		var idsParams = aspcIds.toArray(_ -> new Long[0]);
-		return this.db //
-			.sql("select * from ayrshare_publication_composition where id in (" + idsPlaceholders
-					+ ") order by platform") //
-			.params((Long[]) idsParams)
-			.query(this.ayrsharePublicationCompositionRowMapper)
-			.list();
-	}
-
 	private boolean isNotAyrshare(String pluginName) {
 		return !StringUtils.hasText(pluginName) || !pluginName.equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
 	}
@@ -100,20 +92,13 @@ class DefaultAyrshareService implements AyrshareService {
 	@Transactional
 	public Collection<AyrsharePublicationComposition> getDraftAyrsharePublicationCompositionsFor(Long mogulId) {
 		var accountedForPlatforms = new HashMap<String, Boolean>();
-		var list = db.sql("select * from ayrshare_publication_composition where mogul_id = ? and draft = true")
-			.param(mogulId)
-			.query(this.ayrsharePublicationCompositionRowMapper)
-			.list();
+		var list = getDrafts(mogulId);
 		for (var p : platforms()) {
 			accountedForPlatforms.put(p.platformCode(), false);
 		}
-
 		for (var ayrsharePublicationComposition : list) {
 			accountedForPlatforms.put(ayrsharePublicationComposition.platform().platformCode(), true);
 		}
-
-		// whatever's left needs a new ayrshare_publication_composition AND a composition.
-		// this is the slow case, but it only happens IF there r no records.
 		var newIds = new ArrayList<Long>();
 		for (var platform : accountedForPlatforms.keySet()) {
 			if (!accountedForPlatforms.get(platform)) {
@@ -132,15 +117,43 @@ class DefaultAyrshareService implements AyrshareService {
 			}
 		}
 
-		var allIds = new ArrayList<Long>();
+		var allIds = (List<Long>) new ArrayList<Long>();
 		allIds.addAll(newIds);
 		for (var oid : list)
 			allIds.add(oid.id());
-		return getAyrsharePublicationCompositionsFor(allIds);
+		var drafts = this.getDrafts(mogulId);
+		Assert.state(allIds.size() == drafts.size(), "allIds.size() == drafts.size()");
+		Assert.state(
+				drafts.stream().map(AyrsharePublicationComposition::id).collect(Collectors.toSet()).containsAll(allIds),
+				"allIds == drafts");
+		return drafts;
+	}
+
+	private AyrsharePublicationCompositionResultSetExtractor buildResultSetExtractor() {
+		return new AyrsharePublicationCompositionResultSetExtractor(this.compositionService::getCompositionsByIds,
+				this.publicationService::getPublicationsByIds, this::platform);
+	}
+
+	private Collection<AyrsharePublicationComposition> getDrafts(Long mogulId) {
+
+		System.out.println("----");
+		db.sql("select * from ayrshare_publication_composition where mogul_id = ? ")
+			.param(mogulId)
+			.query(this.buildResultSetExtractor())
+			.forEach(apc -> {
+				if (apc.publication() != null)
+					System.out.println("apc: " + apc);
+			});
+
+		System.out.println("----");
+
+		return db.sql("select * from ayrshare_publication_composition where mogul_id = ? and draft = true")
+			.param(mogulId)
+			.query(this.buildResultSetExtractor());
 	}
 
 	@EventListener
-	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) throws Exception {
+	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) {
 		if (isNotAyrshare(pce.publication().plugin()))
 			return;
 		for (var platform : this.platforms()) {
@@ -171,12 +184,10 @@ class DefaultAyrshareService implements AyrshareService {
 						"update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?")
 					.params(pse.publication().id(), compositionId, mogul, platformCode)
 					.update();
+
 			}
 		}
 
 	}
 
-}
-
-record AyrsharePublicationCompletionEvent(String platform) {
 }

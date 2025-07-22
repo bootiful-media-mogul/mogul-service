@@ -22,6 +22,7 @@ import org.springframework.util.Assert;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
@@ -52,10 +53,17 @@ class DefaultPublicationService implements PublicationService {
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
-		// this.publicationRowMapper = new PublicationRowMapper(textEncryptor,
-		// this::outcomes);
 		this.publisher = publisher;
 		this.publishableRepositories = publishableRepositories;
+	}
+
+	/**
+	 * do <EM>NOT</EM> make this a shared class variable! there's <EM>state</EM> in the
+	 * {@link PublicationRowMapper} and you'll see duplicate records if this is used
+	 * across more than one request
+	 */
+	private PublicationRowMapper getPublicationRowMapper() {
+		return new PublicationRowMapper(db, textEncryptor);
 	}
 
 	@Override
@@ -157,18 +165,34 @@ class DefaultPublicationService implements PublicationService {
 				NotificationEvent.systemNotificationEventFor(mogulId, event, Long.toString(publicationId), null));
 	}
 
-	private PublicationRowMapper publicationRowMapper() {
-		return new PublicationRowMapper(this.db, this.textEncryptor);
+	@Override
+	public Publication getPublicationById(Long publicationId) {
+		var all = this.db //
+			.sql("select * from publication where id = ?") //
+			.param(publicationId) //
+			.query(this.getPublicationRowMapper()) //
+			.list();
+		if (all.isEmpty()) {
+			return null;
+		}
+		return all.getFirst();
+
 	}
 
 	@Override
-	public Publication getPublicationById(Long publicationId) {
-		return this.db //
-			.sql("select * from publication where id = ?") //
-			.param(publicationId) //
-			.query(this.publicationRowMapper()) //
-			.single();
+	public Map<Long, Publication> getPublicationsByIds(Collection<Long> badIds) {
+		var ids = badIds.stream().filter(id -> id > 0).collect(Collectors.toSet());
+		if (ids.isEmpty() || ids.stream().noneMatch(id -> id > 0))
+			return Collections.emptyMap();
+		var map = new HashMap<Long, Publication>();
+		var collectedIds = ids.stream().map(Object::toString).collect(Collectors.joining(","));
+		var pubs = this.db.sql("select * from publication p where p.id in (" + collectedIds + ") ")
+			.query(this.getPublicationRowMapper())
+			.list();
+		for (var p : pubs)
+			map.put(p.id(), p);
 
+		return map;
 	}
 
 	@Override
@@ -176,7 +200,7 @@ class DefaultPublicationService implements PublicationService {
 		return this.db //
 			.sql("select * from publication where payload = ? and payload_class = ? order by created desc") //
 			.params(Long.toString(publicationKey), clazz.getName())//
-			.query(this.publicationRowMapper()) //
+			.query(this.getPublicationRowMapper()) //
 			.list();
 	}
 
