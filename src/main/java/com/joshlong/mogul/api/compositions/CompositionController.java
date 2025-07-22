@@ -39,8 +39,13 @@ class CompositionController {
 		var managedFile = attachment.managedFile();
 		var publicUrl = this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
 		this.log.trace("got the public url for managed file # {} as {}", managedFile.id(), publicUrl);
-		var embedding = "![%s](%s)".formatted(StringUtils.hasText(attachment.caption()) ? attachment.caption() : "",
-				publicUrl);
+		// var embedding = "![%s](%s)".formatted(StringUtils.hasText(attachment.caption())
+		// ? attachment.caption() : "",
+		// publicUrl);
+
+		var embedding = StringUtils.hasText(attachment.caption())
+				? "![%s](%s)".formatted(attachment.caption(), publicUrl) : publicUrl;
+
 		return NLS + embedding + NLS;
 	}
 
