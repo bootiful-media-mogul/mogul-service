@@ -3,13 +3,18 @@ package com.joshlong.mogul.api.podcasts.publication;
 import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
 import com.joshlong.mogul.api.ayrshare.AyrshareService;
 import com.joshlong.mogul.api.ayrshare.Platform;
+import com.joshlong.mogul.api.compositions.Attachment;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.Episode;
+import com.joshlong.mogul.api.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -24,12 +29,19 @@ import java.util.Set;
 @Component(value = AyrshareConstants.PLUGIN_NAME)
 class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	private final AyrshareService ayrshare;
-
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	AyrsharePodcastEpisodePublisherPlugin(AyrshareService ayrshare) {
+	private final AyrshareService ayrshare;
+
+	private final MogulService mogulService;
+
+	private final ManagedFileService managedFileService;
+
+	AyrsharePodcastEpisodePublisherPlugin(AyrshareService ayrshare, MogulService mogulService,
+			ManagedFileService managedFileService) {
 		this.ayrshare = ayrshare;
+		this.mogulService = mogulService;
+		this.managedFileService = managedFileService;
 	}
 
 	@Override
@@ -44,35 +56,30 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 
 	@Override
 	public void publish(PublishContext<Episode> context) {
-
-		// todo compositions, when we get them working, will be a natural fit with
-		// ayrshare's media_urls capability
-		this.log.debug("Ayrshare plugin got the following context: {} for the following episode {}", context,
-				context.payload().toString());
-
-		// if the user types in different text for each platform, then we'll publish a
-		// different message for each
-		// platform, which will involve multiple calls to Ayrshare. but if the text is the
-		// same for all of them,
-		// then we can detect that and simply call Ayrshare once with multiple target
-		// platforms specified.
-
-		var optimizedMapping = new HashMap<String, Set<Platform>>();
-		for (var p : ayrshare.platforms()) {
-			var key = p.platformCode().toLowerCase();
-			if (context.context().containsKey(key)) {
-				var post = context.context().get(key);
-				optimizedMapping.computeIfAbsent(post.trim(), k -> new HashSet<>()).add(p);
-			}
+		var mogul = this.mogulService.getCurrentMogul();
+		var drafts = this.ayrshare.getDraftAyrsharePublicationCompositionsFor(mogul.id());
+		var platformsToCompositions = new HashMap<String, Collection<Attachment>>();
+		for (var c : drafts) {
+			platformsToCompositions.put(c.platform().platformCode(), c.composition().attachments());
 		}
-
-		for (var post : optimizedMapping.keySet()) {
-			var targets = optimizedMapping.getOrDefault(post, new HashSet<>()).toArray(new Platform[0]);
-			if (targets.length > 0) {
-				var response = this.ayrshare.post(post, targets);
-				response.postIds().forEach((platform, postId) -> {
-					context.outcome(platform.platformCode(), response.status().success(), postId.postUrl());
+		for (var platform : ayrshare.platforms()) {
+			var platformKey = platform.platformCode().toLowerCase();
+			if (context.context().containsKey(platformKey)) {
+				var post = context.context().get(platformKey);
+				var response = ayrshare.post(post, new Platform[] { platform }, postContext -> {
+					var media = platformsToCompositions.getOrDefault(platform.platformCode(), Set.of());
+					var uris = media //
+						.stream() //
+						.map(attachment -> {
+							var managedFile = attachment.managedFile();
+							return UriUtils.uri(managedFileService.getPublicUrlForManagedFile(managedFile.id()));
+						}) //
+						.toArray(URI[]::new);
+					postContext.media(uris);
 				});
+				response.postIds()
+					.forEach((platformObj, posted) -> context.outcome(platformObj.platformCode().toLowerCase(), true,
+							posted.postUrl()));
 			}
 		}
 	}

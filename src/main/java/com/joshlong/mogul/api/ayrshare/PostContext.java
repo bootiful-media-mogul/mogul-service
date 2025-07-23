@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-class PostContext {
+public class PostContext {
 
 	final AtomicReference<Instant> scheduledDate = new AtomicReference<>();
 
@@ -26,7 +26,7 @@ class PostContext {
 	}
 
 	public PostContext media(URI... mediaUris) {
-		if (mediaUris != null)
+		if (mediaUris != null && mediaUris.length > 0)
 			this.mediaUris.addAll(Arrays.asList(mediaUris));
 		return this;
 	}

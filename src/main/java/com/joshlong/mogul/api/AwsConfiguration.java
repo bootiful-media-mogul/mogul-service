@@ -1,5 +1,7 @@
 package com.joshlong.mogul.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +12,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
 class AwsConfiguration {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Bean
 	S3Client s3Client(ApiProperties api) {
@@ -28,7 +32,7 @@ class AwsConfiguration {
 		return () -> {
 			if (!properties.debug())
 				return;
-			s3.listBuckets().buckets().forEach(System.out::println);
+			s3.listBuckets().buckets().forEach(b -> log.info("bucket [{}]", b.name()));
 		};
 	}
 

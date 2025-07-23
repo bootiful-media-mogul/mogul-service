@@ -8,7 +8,6 @@ import java.net.URL;
 import java.sql.ResultSet;
 import java.util.Objects;
 
-@SuppressWarnings("unused")
 public abstract class JdbcUtils {
 
 	public static Number getIdFromKeyHolder(KeyHolder kh) {
@@ -29,15 +28,13 @@ public abstract class JdbcUtils {
 
 	/*
 	 * URIs are not supported by the PostgreSQL JDBC driver, so we fake it 'till we make
-	 * it. (sure would be nice to have Java language extension functions a la Kotlin,
+	 * it. (sure would be nice to have Java language extension functions à la Kotlin,
 	 * though)
 	 */
 	public static URI uri(ResultSet resultSet, String columnName) {
 		try {
 			var string = resultSet.getString(columnName);
-			if (string == null)
-				return null;
-			return new URI(string);
+			return UriUtils.uri(string);
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);

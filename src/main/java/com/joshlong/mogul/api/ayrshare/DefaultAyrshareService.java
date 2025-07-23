@@ -10,8 +10,6 @@ import com.joshlong.mogul.api.publications.PublicationService;
 import com.joshlong.mogul.api.publications.PublicationStartedEvent;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -135,18 +133,6 @@ class DefaultAyrshareService implements AyrshareService {
 	}
 
 	private Collection<AyrsharePublicationComposition> getDrafts(Long mogulId) {
-
-		System.out.println("----");
-		db.sql("select * from ayrshare_publication_composition where mogul_id = ? ")
-			.param(mogulId)
-			.query(this.buildResultSetExtractor())
-			.forEach(apc -> {
-				if (apc.publication() != null)
-					System.out.println("apc: " + apc);
-			});
-
-		System.out.println("----");
-
 		return db.sql("select * from ayrshare_publication_composition where mogul_id = ? and draft = true")
 			.param(mogulId)
 			.query(this.buildResultSetExtractor());
@@ -156,6 +142,24 @@ class DefaultAyrshareService implements AyrshareService {
 	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) {
 		if (isNotAyrshare(pce.publication().plugin()))
 			return;
+
+		var mogul = pce.publication().mogulId();
+		var ctx = pce.publication().context();
+		for (var platform : this.platforms()) {
+			var platformCode = platform.platformCode();
+			if (ctx.containsKey(platformCode)) {
+				var compositionIdKey = platformCode + "CompositionId";
+				Assert.state(ctx.containsKey(compositionIdKey), "the context must "
+						+ "contain a valid composition id for " + platformCode + " and mogul " + mogul);
+				var compositionId = Long.parseLong(ctx.get(compositionIdKey));
+				this.db.sql(
+						"update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?")
+					.params(pce.publication().id(), compositionId, mogul, platformCode)
+					.update();
+
+			}
+		}
+
 		for (var platform : this.platforms()) {
 			var pc = platform.platformCode();
 			if (pce.publication().context().containsKey(pc)) {
@@ -169,24 +173,21 @@ class DefaultAyrshareService implements AyrshareService {
 
 	@EventListener
 	void onAyrsharePublicationStartedEvent(PublicationStartedEvent pse) throws Exception {
-		if (isNotAyrshare(pse.publication().plugin()))
-			return;
-		var mogul = pse.publication().mogulId();
-		var ctx = pse.publication().context();
-		for (var platform : this.platforms()) {
-			var platformCode = platform.platformCode();
-			if (ctx.containsKey(platformCode)) {
-				var compositionIdKey = platformCode + "CompositionId";
-				Assert.state(ctx.containsKey(compositionIdKey), "the context must "
-						+ "contain a valid composition id for " + platformCode + " and mogul " + mogul);
-				var compositionId = Long.parseLong(ctx.get(compositionIdKey));
-				this.db.sql(
-						"update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?")
-					.params(pse.publication().id(), compositionId, mogul, platformCode)
-					.update();
-
-			}
-		}
+		/*
+		 * if (isNotAyrshare(pse.publication().plugin())) return; var mogul =
+		 * pse.publication().mogulId(); var ctx = pse.publication().context(); for (var
+		 * platform : this.platforms()) { var platformCode = platform.platformCode(); if
+		 * (ctx.containsKey(platformCode)) { var compositionIdKey = platformCode +
+		 * "CompositionId"; Assert.state(ctx.containsKey(compositionIdKey),
+		 * "the context must " + "contain a valid composition id for " + platformCode +
+		 * " and mogul " + mogul); var compositionId =
+		 * Long.parseLong(ctx.get(compositionIdKey)); this.db.sql(
+		 * "update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?"
+		 * ) .params(pse.publication().id(), compositionId, mogul, platformCode)
+		 * .update();
+		 *
+		 * } }
+		 */
 
 	}
 
