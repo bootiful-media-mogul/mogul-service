@@ -131,8 +131,9 @@ class DefaultManagedFileService implements ManagedFileService {
 		var folder = managedFile.folder();
 		this.storage.write(bucket, this.fqn(folder, managedFile.storageFilename()), resource, mediaType);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
-		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
-			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
+		this.db //
+			.sql("update managed_file set filename = ?, content_type = ?, written = true, size = ? where id= ?") //
+			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId) //
 			.update();
 		this.invalidateCache(managedFileId);
 		var freshManagedFile = this.getManagedFileById(managedFileId);
@@ -140,7 +141,6 @@ class DefaultManagedFileService implements ManagedFileService {
 			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
 			return null;
 		});
-
 	}
 
 	private void invalidateCache(Long managedFileId) {
@@ -211,8 +211,9 @@ class DefaultManagedFileService implements ManagedFileService {
 				managedFileDeletionRequest.visibleBucket() }) {
 			this.storage.remove(bucket, fqn);
 		}
-		this.db.sql(" update managed_file_deletion_request set deleted = true where id = ? ")
-			.param(managedFileDeletionRequestId)
+		this.db //
+			.sql(" update managed_file_deletion_request set deleted = true where id = ? ") //
+			.param(managedFileDeletionRequestId) //
 			.update();
 	}
 
@@ -224,7 +225,7 @@ class DefaultManagedFileService implements ManagedFileService {
 		// lazily trigger the loading of the managed_file, which will be deleted if we
 		// waited until after the next line
 		this.db.sql(
-				"insert into managed_file_deletion_request ( mogul , bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
+				"insert into managed_file_deletion_request ( mogul_id , bucket, folder, filename ,storage_filename) values(?,?,?,?,?)")
 			.params(managedFile.mogulId(), //
 					managedFile.bucket(), //
 					managedFile.folder(), //
@@ -232,7 +233,7 @@ class DefaultManagedFileService implements ManagedFileService {
 					managedFile.storageFilename() //
 			)
 			.update();
-		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
+		this.db.sql("delete from managed_file where id = ?").param(managedFileId).update();
 		this.invalidateCache(managedFileId);
 		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
@@ -264,7 +265,7 @@ class DefaultManagedFileService implements ManagedFileService {
 			boolean visible) {
 		var kh = new GeneratedKeyHolder();
 		var sql = """
-				insert into managed_file( storage_filename, mogul , bucket, folder, filename, size,content_type, visible)
+				insert into managed_file( storage_filename, mogul_id , bucket, folder, filename, size,content_type, visible)
 				values (?,?,?,?,?,?,?,?)
 				""";
 		this.db.sql(sql)
