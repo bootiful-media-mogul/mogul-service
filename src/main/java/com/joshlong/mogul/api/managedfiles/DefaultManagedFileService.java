@@ -6,14 +6,10 @@ import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -27,43 +23,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
-
-@Configuration
-class DefaultManagedFileServiceConfiguration {
-
-	@Bean
-	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher, CacheManager cache,
-			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties,
-			ApiProperties apiProperties) {
-		var bucket = properties.managedFiles().s3().bucket();
-		var managedFilesCache = cache.getCache("managedFiles");
-		return new DefaultManagedFileService(bucket, db, storage, publisher, managedFilesCache, transactionTemplate,
-				properties.aws().cloudfront().domain(), apiProperties);
-	}
-
-}
 
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
  * system, and so this class provides caching. Lookups for a given {@link ManagedFile}
- * <em>should</em> be served out of in-memory cache first. This can spare you thousands of
+ * <em>should</em> be served out of in-memory cache first. This can spare you many
  * one-off calls to the database for every, say, podcast loaded in the system.
- *
- * <h2>Performance Optimizations to be Aware of for Managed Files</h2> <EM>Important!</EM>
- * the {@link ManagedFile managed file} abstraction is used everywhere, and we can't
- * afford a million calls to the SQL table for each single {@link ManagedFile} required in
- * some object in a deep object graph of results. So, we use transaction synchronization
- * to wait until the end of a given transaction, including read-only transactions, to make
- * note of all the ids of the managed files and then to hand the user code back a
- * placeholder {@link ManagedFile} which knows only its ID. It has the shape of a managed
- * file, but not the data of one. that is until the transaction finishes. at this point,
- * right before committing, we do one big query for all the managed files and then give
- * the data to each placeholder object, fleshing them out, in effect.
- * <p>
- * warning: do <EM>NOT</EM> make the entire class {@link Transactional}!
  */
 
 class DefaultManagedFileService implements ManagedFileService {
@@ -342,21 +308,3 @@ class DefaultManagedFileService implements ManagedFileService {
 
 }
 
-class ManagedFileRowMapper implements RowMapper<ManagedFile> {
-
-	@Override
-	public ManagedFile mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new ManagedFile(rs.getLong("mogul"), //
-				rs.getLong("id"), //
-				rs.getString("bucket"), //
-				rs.getString("storage_filename"), //
-				rs.getString("folder"), //
-				rs.getString("filename"), //
-				rs.getTimestamp("created"), //
-				rs.getBoolean("written"), //
-				rs.getLong("size"), //
-				rs.getString("content_type"), //
-				rs.getBoolean("visible"));
-	}
-
-}
