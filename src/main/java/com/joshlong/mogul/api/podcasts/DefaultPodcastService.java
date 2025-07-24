@@ -19,10 +19,7 @@ import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -40,21 +37,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
-@Configuration
-class PodcastServiceConfiguration {
-
-	@Bean
-	DefaultPodcastService defaultPodcastService(CompositionService cs, MediaNormalizer mn, JdbcClient db,
-			ManagedFileService mfs, ApplicationEventPublisher publisher, Transcriber transcriber,
-			TransactionTemplate tt, CacheManager cacheManager, MogulService mogulService) {
-		var podcastsCache = cacheManager.getCache("podcasts");
-		var podcastEpisodesCache = cacheManager.getCache("podcastEpisodes");
-		return new DefaultPodcastService(cs, mn, db, mfs, publisher, transcriber, podcastsCache, podcastEpisodesCache,
-				mogulService, tt);
-	}
-
-}
 
 /**
  * This service uses a caching scheme that you need to be aware of when effecting changes.
