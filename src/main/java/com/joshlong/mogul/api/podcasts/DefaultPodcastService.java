@@ -13,16 +13,20 @@ import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
 import com.joshlong.mogul.api.transcription.Transcriber;
 import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
+import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -33,6 +37,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+@Configuration
+class PodcastServiceConfiguration {
+
+	@Bean
+	DefaultPodcastService defaultPodcastService(CompositionService cs, MediaNormalizer mn, JdbcClient db,
+			ManagedFileService mfs, ApplicationEventPublisher publisher, Transcriber transcriber,
+			CacheManager cacheManager, MogulService mogulService) {
+		var podcastsCache = cacheManager.getCache("podcasts");
+		var podcastEpisodesCache = cacheManager.getCache("podcastEpisodes");
+		return new DefaultPodcastService(cs, mn, db, mfs, publisher, transcriber, podcastsCache, podcastEpisodesCache,
+				mogulService);
+	}
+
+}
+
 /**
  * This service uses a caching scheme that you need to be aware of when effecting changes.
  * All podcasts from all moguls are stored, live, in this class. when there is an update,
@@ -40,7 +59,6 @@ import java.util.stream.Collectors;
  * key is to make sure all updates to the SQL DB result in a refreshing of the mogul
  * object graph kept in memory.
  */
-@Service
 @Transactional
 class DefaultPodcastService implements PodcastService {
 
@@ -64,9 +82,13 @@ class DefaultPodcastService implements PodcastService {
 
 	private final MogulService mogulService;
 
+	private final Cache podcastCache, podcastEpisodesCache;
+
 	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer, JdbcClient db,
 			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber,
-			MogulService mogulService) {
+			Cache podcastCache, Cache podcastEpisodesCache, MogulService mogulService) {
+		this.podcastEpisodesCache = podcastEpisodesCache;
+		this.podcastCache = podcastCache;
 		this.compositionService = compositionService;
 		this.db = db;
 		this.mediaNormalizer = mediaNormalizer;
@@ -74,7 +96,7 @@ class DefaultPodcastService implements PodcastService {
 		this.publisher = publisher;
 		this.transcriber = transcriber;
 		this.podcastRowMapper = new PodcastRowMapper();
-		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFile);
+		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFileById);
 		this.mogulService = mogulService;
 	}
 
@@ -145,7 +167,7 @@ class DefaultPodcastService implements PodcastService {
 					this.mediaNormalizer.normalize(segment.audio(), segment.producedAudio());
 					// if this is older than the last time we have produced any audio,
 					// then we won't reproduce the audio
-					this.db.sql("update podcast_episode  set produced_audio_assets_updated = ? where id = ? ")
+					this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 						.params(new Date(), episodeId)
 						.update();
 
@@ -250,7 +272,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
-		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFile);
+		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);
 		return this.db//
 			.sql(" select * from podcast_episode pe where pe.podcast  = ? ") //
 			.param(podcastId)//
@@ -280,6 +302,7 @@ class DefaultPodcastService implements PodcastService {
 
 		Assert.state((null != podcast.title() && title != null), "you must provide a valid title");
 		Assert.state(title.equals(podcast.title()), "you must provide a valid title");
+		this.invalidatePodcastCache(podcastId);
 		this.publisher.publishEvent(new PodcastUpdatedEvent(podcast));
 		return podcast;
 	}
@@ -315,19 +338,18 @@ class DefaultPodcastService implements PodcastService {
 		var id = JdbcUtils.getIdFromKeyHolder(kh);
 		var episodeId = id.longValue();
 		var episode = this.getPodcastEpisodeById(episodeId);
+		this.invalidatePodcastEpisodeCache(episodeId);
 		this.publisher.publishEvent(new PodcastEpisodeCreatedEvent(episode));
 		return episode;
 	}
 
 	@Override
 	public Episode getPodcastEpisodeById(Long episodeId) {
-		var erm = new EpisodeRowMapper(true, this.managedFileService::getManagedFile);//
-		var res = this.db //
-			.sql("select * from podcast_episode where id =?")//
-			.param(episodeId)//
-			.query(erm) //
-			.list();
-		return res.isEmpty() ? null : res.getFirst();
+		var all = getAllPodcastEpisodesByIds(List.of(episodeId));
+		Assert.notNull(all, "the collection should not be null");
+		if (all.isEmpty())
+			return null;
+		return all.iterator().next();
 	}
 
 	private void updateEpisodeSegmentOrder(Long episodeSegmentId, int order) {
@@ -351,6 +373,7 @@ class DefaultPodcastService implements PodcastService {
 		this.reorderSegments(segments);
 		var epId = this.getPodcastEpisodeSegmentById(segmentId).episodeId();
 		var ep = this.getPodcastEpisodeById(epId);
+		this.invalidatePodcastEpisodeCache(epId);
 		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(ep));
 	}
 
@@ -391,7 +414,16 @@ class DefaultPodcastService implements PodcastService {
 			this.deletePodcastEpisode(episode.id());
 		}
 		this.db.sql(" delete from podcast where id = ?").param(podcastId).update();
+		this.invalidatePodcastCache(podcastId);
 		this.publisher.publishEvent(new PodcastDeletedEvent(podcast));
+	}
+
+	private void invalidatePodcastEpisodeCache(Long episodeId) {
+		this.podcastEpisodesCache.evictIfPresent(episodeId);
+	}
+
+	private void invalidatePodcastCache(Long podcastId) {
+		this.podcastCache.evict(podcastId);
 	}
 
 	@Override
@@ -420,15 +452,18 @@ class DefaultPodcastService implements PodcastService {
 		for (var managedFileId : ids)
 			this.managedFileService.deleteManagedFile(managedFileId);
 
+		this.invalidatePodcastEpisodeCache(episodeId);
 		this.publisher.publishEvent(new PodcastEpisodeDeletedEvent(episode));
 	}
 
 	@Override
 	public Podcast getPodcastById(Long podcastId) {
-		return this.db.sql("select * from podcast p where p.id=?")//
+		return this.podcastCache.get(podcastId, () -> this.db //
+			.sql("select * from podcast p where p.id=?")//
 			.param(podcastId)//
-			.query(podcastRowMapper)//
-			.single();
+			.query(this.podcastRowMapper)//
+			.single());
+
 	}
 
 	@Override
@@ -486,9 +521,11 @@ class DefaultPodcastService implements PodcastService {
 					maxOrder)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh);
+		this.invalidatePodcastEpisodeCache(episodeId);
 		var episodeSegmentsByEpisode = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 		this.reorderSegments(episodeSegmentsByEpisode);
 		this.refreshPodcastEpisodeCompleteness(episodeId);
+		this.invalidatePodcastEpisodeCache(episodeId);
 		return this.getPodcastEpisodeSegmentById(id.longValue());
 	}
 
@@ -502,6 +539,11 @@ class DefaultPodcastService implements PodcastService {
 				.update();
 			Assert.state(updated != 0,
 					"there should be at least " + "one transcript set for segment # " + segment.id());
+			var podcastEpisodeId = db.sql("select pes.podcast_episode from podcast_episode_segment pes where pes.id =?")
+				.param(episodeSegmentId)
+				.query((rs, _) -> rs.getLong("podcast_episode"))
+				.single();
+			this.invalidatePodcastEpisodeCache(podcastEpisodeId);
 		} //
 		else {
 			this.log.debug("could not find the podcast episode segment with id: {} ", episodeSegmentId);
@@ -516,7 +558,6 @@ class DefaultPodcastService implements PodcastService {
 		if (null != segment && segment.transcribable()) {
 			this.transcribe(mogul, segment.id(), Segment.class,
 					this.managedFileService.read(segment.producedAudio().id()));
-
 		}
 	}
 
@@ -548,6 +589,7 @@ class DefaultPodcastService implements PodcastService {
 		Assert.notNull(descriptionComp, "the description composition must not be null");
 		var seg = this.createPodcastEpisodeSegment(currentMogulId, episodeId, "", 0);
 		Assert.notNull(seg, "could not create a podcast episode segment for episode " + episodeId);
+		this.invalidatePodcastEpisodeCache(episodeId);
 		return this.getPodcastEpisodeById(episodeId);
 	}
 
@@ -567,9 +609,11 @@ class DefaultPodcastService implements PodcastService {
 		this.db.sql("update podcast_episode set title = ?, description =? where id = ?")
 			.params(title, description, episodeId)
 			.update();
+		this.invalidatePodcastEpisodeCache(episodeId);
 		this.refreshPodcastEpisodeCompleteness(episodeId);
-		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
-		return this.getPodcastEpisodeById(episodeId);
+		var podcastEpisodeById = this.getPodcastEpisodeById(episodeId);
+		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(podcastEpisodeById));
+		return podcastEpisodeById;
 	}
 
 	@Override
@@ -580,9 +624,9 @@ class DefaultPodcastService implements PodcastService {
 				.sql("update podcast_episode set produced_audio_updated=? where id=? ") //
 				.params(new Date(), episodeId) //
 				.update();
+			this.invalidatePodcastEpisodeCache(episodeId);
 			this.log.debug("updated episode {} to have non-null produced_audio_updated", episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(getPodcastEpisodeById(episodeId)));
-			this.getPodcastEpisodeById(episodeId);
 		} //
 		catch (Throwable throwable) {
 			throw new RuntimeException("got an exception dealing with " + throwable.getLocalizedMessage(), throwable);
@@ -591,10 +635,27 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
-		var ids = episodeIds.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
-		return this.db.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )")
-			.query(new EpisodeRowMapper(false, managedFileService::getManagedFile))
-			.list();
+
+		if (episodeIds.isEmpty()) {
+			return Set.of();
+		}
+
+		// todo go thru the requested IDs, filter out those that are not in the cache,
+		// then read those from DB.
+		// then write to cache. then read everythin from cache.
+		var notInCache = CacheUtils.notPresentInCache(this.podcastEpisodesCache, episodeIds);
+		if (!notInCache.isEmpty()) {
+			var ids = notInCache.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
+			var dbResults = this.db.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )")
+				.query(new EpisodeRowMapper(true, managedFileService::getManagedFiles))
+				.list();
+			for (var episode : dbResults) {
+				this.podcastEpisodesCache.put(episode.id(), episode);
+			}
+		}
+		return episodeIds.stream() //
+			.map(id -> this.podcastEpisodesCache.get(id, Episode.class)) //
+			.collect(Collectors.toList());
 	}
 
 	@EventListener

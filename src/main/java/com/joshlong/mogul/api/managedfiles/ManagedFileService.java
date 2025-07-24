@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Map;
 
 public interface ManagedFileService {
 
@@ -20,13 +21,15 @@ public interface ManagedFileService {
 
 	Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests();
 
-	ManagedFileDeletionRequest getManagedFileDeletionRequest(Long managedFileDeletionRequestId);
+	ManagedFileDeletionRequest getManagedFileDeletionRequestById(Long managedFileDeletionRequestId);
 
 	void completeManagedFileDeletion(Long managedFileDeletionRequestId);
 
 	void deleteManagedFile(Long managedFileId);
 
-	ManagedFile getManagedFile(Long managedFileId);
+	ManagedFile getManagedFileById(Long managedFileId);
+
+	Map<Long, ManagedFile> getManagedFiles(Collection<Long> managedFileIds);
 
 	Resource read(Long managedFileId);
 

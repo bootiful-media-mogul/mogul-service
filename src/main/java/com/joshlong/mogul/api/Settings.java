@@ -41,7 +41,7 @@ public class Settings {
 
 	public Map<String, Setting> getAllSettingsByCategory(Long mogulId, String category) {
 		var settings = this.db//
-			.sql(" select * from settings where mogul = ? and category = ? ")
+			.sql("select * from settings where mogul = ? and category = ? ")
 			.params(mogulId, category)
 			.query(this.rowMapper)
 			.list();

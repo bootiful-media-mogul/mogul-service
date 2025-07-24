@@ -35,13 +35,18 @@ public class MediaNormalizer {
 
 	public void normalize(ManagedFile input, ManagedFile output) throws Exception {
 
+		if (!input.written()) {
+			log.debug("the input file {} has not been written yet, so we can't normalize it", input.id());
+			return;
+		}
+
 		var imgMediaType = CommonMediaTypes.IMAGE;
 		var parseMediaType = MediaType.parseMediaType(input.contentType());
 		var isImage = imgMediaType.isCompatibleWith(parseMediaType);
 		var ext = isImage ? CommonMediaTypes.JPG : CommonMediaTypes.MP3;
 		var encodingFunction = isImage ? (Function<File, File>) this.imageEncoder::encode
 				: (Function<File, File>) this.audioEncoder::encode;
-		var filesToDelete = new HashSet<File>(); // does this fix
+		var filesToDelete = new HashSet<File>();
 		try {
 			var localFile = input.uniqueLocalFile();
 			filesToDelete.add(localFile);

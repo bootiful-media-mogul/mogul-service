@@ -11,7 +11,7 @@ class CompositionConfiguration {
 
 	@Bean
 	AttachmentRowMapper attachmentRowMapper(ManagedFileService managedFileService) {
-		return new AttachmentRowMapper(managedFileService::getManagedFile);
+		return new AttachmentRowMapper(managedFileService::getManagedFileById);
 	}
 
 }

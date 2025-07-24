@@ -1,26 +1,23 @@
 package com.joshlong.mogul.api.compositions;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
+import org.springframework.cache.Cache;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * helps to manage the lifecycle and entities associated with a given composition, which
@@ -31,7 +28,6 @@ import java.util.stream.Collectors;
  * helps to render Markdown that embeds a {@code <video>} player or a {@code <audio>}
  * player or an {@code <img >} tag, as appropriate. for now, though. images.
  */
-@Service
 @Transactional
 class DefaultCompositionService implements CompositionService {
 
@@ -41,11 +37,16 @@ class DefaultCompositionService implements CompositionService {
 
 	private final RowMapper<Attachment> attachmentRowMapper;
 
+	private final Cache compositionsByKeyCache, attachmentsCache, compositionsByIdCache;
+
 	private final ResultSetExtractor<Collection<Composition>> compositionResultSetExtractor;
 
-	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db,
-			ManagedFileService managedFileService) {
+	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db, Cache compositionsByKeyCache,
+			Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService) {
 		this.db = db;
+		this.compositionsByIdCache = compositionsByIdCache;
+		this.attachmentsCache = attachmentsCache;
+		this.compositionsByKeyCache = compositionsByKeyCache;
 		this.managedFileService = managedFileService;
 		this.attachmentRowMapper = attachmentRowMapper;
 		this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
@@ -53,60 +54,130 @@ class DefaultCompositionService implements CompositionService {
 
 	@Override
 	public Composition getCompositionById(Long id) {
-		return this.one(this.db //
-			.sql("select * from composition where id = ? ") //
-			.params(id)//
-			.query(this.compositionResultSetExtractor)); //
+		return this.getCompositionsByIds(Collections.singleton(id)).get(id);
 	}
 
-	private Composition one(Collection<Composition> all) {
-		Assert.state(!all.isEmpty(), "there should be at least one composition for the given payload and field");
-		return all.iterator().next();
+	private Composition readThroughCompositionById(Long id) {
+		if (this.compositionsByIdCache.get(id) == null) {
+			var comps = this.db //
+				.sql("select * from composition where id = ?")//
+				.param(id)//
+				.query(this.compositionResultSetExtractor);
+			var c = CollectionUtils.firstOrNull(comps);
+			this.compositionsByIdCache.put(id, c);
+			this.compositionsByKeyCache.put(compositionKey(c), c);
+		}
+		return this.compositionsByIdCache.get(id, Composition.class);
 	}
 
 	@Override
 	public Map<Long, Composition> getCompositionsByIds(Collection<Long> ids) {
-		if (ids.isEmpty()) {
+		if (ids == null || ids.isEmpty()) {
 			return new HashMap<>();
 		}
 		var map = new HashMap<Long, Composition>();
-		var collect = ids.stream().map(l -> Long.toString(l)).collect(Collectors.joining(","));
-		var listOfCompos = this.db //
-			.sql("select * from composition where id in (" + collect + ")") //
-			.query(this.compositionResultSetExtractor);
-		for (var c : listOfCompos) {
-			map.put(c.id(), c);
+		for (var id : ids) {
+			map.put(id, this.readThroughCompositionById(id));
 		}
 		return map;
 	}
 
 	@Override
 	public void deleteCompositionAttachment(Long id) {
-		var attachmentById = this.getAttachmentById(id);
+		// this is gross, but i need the composition_id for the caches
+		var compositionId = this.db.sql("select composition_id from composition_attachment where id = ?")
+			.param(id)
+			.query((rs, _) -> rs.getLong("composition_id"))
+			.single();
+		var composition = this.readThroughCompositionById(compositionId);
+		var attachmentById = this.readThroughAttachmentById(id);
 		var mf = attachmentById.managedFile();
 		this.db.sql("delete from composition_attachment where id = ?").params(id).update();
+		this.invalidateAttachmentCache(id);
 		this.managedFileService.deleteManagedFile(mf.id());
+		this.invalidateCompositionCacheById(composition.id());
+		this.invalidateCompositionCacheByKey(composition);
+	}
+
+	private Attachment readThroughAttachmentById(Long id) {
+		var attachment = this.attachmentsCache.get(id, Attachment.class);
+		if (attachment == null) {
+			var attachments = this.db.sql("select * from composition_attachment where id = ?")
+				.param(id)
+				.query(this.attachmentRowMapper)
+				.list();
+			Assert.state(attachments.size() == 1, "there should be exactly one attachment for the given id " + id
+					+ " but there were " + attachments.size() + " instead");
+			for (var a : attachments) {
+				this.attachmentsCache.put(id, a);
+				attachment = a;
+			}
+		}
+		return attachment;
+	}
+
+	private void invalidateCompositionCacheByKey(Composition composition) {
+		var key = compositionKey(composition);
+		this.compositionsByKeyCache.evictIfPresent(key);
+	}
+
+	private Composition readThroughCompositionByKey(Class<?> clzz, String key, String field) {
+		var compositionCacheKey = this.compositionKey(clzz, key, field);
+		var clazzName = clzz.getName();
+		return this.compositionsByKeyCache.get(compositionCacheKey, () -> {
+			this.db //
+				.sql("""
+						    insert into composition( payload_class,payload, field) values (?,?,?)
+						    on conflict on constraint composition_payload_class_payload_field_key
+						    do nothing
+						""")//
+				.params(clazzName, key, field) //
+				.update();
+			return CollectionUtils.firstOrNull(this.db //
+				.sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
+				.params(clazzName, key, field)//
+				.query(this.compositionResultSetExtractor));
+		});
+
+		// return res;
+	}
+
+	private void invalidateCompositionCacheById(Long compositionId) {
+		this.compositionsByIdCache.evictIfPresent(compositionId);
+	}
+
+	private void invalidateAttachmentCache(Long attachmentId) {
+		this.attachmentsCache.evictIfPresent(attachmentId);
+	}
+
+	private String compositionKey(Class<?> payloadClass, String compositionKeyAsJson, String field) {
+		return payloadClass.getName() + ":" + compositionKeyAsJson + ":" + field;
+	}
+
+	private String compositionKey(Composition composition) {
+		return this.compositionKey(composition.payloadClass(), composition.payload(), composition.field());
 	}
 
 	@Override
 	public <T extends Composable> Composition compose(T payload, String field) {
-		var generatedKeyHolder = new GeneratedKeyHolder();
-		var key = JsonUtils.write(payload.compositionKey());
 		var clazz = payload.getClass().getName();
-		this.db //
-			.sql("""
-					insert into composition(payload, payload_class, field) values (?,?,?)
-					on conflict on constraint composition_payload_class_payload_field_key
-					do nothing
-					""")//
-			.params(key, clazz, field)//
-			.update(generatedKeyHolder);
+		var payloadKeyAsJson = JsonUtils.write(payload.compositionKey());
+		var composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
+		if (composition == null) {
+			// 1. find the composition by the three fields.
+			this.db //
+				.sql("""
 
-		return this.one(this.db //
-			.sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
-			.params(clazz, key, field)//
-			.query(this.compositionResultSetExtractor));
+						      insert into composition(payload, payload_class, field) values (?,?,?)
+						  on conflict on constraint composition_payload_class_payload_field_key
+						  do nothing
 
+						""")//
+				.params(payloadKeyAsJson, clazz, field) //
+				.update();
+			composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
+		}
+		return composition;
 	}
 
 	@Override
@@ -120,74 +191,10 @@ class DefaultCompositionService implements CompositionService {
 				""")//
 			.params(key, compositionId, managedFile.id())//
 			.update(gkh);
-		var ai = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
-		return this.getAttachmentById(ai);
-	}
-
-	private Attachment getAttachmentById(Long id) {
-		return this.db.sql("select * from composition_attachment where id = ?")
-			.params(id)
-			.query(this.attachmentRowMapper)
-			.single();
-	}
-
-}
-
-class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Composition>> {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private final RowMapper<Attachment> attachmentRowMapper;
-
-	private final JdbcClient db;
-
-	CompositionResultSetExtractor(AttachmentRowMapper arm, JdbcClient db) {
-		attachmentRowMapper = arm;
-		this.db = db;
-	}
-
-	@Override
-	public Collection<Composition> extractData(ResultSet rs) throws SQLException, DataAccessException {
-		var compositions = new HashMap<Long, Composition>();
-		var indx = 0;
-		while (rs.next()) {
-			var composition = mapRow(rs, indx);
-			compositions.put(composition.id(), composition);
-			indx += 1;
-		}
-		var compositionIds = compositions.keySet().stream().map(Object::toString).collect(Collectors.joining(","));
-		var attachments = db
-			.sql("select * from composition_attachment where composition_id in (" + compositionIds + ")")
-			.query((rs1, rowNum) -> {
-				Assert.notNull(attachmentRowMapper, "the attachmentRowMapper is not null");
-				return Map.of(rs1.getLong("composition_id"),
-						Objects.requireNonNull(attachmentRowMapper.mapRow(rs1, rowNum)));
-			})
-			.list();
-		for (var a : attachments) {
-			var compositionId = a.keySet().iterator().next();
-			var attachment = a.get(compositionId);
-			compositions.get(compositionId).attachments().add(attachment);
-		}
-		return compositions.values();
-	}
-
-	private Class<?> classFor(String name) {
-		try {
-			Assert.hasText(name, "you must provide a non-empty class name");
-			return Class.forName(name);
-		}
-		catch (ClassNotFoundException e) {
-			log.warn("classNotFoundException when trying to do Class.forName({}) to resolve the class for a {} ", name,
-					Publication.class.getName(), e);
-		}
-		return null;
-	}
-
-	private Composition mapRow(ResultSet rs, int rowNum) throws SQLException {
-		var id = rs.getLong("id");
-		return new Composition(id, rs.getString("payload"), classFor(rs.getString("payload_class")),
-				rs.getString("field"), new ArrayList<>());
+		var newAttachmentId = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
+		this.invalidateCompositionCacheById(compositionId);
+		this.invalidateCompositionCacheByKey(this.readThroughCompositionById(compositionId));
+		return this.readThroughAttachmentById(newAttachmentId);
 	}
 
 }

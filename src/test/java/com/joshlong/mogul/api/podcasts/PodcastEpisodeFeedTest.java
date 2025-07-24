@@ -51,8 +51,7 @@ class PodcastEpisodeFeedTest {
                 "josh@joshlong.com", "clientId",
                 "Josh", "Long", new Date());
         var podcast = new Podcast(mogul.id(),
-                podcastId, "the title", new Date(),
-                List.of());
+                podcastId, "the title", new Date());
         var episodes = List.of(
                 nextEpisode(mogulId, podcastId),
                 nextEpisode(mogulId, podcastId),
