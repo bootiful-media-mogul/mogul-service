@@ -86,20 +86,21 @@ public class Settings {
 	public record Setting(String category, String key, String value) {
 	}
 
-	private static class SettingsRowMapper implements RowMapper<Setting> {
+}
 
-		private final TextEncryptor encryptor;
+class SettingsRowMapper implements RowMapper<Settings.Setting> {
 
-		SettingsRowMapper(TextEncryptor encryptor) {
-			this.encryptor = encryptor;
-			Assert.notNull(this.encryptor, "the " + TextEncryptor.class.getName() + " must be non-null");
-		}
+	private final TextEncryptor encryptor;
 
-		@Override
-		public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new Setting(rs.getString("category"), rs.getString("key"), encryptor.decrypt(rs.getString("value")));
-		}
+	SettingsRowMapper(TextEncryptor encryptor) {
+		this.encryptor = encryptor;
+		Assert.notNull(this.encryptor, "the " + TextEncryptor.class.getName() + " must be non-null");
+	}
 
+	@Override
+	public Settings.Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+		return new Settings.Setting(rs.getString("category"), rs.getString("key"),
+				encryptor.decrypt(rs.getString("value")));
 	}
 
 }
