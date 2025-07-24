@@ -80,7 +80,7 @@ public class PodcastProducer {
 			this.log.debug("writing [{}]", episode.id());
 			this.podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
 			this.log.debug("wrote [{}]", episode.id());
-			return this.managedFileService.getManagedFile(producedAudio.id());
+			return this.managedFileService.getManagedFileById(producedAudio.id());
 		} //
 		catch (Throwable throwable) {
 			throw new RuntimeException(throwable);

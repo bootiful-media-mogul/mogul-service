@@ -19,8 +19,6 @@ class CompositionController {
 
 	private final static String NLS = System.lineSeparator() + System.lineSeparator();
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	private final CompositionService compositionService;
 
 	private final ManagedFileService managedFileService;

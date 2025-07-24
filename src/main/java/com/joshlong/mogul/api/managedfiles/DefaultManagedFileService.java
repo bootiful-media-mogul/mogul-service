@@ -1,12 +1,12 @@
 package com.joshlong.mogul.api.managedfiles;
 
 import com.joshlong.mogul.api.ApiProperties;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -14,8 +14,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
@@ -25,50 +23,18 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
-@Configuration
-class DefaultManagedFileServiceConfiguration {
-
-	@Bean
-	DefaultManagedFileService defaultManagedFileService(ApplicationEventPublisher publisher,
-			TransactionTemplate transactionTemplate, Storage storage, JdbcClient db, ApiProperties properties) {
-		var bucket = properties.managedFiles().s3().bucket();
-		return new DefaultManagedFileService(bucket, db, storage, publisher, transactionTemplate,
-				properties.aws().cloudfront().domain());
-	}
-
-}
+import java.util.*;
 
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
  * system, and so this class provides caching. Lookups for a given {@link ManagedFile}
- * <em>should</em> be served out of in-memory cache first. This can spare you thousands of
- * one-off calls to the database for every, say, podcast loaded in the system.
- *
- * <h2>Performance Optimizations to be Aware of for Managed Files</h2> <EM>Important!</EM>
- * the {@link ManagedFile managed file} abstraction is used everywhere, and we can't
- * afford a million calls to the SQL table for each single {@link ManagedFile} required in
- * some object in a deep object graph of results. So, we use transaction synchronization
- * to wait until the end of a given transaction, including read-only transactions, to make
- * note of all the ids of the managed files and then to hand the user code back a
- * placeholder {@link ManagedFile} which knows only its ID. It has the shape of a managed
- * file, but not the data of one. that is until the transaction finishes. at this point,
- * right before committing, we do one big query for all the managed files and then give
- * the data to each placeholder object, fleshing them out, in effect.
- * <p>
- * warning: do <EM>NOT</EM> make the entire class {@link Transactional}!
+ * <em>should</em> be served out of in-memory cache first. This can spare you many one-off
+ * calls to the database for every, say, podcast loaded in the system.
  */
 
-class DefaultManagedFileService implements TransactionSynchronization, ManagedFileService {
+class DefaultManagedFileService implements ManagedFileService {
+
+	private final Cache cache;
 
 	private final String bucket;
 
@@ -76,7 +42,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	private final ManagedFileDeletionRequestRowMapper managedFileDeletionRequestRowMapper = new ManagedFileDeletionRequestRowMapper();
 
-	private final ThreadLocal<Map<Long, ManagedFile>> managedFiles = new ThreadLocal<>();
+	private final ManagedFileRowMapper managedFileRowMapper = new ManagedFileRowMapper();
 
 	private final JdbcClient db;
 
@@ -89,14 +55,14 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	private final URI cloudfrontDomain;
 
 	DefaultManagedFileService(String bucket, JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
-			TransactionTemplate transactionTemplate, URI cloudfrontDomain) {
+			Cache cache, TransactionTemplate transactionTemplate, URI cloudfrontDomain, ApiProperties properties) {
 		this.bucket = bucket;
 		this.db = db;
 		this.cloudfrontDomain = cloudfrontDomain;
 		this.storage = storage;
 		this.publisher = publisher;
 		this.transactionTemplate = transactionTemplate;
-
+		this.cache = cache;
 		this.log.debug(
 				"the file ManagedFile file system S3 bucket is called [{}] and the visible bucket is called [{}]",
 				bucket, visibleBucketFor(bucket));
@@ -114,13 +80,13 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	@Override
 	public String getPrivateUrlForManagedFile(Long managedFileId) {
-		var managedFile = this.getManagedFile(managedFileId);
+		var managedFile = this.getManagedFileById(managedFileId);
 		return "/managedfiles/" + managedFile.id();
 	}
 
 	@Override
 	public String getPublicUrlForManagedFile(Long managedFileId) {
-		var managedFile = this.getManagedFile(managedFileId);
+		var managedFile = this.getManagedFileById(managedFileId);
 		var url = (String) null;
 		if (managedFile.visible()) {
 			url = this.cloudfrontDomain.toString() + "/"
@@ -129,14 +95,6 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		return url;
 	}
 
-	private ManagedFile forceReadManagedFile(Long managedFileId) {
-		var managedFile = this.getManagedFile(managedFileId);
-		this.managedFiles.get().remove(managedFileId);
-		managedFile.contentType();// triggers the rehydration side effect. yuck.
-		return managedFile;
-	}
-
-	// meant to make sure we've synchronized the file write
 	@ApplicationModuleListener
 	void onManagedFileUpdated(ManagedFileUpdatedEvent event) {
 		var managedFile = event.managedFile();
@@ -150,13 +108,10 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		var fqn = this.fqn(folder, fn);
 		var bucket = managedFile.bucket();
 		if (managedFile.visible()) {
-			this.log.debug("inside ensureVisibility(ManagedFile(# {} ))", managedFile.id());
 			if (this.storage.exists(bucket, fqn)) {
-				this.log.debug("this file {}/{} (#{}) exists", bucket, fqn, managedFile.id());
 				var newContentType = StringUtils.hasText(managedFile.contentType())
 						? MediaType.parseMediaType(managedFile.contentType()) : null;
 				this.storage.copy(bucket, visibleBucket, fqn, newContentType);
-				this.log.debug("copied {}/{} (#{}) to {}/{} ", bucket, fqn, managedFile.id(), visibleBucket, fqn);
 			} //
 			else {
 				// todo some sort of alerting?
@@ -166,11 +121,12 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		else {
 			this.storage.remove(visibleBucket, fqn);
 		}
+		this.invalidateCache(managedFile.id());
 	}
 
 	@Override
 	public void write(Long managedFileId, String filename, MediaType mediaType, Resource resource) {
-		var managedFile = this.forceReadManagedFile(managedFileId);
+		var managedFile = this.getManagedFileById(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
 		this.storage.write(bucket, this.fqn(folder, managedFile.storageFilename()), resource, mediaType);
@@ -178,17 +134,24 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		this.db.sql("update managed_file set filename =?, content_type =? , written = true , size =? where id=?")
 			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId)
 			.update();
-		var freshManagedFile = this.forceReadManagedFile(managedFileId);
-		this.transactionTemplate.execute(tx -> {
+		this.invalidateCache(managedFileId);
+		var freshManagedFile = this.getManagedFileById(managedFileId);
+		this.transactionTemplate.execute(_ -> {
 			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
 			return null;
 		});
+
+	}
+
+	private void invalidateCache(Long managedFileId) {
+		this.cache.evictIfPresent(managedFileId);
 	}
 
 	@Override
 	public void setManagedFileVisibility(Long managedFileId, boolean publicAccess) {
 		this.db.sql("update managed_file set visible = ? where id = ?").params(publicAccess, managedFileId).update();
-		this.ensureVisibility(this.forceReadManagedFile(managedFileId));
+		this.invalidateCache(managedFileId);
+		this.ensureVisibility(this.getManagedFileById(managedFileId));
 	}
 
 	/**
@@ -199,7 +162,8 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	@Override
 	@Transactional
 	public void refreshManagedFile(Long managedFileId) {
-		var managedFile = this.getManagedFile(managedFileId);
+		this.invalidateCache(managedFileId);
+		var managedFile = this.getManagedFileById(managedFileId);
 		var resource = this.read(managedFile.id());
 		var tmp = FileUtils.tempFileWithExtension();
 		try {
@@ -218,15 +182,15 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 		finally {
 			FileUtils.delete(tmp);
 		}
-		var mf = this.getManagedFile(managedFileId);
+		var mf = this.getManagedFileById(managedFileId);
 		this.log.debug("refreshed managed file {}", mf);
 	}
 
 	@Override
-	public ManagedFileDeletionRequest getManagedFileDeletionRequest(Long managedFileDeletionRequestId) {
+	public ManagedFileDeletionRequest getManagedFileDeletionRequestById(Long managedFileDeletionRequestId) {
 		return db.sql("select * from managed_file_deletion_request where id =? ")
 			.param(managedFileDeletionRequestId)
-			.query(new ManagedFileDeletionRequestRowMapper())
+			.query(this.managedFileDeletionRequestRowMapper)
 			.single();
 	}
 
@@ -240,7 +204,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	@Override
 	public void completeManagedFileDeletion(Long managedFileDeletionRequestId) {
-		var managedFileDeletionRequest = this.getManagedFileDeletionRequest(managedFileDeletionRequestId);
+		var managedFileDeletionRequest = this.getManagedFileDeletionRequestById(managedFileDeletionRequestId);
 		Assert.notNull(managedFileDeletionRequest, "the managed file deletion request should not be null");
 		var fqn = this.fqn(managedFileDeletionRequest.folder(), managedFileDeletionRequest.storageFilename());
 		for (var bucket : new String[] { managedFileDeletionRequest.bucket(),
@@ -255,7 +219,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 	@Override
 	@Transactional
 	public void deleteManagedFile(Long managedFileId) {
-		var managedFile = this.getManagedFile(managedFileId);
+		var managedFile = this.getManagedFileById(managedFileId);
 		// very important that we do this part FIRST since the calls to mogulId will
 		// lazily trigger the loading of the managed_file, which will be deleted if we
 		// waited until after the next line
@@ -269,6 +233,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			)
 			.update();
 		this.db.sql("delete from managed_file where id =?").param(managedFileId).update();
+		this.invalidateCache(managedFileId);
 		this.publisher.publishEvent(new ManagedFileDeletedEvent(managedFile));
 	}
 
@@ -278,9 +243,7 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 
 	@Override
 	public Resource read(Long managedFileId) {
-		// the call to getManagedFile needs to be in a transaction. the reading of bytes
-		// does not.
-		var mf = this.transactionTemplate.execute(_ -> this.getManagedFile(managedFileId));
+		var mf = this.getManagedFileById(managedFileId);
 		var fn = this.fqn(mf.folder(), mf.storageFilename());
 		var bucket = mf.bucket();
 		return this.storage.read(bucket, fn);
@@ -308,72 +271,39 @@ class DefaultManagedFileService implements TransactionSynchronization, ManagedFi
 			.params(UUID.randomUUID().toString(), mogulId, bucket, folder, fileName, size, mediaType.toString(),
 					visible)
 			.update(kh);
-		var mf = this.getManagedFile(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
+		var mf = this.getManagedFileById(((Number) Objects.requireNonNull(kh.getKeys()).get("id")).longValue());
 		if (visible)
 			this.ensureVisibility(mf);
 		return mf;
 	}
 
-	private void initializeManagedFile(ResultSet rs, ManagedFile managedFile) throws SQLException {
-		managedFile.hydrate(rs.getLong("mogul"), rs.getLong("id"), rs.getString("bucket"),
-				rs.getString("storage_filename"), rs.getString("folder"), rs.getString("filename"),
-				rs.getTimestamp("created"), rs.getBoolean("written"), rs.getLong("size"), rs.getString("content_type"),
-				rs.getBoolean("visible"));
+	@Override
+	public ManagedFile getManagedFileById(Long managedFileId) {
+		var all = this.getManagedFiles(List.of(managedFileId));
+		return CollectionUtils.firstOrNull(all.values());
 	}
 
-	@Override
-	public void beforeCompletion() {
-		var managedFileMap = this.managedFiles.get();
-		if (managedFileMap != null && !managedFileMap.isEmpty()) {
-			this.log.trace("beforeCompletion(): for the current thread there are {} managed files",
-					managedFileMap.size());
-			// let's get all the IDs, then visit each managed file and hydrate.
-			var ids = managedFileMap//
-				.values()//
-				.stream()//
-				.map(ManagedFile::id)//
-				.map(i -> Long.toString(i))//
-				.collect(Collectors.joining(", "));
-
-			this.db //
-				.sql("select * from managed_file where id in ( " + ids + ")") //
-				.query(rs -> {
-					var mfId = rs.getLong("id");
-					var managedFile = managedFileMap.get(mfId);
-					initializeManagedFile(rs, managedFile);
-				});
-
-		} //
-
-	}
-
-	/**
-	 * returns lazy, stand-in proxies to {@link ManagedFile managedfiles } that
-	 * materialize when used.
-	 */
-	@Override
-	public ManagedFile getManagedFile(Long managedFileId) {
-		return this.transactionTemplate.execute(tx -> {
-
-			TransactionSynchronizationManager.registerSynchronization(this);
-
-			if (this.managedFiles.get() == null)
-				this.managedFiles.set(new ConcurrentSkipListMap<>());
-
-			// this allows any managed file that for whatever reason we're manipulating
-			// and NOT able to wait for the transaction to commit to hydrate its state
-			var hydration = (Consumer<ManagedFile>) managedFile -> this.db
-				.sql("select * from managed_file where id = ?")
-				.param(managedFileId)
-				.query(rs -> {
-					if (this.log.isTraceEnabled())
-						this.log.trace("Manually hydrating ManagedFile #{}.".trim(), managedFileId);
-					this.initializeManagedFile(rs, managedFile);
-				});
-
-			return this.managedFiles.get().computeIfAbsent(managedFileId, mid -> new ManagedFile(mid, hydration)); //
-
+	private ManagedFile readThrough(Long mfId) {
+		return this.cache.get(mfId, () -> {
+			var all = this.db.sql("select * from managed_file where id = ?")
+				.param(mfId)
+				.query(this.managedFileRowMapper)
+				.list();
+			return CollectionUtils.firstOrNull(all);
 		});
+
+	}
+
+	@Override
+	public Map<Long, ManagedFile> getManagedFiles(Collection<Long> managedFileIds) {
+		if (managedFileIds.isEmpty()) {
+			return Map.of();
+		}
+		var results = new HashMap<Long, ManagedFile>();
+		for (var mfId : managedFileIds) {
+			results.put(mfId, this.readThrough(mfId));
+		}
+		return results;
 	}
 
 }

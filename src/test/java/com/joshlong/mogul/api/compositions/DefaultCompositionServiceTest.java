@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.compositions;
 
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,6 +40,7 @@ class DefaultCompositionServiceTest {
 
 	@BeforeAll
 	static void reset(@Autowired JdbcClient db) {
+		db.sql("delete from ayrshare_publication_composition").update();
 		db.sql("delete from composition_attachment ").update();
 		db.sql("delete from composition").update();
 	}
@@ -48,9 +48,9 @@ class DefaultCompositionServiceTest {
 	@Test
 	@WithUserDetails(ONE)
 	void composeAndCreateCompositionAttachment(@Autowired CompositionService compositionService,
-			@Autowired PodcastService podcastService, @Autowired ManagedFileService managedFileService,
-			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
-		var mogulId = transactionTemplate.execute(status -> {
+			@Autowired PodcastService podcastService, @Autowired MogulService mogulService,
+			@Autowired TransactionTemplate transactionTemplate) {
+		var mogulId = transactionTemplate.execute(_ -> {
 			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
 			assertNotNull(login, "the login should not be null");
 			// we should have at least one mogul at this point.
@@ -72,6 +72,10 @@ class DefaultCompositionServiceTest {
 		assertNotNull(attachment, "the attachment should not be null");
 		descriptionComp = podcastService.getPodcastEpisodeDescriptionComposition(episode.id());
 		assertEquals(1, descriptionComp.attachments().size(), "there should be one attachment for the title");
+
+		compositionService.deleteCompositionAttachment(descriptionComp.attachments().iterator().next().id());
+		descriptionComp = podcastService.getPodcastEpisodeDescriptionComposition(episode.id());
+		assertTrue(descriptionComp.attachments().isEmpty(), "there should be no attachments for the description, yet");
 
 	}
 

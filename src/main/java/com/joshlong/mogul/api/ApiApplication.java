@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -8,12 +9,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -26,6 +29,17 @@ public class ApiApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(ApiApplication.class, args);
+	}
+
+	@Bean
+	CaffeineCacheManager caffeineCacheManager(ApiProperties properties) {
+		var ccm = new CaffeineCacheManager();//
+		var caffeine = Caffeine.newBuilder()//
+			.maximumSize(properties.cache().maxEntries())//
+			.expireAfterWrite(Duration.ofDays(1))
+			.recordStats();//
+		ccm.setCaffeine(caffeine);
+		return ccm;
 	}
 
 	@Bean
@@ -48,8 +62,8 @@ public class ApiApplication {
 		return DateTimeFormatter.BASIC_ISO_DATE;
 	}
 
-	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 todo can we
-	// remove this one day?
+	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69
+	// todo can we remove this one day?
 	static class FlywayHints implements RuntimeHintsRegistrar {
 
 		@Override

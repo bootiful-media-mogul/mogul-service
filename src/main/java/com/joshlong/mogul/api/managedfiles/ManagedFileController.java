@@ -62,7 +62,7 @@ class ManagedFileController {
 
 	@QueryMapping
 	ManagedFile managedFileById(@Argument Long managedFileId) {
-		return this.managedFileService.getManagedFile(managedFileId);
+		return this.managedFileService.getManagedFileById(managedFileId);
 	}
 
 	@ResponseBody
@@ -79,7 +79,7 @@ class ManagedFileController {
 
 	private ResponseEntity<Resource> doRead(boolean assertVisible, Long managedFileId) {
 		Assert.notNull(managedFileId, "the managedFileId is null");
-		var managedFile = this.managedFileService.getManagedFile(managedFileId);
+		var managedFile = this.managedFileService.getManagedFileById(managedFileId);
 		Assert.notNull(managedFile, "the managed file does not exist [" + managedFileId + "]");
 		if (assertVisible) {
 			if (!managedFile.visible()) {
@@ -102,7 +102,7 @@ class ManagedFileController {
 	Map<String, Object> write(@PathVariable Long id, @RequestParam MultipartFile file) {
 		Assert.notNull(id, "the id should not be null");
 		var mogul = this.mogulService.getCurrentMogul();
-		var managedFile = this.managedFileService.getManagedFile(id);
+		var managedFile = this.managedFileService.getManagedFileById(id);
 		Assert.notNull(managedFile, "the managed file is null for managed file id [" + id + "]");
 		Assert.state(managedFile.mogulId().equals(mogul.id()),
 				"you're trying to write to an invalid file to which you are not authorized!");
@@ -111,7 +111,7 @@ class ManagedFileController {
 		var mediaType = CommonMediaTypes.guess(file.getResource());
 		log.debug("guessing the media type for [{}] is  {}", file.getOriginalFilename(), mediaType);
 		this.managedFileService.write(managedFileId, originalFilename, mediaType, file.getResource());
-		var updated = this.managedFileService.getManagedFile(managedFileId);
+		var updated = this.managedFileService.getManagedFileById(managedFileId);
 		this.log.trace("finished writing managed file [{}] to s3: {}:{}", id, originalFilename, updated.toString());
 		return Map.of("managedFileId", id);
 	}
