@@ -33,10 +33,11 @@ public class ApiApplication {
 
 	@Bean
 	CaffeineCacheManager caffeineCacheManager(ApiProperties properties) {
-		var ccm = new CaffeineCacheManager();
-		var caffeine = Caffeine.newBuilder()
-			.maximumSize(properties.cache().maxEntries())
-			.expireAfterWrite(Duration.ofHours(1));
+		var ccm = new CaffeineCacheManager();//
+		var caffeine = Caffeine.newBuilder()//
+			.maximumSize(properties.cache().maxEntries())//
+			.expireAfterWrite(Duration.ofDays(1))
+			.recordStats();//
 		ccm.setCaffeine(caffeine);
 		return ccm;
 	}
@@ -61,8 +62,8 @@ public class ApiApplication {
 		return DateTimeFormatter.BASIC_ISO_DATE;
 	}
 
-	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 todo can we
-	// remove this one day?
+	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69
+	// todo can we remove this one day?
 	static class FlywayHints implements RuntimeHintsRegistrar {
 
 		@Override

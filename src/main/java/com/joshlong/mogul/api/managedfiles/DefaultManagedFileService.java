@@ -28,8 +28,8 @@ import java.util.*;
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
  * system, and so this class provides caching. Lookups for a given {@link ManagedFile}
- * <em>should</em> be served out of in-memory cache first. This can spare you many
- * one-off calls to the database for every, say, podcast loaded in the system.
+ * <em>should</em> be served out of in-memory cache first. This can spare you many one-off
+ * calls to the database for every, say, podcast loaded in the system.
  */
 
 class DefaultManagedFileService implements ManagedFileService {
@@ -307,4 +307,3 @@ class DefaultManagedFileService implements ManagedFileService {
 	}
 
 }
-
