@@ -8,8 +8,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.utils.UriUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -18,18 +16,17 @@ import java.util.HashMap;
 import java.util.Set;
 
 /**
- * this will show the user the possible social accounts they could target and, in
+ * This will show the user the possible social accounts they could target and, in
  * conjunction with the configuration in the settings page, allow the user to publish
- * messages. but, the client will need to send the content they want sent for each
- * destination. so this plugin needs to dynamically show compositions for each of the
- * final destinations. we'll need to support varyiong length content, references, etc.
+ * messages. The client will need to send the content they want sent for each destination.
+ * this plugin needs to dynamically show compositions for each of the final destinations.
+ * We support varying lengths of message content, platform user references, media
+ * attachments, etc.
  *
  * @author Josh Long
  */
 @Component(value = AyrshareConstants.PLUGIN_NAME)
 class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AyrshareService ayrshare;
 

@@ -16,6 +16,7 @@ import java.io.FileOutputStream;
 import java.util.HashSet;
 import java.util.function.Function;
 
+/** todo can this be moved to a root packaged called `media`? */
 @Component
 public class MediaNormalizer {
 

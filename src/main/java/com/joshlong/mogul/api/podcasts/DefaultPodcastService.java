@@ -14,6 +14,7 @@ import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
 import com.joshlong.mogul.api.transcription.Transcriber;
 import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,10 @@ import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -43,11 +47,11 @@ class PodcastServiceConfiguration {
 	@Bean
 	DefaultPodcastService defaultPodcastService(CompositionService cs, MediaNormalizer mn, JdbcClient db,
 			ManagedFileService mfs, ApplicationEventPublisher publisher, Transcriber transcriber,
-			CacheManager cacheManager, MogulService mogulService) {
+			TransactionTemplate tt, CacheManager cacheManager, MogulService mogulService) {
 		var podcastsCache = cacheManager.getCache("podcasts");
 		var podcastEpisodesCache = cacheManager.getCache("podcastEpisodes");
 		return new DefaultPodcastService(cs, mn, db, mfs, publisher, transcriber, podcastsCache, podcastEpisodesCache,
-				mogulService);
+				mogulService, tt);
 	}
 
 }
@@ -84,9 +88,11 @@ class DefaultPodcastService implements PodcastService {
 
 	private final Cache podcastCache, podcastEpisodesCache;
 
+	private final TransactionTemplate tt;
+
 	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer, JdbcClient db,
 			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber,
-			Cache podcastCache, Cache podcastEpisodesCache, MogulService mogulService) {
+			Cache podcastCache, Cache podcastEpisodesCache, MogulService mogulService, TransactionTemplate tt) {
 		this.podcastEpisodesCache = podcastEpisodesCache;
 		this.podcastCache = podcastCache;
 		this.compositionService = compositionService;
@@ -95,6 +101,7 @@ class DefaultPodcastService implements PodcastService {
 		this.managedFileService = managedFileService;
 		this.publisher = publisher;
 		this.transcriber = transcriber;
+		this.tt = tt;
 		this.podcastRowMapper = new PodcastRowMapper();
 		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFileById);
 		this.mogulService = mogulService;
@@ -132,6 +139,7 @@ class DefaultPodcastService implements PodcastService {
 	@ApplicationModuleListener
 	void podcastManagedFileUpdated(ManagedFileUpdatedEvent managedFileUpdatedEvent) throws Exception {
 		var mf = managedFileUpdatedEvent.managedFile();
+
 		var sql = """
 				select pes.podcast_episode  as id
 				from podcast_episode_segment pes
@@ -141,16 +149,18 @@ class DefaultPodcastService implements PodcastService {
 				from podcast_episode pe
 				where pe.graphic = ?
 				""";
-		var all = this.db.sql(sql).params(mf.id(), mf.id()).query((rs, rowNum) -> rs.getLong("id")).set();
-		if (all.isEmpty()) {
+		var episodeId = CollectionUtils
+			.firstOrNull(this.db.sql(sql).params(mf.id(), mf.id()).query((rs, _) -> rs.getLong("id")).set());
+		if (episodeId == null) {
 			this.log.trace(
 					"got a {}, but it doesn't seem to affect any of our podcasts. so, kicking the can down the road",
 					managedFileUpdatedEvent.getClass().getName());
 			return;
 		}
 
-		var episodeId = all.iterator().next();
+		this.invalidatePodcastEpisodeCache(episodeId);
 		var episode = this.getPodcastEpisodeById(episodeId);
+
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 
 		var updatedFlag = new AtomicBoolean(false);
@@ -159,6 +169,7 @@ class DefaultPodcastService implements PodcastService {
 			this.mediaNormalizer.normalize(episode.graphic(), episode.producedGraphic());
 			this.log.debug("got a {}, updated the produced graphic for podcast episode {} and managedFile {}",
 					managedFileUpdatedEvent.getClass().getName(), episode.id(), mf.id());
+			this.invalidatePodcastEpisodeCache(episodeId);
 		} //
 		else {
 			// or it's one of the segments
@@ -170,7 +181,7 @@ class DefaultPodcastService implements PodcastService {
 					this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 						.params(new Date(), episodeId)
 						.update();
-
+					this.invalidatePodcastEpisodeCache(episodeId);
 					if (segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
 						this.transcribe(mf.mogulId(), segment.id(), Segment.class,
 								this.managedFileService.read(segment.producedAudio().id()));
@@ -184,8 +195,8 @@ class DefaultPodcastService implements PodcastService {
 			}
 		}
 		// once the file has been normalized, we can worry about completeness
-		this.refreshPodcastEpisodeCompleteness(episodeId);
 		if (updatedFlag.get()) {
+			this.refreshPodcastEpisodeCompleteness(episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
 		}
 	}
@@ -208,6 +219,16 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
+		this.tt.execute(new TransactionCallbackWithoutResult() {
+			@Override
+			protected void doInTransactionWithoutResult(TransactionStatus status) {
+				doBroadcast(episodeId);
+			}
+		});
+	}
+
+	private void doBroadcast(Long episodeId) {
+		this.invalidatePodcastEpisodeCache(episodeId);
 		var episode = this.getPodcastEpisodeById(episodeId);
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
@@ -217,6 +238,7 @@ class DefaultPodcastService implements PodcastService {
 		var complete = StringUtils.hasText(episode.title()) && StringUtils.hasText(episode.description())
 				&& graphicsWritten && !segments.isEmpty() && allSegmentsHaveWrittenAndProducedAudio;
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
+		this.invalidatePodcastEpisodeCache(episodeId);
 		var episodeById = this.getPodcastEpisodeById(episode.id());
 
 		var detailsOnSegments = new StringBuilder();
@@ -247,7 +269,6 @@ class DefaultPodcastService implements PodcastService {
 				new PodcastEpisodeCompletedEvent(mogulId, episodeById))) {
 			this.publisher.publishEvent(e);
 		}
-
 	}
 
 	@ApplicationModuleListener
@@ -372,8 +393,8 @@ class DefaultPodcastService implements PodcastService {
 		segments.add(newPositionOfSegment, segment);
 		this.reorderSegments(segments);
 		var epId = this.getPodcastEpisodeSegmentById(segmentId).episodeId();
-		var ep = this.getPodcastEpisodeById(epId);
 		this.invalidatePodcastEpisodeCache(epId);
+		var ep = this.getPodcastEpisodeById(epId);
 		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(ep));
 	}
 
@@ -635,14 +656,11 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
-
+		// todo can i refactor this to be more elegant and use the CacheManager's
+		// get(key,loader) method?
 		if (episodeIds.isEmpty()) {
 			return Set.of();
 		}
-
-		// todo go thru the requested IDs, filter out those that are not in the cache,
-		// then read those from DB.
-		// then write to cache. then read everythin from cache.
 		var notInCache = CacheUtils.notPresentInCache(this.podcastEpisodesCache, episodeIds);
 		if (!notInCache.isEmpty()) {
 			var ids = notInCache.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
