@@ -150,9 +150,11 @@ class PodcastController {
 		for (var ep : allEpisodes)
 			map.put(ep, allEpisodeSegments.get(ep.id()));
 
-		for (var ep : map.entrySet())
+		for (var ep : map.entrySet()) {
+			Assert.state(ep.getValue() != null, "no segments found for episode id #" + ep.getKey().id() + ","
+					+ "and there must be at least one segment for each episode");
 			ep.getValue().sort(Comparator.comparingInt(Segment::order));
-
+		}
 		return map;
 	}
 

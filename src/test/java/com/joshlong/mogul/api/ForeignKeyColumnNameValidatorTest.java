@@ -18,7 +18,6 @@ class ForeignKeyColumnNameValidatorTest {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Test
-	@Disabled
 	void foreignKeyRunner(@Autowired DataSource db) throws Exception {
 		var counterOfBadForeignKeys = 0;
 		var bad = new ArrayList<String>();

@@ -95,7 +95,7 @@ class DefaultPodcastService implements PodcastService {
 			return new HashMap<>();
 		var idsAsString = episodes.stream().map(e -> Long.toString(e)).collect(Collectors.joining(", "));
 		var segments = db
-			.sql("select * from podcast_episode_segment pes where pes.podcast_episode in (" + idsAsString + ") ")
+			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id in (" + idsAsString + ") ")
 			.query(this.episodeSegmentRowMapper)
 			.list();
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
@@ -107,7 +107,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
-		var sql = " select * from podcast_episode_segment where podcast_episode = ? order by sequence_number ASC ";
+		var sql = " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC ";
 		var episodeSegmentsFromDb = this.db //
 			.sql(sql) //
 			.params(episodeId) //
@@ -123,9 +123,9 @@ class DefaultPodcastService implements PodcastService {
 		var mf = managedFileUpdatedEvent.managedFile();
 
 		var sql = """
-				select pes.podcast_episode  as id
+				select pes.podcast_episode_id  as id
 				from podcast_episode_segment pes
-				where pes.segment_audio_managed_file  = ?
+				where pes.segment_audio_managed_file_id  = ?
 				UNION
 				select pe.id as id
 				from podcast_episode pe
@@ -270,7 +270,6 @@ class DefaultPodcastService implements PodcastService {
 	 * @param podcastId the id for which you want to load episodes.
 	 * @param deep whether to return the full graph of objects or just the results
 	 * sufficient to display the search results
-	 * @return
 	 */
 
 	@Override
@@ -298,7 +297,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Podcast updatePodcast(Long podcastId, String title) {
-		this.db.sql(" update podcast   set title = ? where id = ? ").params(title, podcastId).update();
+		this.db.sql(" update podcast set title = ? where id = ? ").params(title, podcastId).update();
 		this.invalidatePodcastCache(podcastId);
 		var podcast = this.getPodcastById(podcastId);
 		Assert.state((null != podcast.title() && title != null), "you must provide a valid title");
@@ -447,7 +446,7 @@ class DefaultPodcastService implements PodcastService {
 				if (managedFile != null)
 					ids.add(managedFile.id());
 
-		this.db.sql("delete from podcast_episode_segment where podcast_episode  = ?").param(episode.id()).update();
+		this.db.sql("delete from podcast_episode_segment where podcast_episode_id  = ?").param(episode.id()).update();
 		this.db.sql("delete from podcast_episode where id = ?").param(episode.id()).update();
 
 		for (var managedFileId : ids)
@@ -485,7 +484,7 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade) {
 		var maxOrder = (this.db
-			.sql("select max( sequence_number) from podcast_episode_segment where podcast_episode  = ? ")
+			.sql("select max( sequence_number) from podcast_episode_segment where podcast_episode_id  = ? ")
 			.params(episodeId)
 			.query(Number.class)
 			.optional()
@@ -495,9 +494,9 @@ class DefaultPodcastService implements PodcastService {
 		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		var sql = """
 					insert into podcast_episode_segment (
-						podcast_episode,
-						segment_audio_managed_file ,
-						produced_segment_audio_managed_file ,
+						podcast_episode_id,
+						segment_audio_managed_file_id ,
+						produced_segment_audio_managed_file_id  ,
 						cross_fade_duration,
 						name,
 						sequence_number
@@ -540,9 +539,10 @@ class DefaultPodcastService implements PodcastService {
 				.update();
 			Assert.state(updated != 0,
 					"there should be at least " + "one transcript set for segment # " + segment.id());
-			var podcastEpisodeId = db.sql("select pes.podcast_episode from podcast_episode_segment pes where pes.id =?")
+			var podcastEpisodeId = db
+				.sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?")
 				.param(episodeSegmentId)
-				.query((rs, _) -> rs.getLong("podcast_episode"))
+				.query((rs, _) -> rs.getLong("podcast_episode_id"))
 				.single();
 			this.invalidatePodcastEpisodeCache(podcastEpisodeId);
 		} //
@@ -595,7 +595,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void ensurePodcastBelongsToMogul(Long currentMogulId, Long podcastId) {
-		var match = this.db.sql("select p.id as id  from podcast p where p.id =  ? and p.mogul_id = ?  ")
+		var match = this.db.sql("select p.id as id from podcast p where p.id =  ? and p.mogul_id = ?  ")
 			.params(podcastId, currentMogulId)
 			.query((rs, rowNum) -> rs.getInt("id"))
 			.list();
@@ -622,7 +622,7 @@ class DefaultPodcastService implements PodcastService {
 		try {
 			this.managedFileService.refreshManagedFile(managedFileId);
 			this.db //
-				.sql("update podcast_episode set produced_audio_updated=? where id=? ") //
+				.sql("update podcast_episode set produced_audio_updated=? where id = ? ") //
 				.params(new Date(), episodeId) //
 				.update();
 			this.invalidatePodcastEpisodeCache(episodeId);

@@ -1,0 +1,3 @@
+alter table podcast_episode_segment rename column produced_segment_audio_managed_file to produced_segment_audio_managed_file_id ;
+alter table podcast_episode_segment rename column segment_audio_managed_file to segment_audio_managed_file_id ;
+alter table podcast_episode_segment rename column podcast_episode to podcast_episode_id ;
