@@ -9,7 +9,7 @@ class ManagedFileRowMapper implements RowMapper<ManagedFile> {
 
 	@Override
 	public ManagedFile mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new ManagedFile(rs.getLong("mogul"), //
+		return new ManagedFile(rs.getLong("mogul_id"), //
 				rs.getLong("id"), //
 				rs.getString("bucket"), //
 				rs.getString("storage_filename"), //
