@@ -71,7 +71,7 @@ class PodcastEpisodeFeedTest {
                     Episode.class)).thenReturn(List.of(new Publication(mogulId, counter.incrementAndGet(),
                     "mock", new Date(), new Date(), Map.of(), "", Episode.class,
                     Publication.State.PUBLISHED, List.of(new Publication.Outcome(0, new Date(), true, URI.create("https://bootifulpodcast.fm/episodes/" + episode.id()).toURL(),
-                    "mock")))));
+                    "mock", null)))));
 
     }
 

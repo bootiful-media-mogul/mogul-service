@@ -34,9 +34,9 @@ class PublicationRowMapper implements RowMapper<Publication> {
 
 	private final JdbcClient db;
 
-	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, rowNum) -> {
+	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, _) -> {
 		var outcome = new Publication.Outcome(rs.getInt("id"), rs.getDate("created"), rs.getBoolean("success"),
-				JdbcUtils.url(rs, "uri"), rs.getString("key"));
+				JdbcUtils.url(rs, "uri"), rs.getString("key"), rs.getString("server_error_message"));
 		return new PublicationOutcome(rs.getLong("publication_id"), outcome);
 	};
 
@@ -68,7 +68,7 @@ class PublicationRowMapper implements RowMapper<Publication> {
 		Assert.notNull(stateEnum, "stateEnum must not be null");
 		var publicationId = rs.getLong("id");
 		var publication = new Publication( //
-				rs.getLong("mogul"), //
+				rs.getLong("mogul_id"), //
 				publicationId, //
 				rs.getString("plugin"), //
 				rs.getTimestamp("created"), //

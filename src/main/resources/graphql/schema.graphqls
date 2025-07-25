@@ -36,7 +36,7 @@ type PublicationOutcome  {
     success:Boolean
     url:String
     key:String
-    #    public record Outcome(int id, Date created, boolean success, URI uri, String key) {
+    serverErrorMessage:String
 
 }
 

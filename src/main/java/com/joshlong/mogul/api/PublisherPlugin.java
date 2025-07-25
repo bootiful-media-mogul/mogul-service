@@ -89,8 +89,16 @@ public interface PublisherPlugin<T extends Publishable> {
 			return this.payload;
 		}
 
-		public PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome) {
-			this.outcomes.add(new Outcome(outcome, outcomeKey, success));
+		public PublishContext<T> success(String outcomeKey, URI outcome) {
+			return outcome(outcomeKey, true, outcome, null);
+		}
+
+		public PublishContext<T> failure(String outcomeKey, String errorMessageFromServer) {
+			return outcome(outcomeKey, false, null, errorMessageFromServer);
+		}
+
+		private PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome, String errorMessage) {
+			this.outcomes.add(new Outcome(outcome, outcomeKey, success, errorMessage));
 			return this;
 		}
 
@@ -99,7 +107,7 @@ public interface PublisherPlugin<T extends Publishable> {
 			return this.outcomes;
 		}
 
-		public record Outcome(URI uri, String key, boolean success) {
+		public record Outcome(URI uri, String key, boolean success, String serverErrorMessage) {
 		}
 
 	}
