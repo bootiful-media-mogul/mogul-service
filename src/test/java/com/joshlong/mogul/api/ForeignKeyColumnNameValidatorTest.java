@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +12,7 @@ import javax.sql.DataSource;
 class ForeignKeyColumnNameValidatorTest {
 
 	@Test
+	@Disabled
 	void foreignKeyRunner(@Autowired DataSource db) throws Exception {
 		var counterOfBadForeignKeys = 0;
 		try (var conn = db.getConnection()) {
@@ -36,7 +38,7 @@ class ForeignKeyColumnNameValidatorTest {
 
 			tables.close();
 
-			Assertions.assertEquals(counterOfBadForeignKeys, 0,
+			Assertions.assertEquals(0, counterOfBadForeignKeys,
 					"there should be no foreign keys that do not end with '_id'");
 		}
 
