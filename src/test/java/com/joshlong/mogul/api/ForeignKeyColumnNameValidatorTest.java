@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,7 +11,7 @@ import javax.sql.DataSource;
 class ForeignKeyColumnNameValidatorTest {
 
 	@Test
-	@Disabled
+	// @Disabled
 	void foreignKeyRunner(@Autowired DataSource db) throws Exception {
 		var counterOfBadForeignKeys = 0;
 		try (var conn = db.getConnection()) {
