@@ -3,7 +3,7 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
+import com.joshlong.mogul.api.media.MediaNormalizer;
 import com.joshlong.mogul.api.transcription.Transcriber;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;

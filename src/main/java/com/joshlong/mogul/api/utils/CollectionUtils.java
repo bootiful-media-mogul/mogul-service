@@ -8,39 +8,44 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 public abstract class CollectionUtils {
 
-	public static <T> T firstOrNull(Collection<T> collection) {
-		return null == collection || collection.isEmpty() ? null : collection.iterator().next();
-	}
+    public static <T> T firstOrNull(Collection<T> collection) {
+        return null == collection || collection.isEmpty() ? null : collection.iterator().next();
+    }
 
-	public static <T> T firstOrNull(Iterable<T> iterable) {
-		if (iterable == null)
-			return null;
-		for (var t : iterable) {
-			return t;
-		}
-		return null;
-	}
+    public static <T> T firstOrNull(Iterable<T> iterable) {
+        if (iterable == null)
+            return null;
+        for (var t : iterable) {
+            return t;
+        }
+        return null;
+    }
 
-	public static <K, V> ConcurrentMap<K, V> evictingConcurrentMap(int maxSize, Duration ttl,
-			RemovalListener<K, V> removalListener) {
-		return Caffeine.newBuilder()
-			.maximumSize(maxSize)
-			.expireAfterWrite(ttl)
-			.evictionListener(removalListener)
-			.build()
-			.asMap();
-	}
+    public static <K, V> ConcurrentMap<K, V> evictingConcurrentMap(int maxSize, Duration ttl,
+                                                                   RemovalListener<K, V> removalListener) {
+        return Caffeine.newBuilder()
+                .maximumSize(maxSize)
+                .expireAfterWrite(ttl)
+                .evictionListener(removalListener)
+                .build()
+                .asMap();
+    }
 
-	public static <K, V> ConcurrentMap<K, V> evictingConcurrentMap(int maxSize, Duration ttl) {
-		var rl = new RemovalListener<K, V>() {
-			@Override
-			public void onRemoval(@Nullable K key, @Nullable V value, RemovalCause cause) {
-			}
-		};
-		return evictingConcurrentMap(maxSize, ttl, rl);
-	}
+    public static String join(Collection<?> collection, String delimiter) {
+        return collection.stream().map(Object::toString).collect(Collectors.joining(delimiter));
+    }
+
+    public static <K, V> ConcurrentMap<K, V> evictingConcurrentMap(int maxSize, Duration ttl) {
+        var rl = new RemovalListener<K, V>() {
+            @Override
+            public void onRemoval(@Nullable K key, @Nullable V value, RemovalCause cause) {
+            }
+        };
+        return evictingConcurrentMap(maxSize, ttl, rl);
+    }
 
 }

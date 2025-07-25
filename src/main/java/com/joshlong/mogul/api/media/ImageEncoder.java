@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.podcasts.production;
+package com.joshlong.mogul.api.media;
 
 import com.joshlong.mogul.api.utils.FileUtils;
 import com.joshlong.mogul.api.utils.ProcessUtils;
@@ -15,7 +15,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Component
-class ImageEncoder implements Encoder {
+public class ImageEncoder implements Encoder {
 
 	public final static DataSize MAX_SIZE = DataSize.ofMegabytes(1);
 
