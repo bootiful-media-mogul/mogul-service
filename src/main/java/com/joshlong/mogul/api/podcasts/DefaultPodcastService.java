@@ -129,7 +129,7 @@ class DefaultPodcastService implements PodcastService {
 				UNION
 				select pe.id as id
 				from podcast_episode pe
-				where pe.graphic = ?
+				where pe.graphic_managed_file_id = ?
 				""";
 		var episodeId = CollectionUtils
 			.firstOrNull(this.db.sql(sql).params(mf.id(), mf.id()).query((rs, _) -> rs.getLong("id")).set());
@@ -321,9 +321,9 @@ class DefaultPodcastService implements PodcastService {
 								podcast ,
 						title,
 						description,
-						graphic ,
-						produced_graphic,
-						produced_audio
+						graphic_managed_file_id ,
+						produced_graphic_managed_file_id,
+						produced_audio_managed_file_id
 					)
 					values (
 						?,
