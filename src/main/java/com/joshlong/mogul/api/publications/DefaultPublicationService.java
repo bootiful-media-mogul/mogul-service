@@ -126,7 +126,7 @@ class DefaultPublicationService implements PublicationService {
 			var entityClazz = payload.getClass().getName();
 			var kh = new GeneratedKeyHolder();
 			this.db.sql(
-					"insert into publication( state, mogul, plugin, created, published, context, payload , payload_class ) VALUES (?,?,?,?,?,?,?,?)")
+					"insert into publication( state, mogul_id, plugin, created, published, context, payload , payload_class ) VALUES (?,?,?,?,?,?,?,?)")
 				.params(Publication.State.DRAFT.name(), mogulId, plugin.name(), new Date(), null, contextJson,
 						publicationData, entityClazz)
 				.update(kh);
@@ -146,8 +146,10 @@ class DefaultPublicationService implements PublicationService {
 				.update();
 
 			pc.outcomes().forEach((outcome) -> {
-				this.db.sql("insert into publication_outcome(publication_id,success, uri , key ) values (?,?,?,?)")
-					.params(publicationId, outcome.success(), outcome.uri().toString(), outcome.key())
+				this.db.sql(
+						"insert into publication_outcome(publication_id, success, uri , key ,server_error_message ) values (?,?,?,?,?)")
+					.params(publicationId, outcome.success(), outcome.uri() != null ? outcome.uri().toString() : null,
+							outcome.key(), outcome.serverErrorMessage())
 					.update();
 			});
 

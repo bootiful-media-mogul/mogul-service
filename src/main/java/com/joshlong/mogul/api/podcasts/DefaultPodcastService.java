@@ -277,7 +277,7 @@ class DefaultPodcastService implements PodcastService {
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
 		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);
 		return this.db//
-			.sql(" select * from podcast_episode pe where pe.podcast  = ? ") //
+			.sql(" select * from podcast_episode pe where pe.podcast_id  = ? ") //
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
@@ -318,7 +318,7 @@ class DefaultPodcastService implements PodcastService {
 		var kh = new GeneratedKeyHolder();
 		this.db.sql("""
 					insert into podcast_episode(
-								podcast ,
+						podcast_id,
 						title,
 						description,
 						graphic_managed_file_id ,

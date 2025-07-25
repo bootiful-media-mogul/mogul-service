@@ -59,9 +59,15 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 		log.debug("middle: publishing episode {} with context {}", payload.id(), publishContext.context());
 		var count = (int) Math.max(Math.random() * 5.0, 2.0);
 		for (var c = 0; c < count; c++) {
-			publishContext.outcome("mock", Math.random() > .5, URI.create("https://spring.io"));
+			var pluginName = "mock";
+			if (Math.random() > .5) {
+				publishContext.success(pluginName, URI.create("https://spring.io"));
+			} //
+			else {
+				publishContext.failure(pluginName, "simulated error");
+			}
+			log.debug("stop: publishing episode {} with context {}", payload.id(), publishContext.context());
 		}
-		log.debug("stop: publishing episode {} with context {}", payload.id(), publishContext.context());
 	}
 
 }

@@ -1,0 +1,1 @@
+alter table publication_outcome add column server_error_message text;

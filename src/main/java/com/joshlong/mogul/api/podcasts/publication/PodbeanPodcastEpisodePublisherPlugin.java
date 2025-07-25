@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component(PodbeanPodcastEpisodePublisherPlugin.PLUGIN_NAME)
 class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin, BeanNameAware {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	/**
 	 * well-known values written to the context after publication.
 	 */
@@ -35,8 +37,6 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public static final String CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS = "contextPodbeanEpisodePublishDateInMilliseconds";
 
 	public static final String PLUGIN_NAME = "podbean";
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<String> beanName = new AtomicReference<>();
 
@@ -88,24 +88,30 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
 		this.log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
-		var podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
-				EpisodeStatus.PUBLISH, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
-				producedGraphicAuthorization.getFileKey());
-		this.log.debug("published the episode to podbean {}", podbeanEpisode.toString());
-
-		var permalinkUrl = podbeanEpisode.getPermalinkUrl();
-		if (permalinkUrl != null) {
-			pc.outcome("podbean", true, permalinkUrl);
-			this.log.debug("got the published episode's (Episode#{}) podbean url: {}", payload.id(), permalinkUrl);
+		var pluginName = "podbean";
+		var podbeanEpisode = (com.joshlong.podbean.Episode) null;
+		var errorMessage = "";
+		try {
+			podbeanEpisode = this.podbeanClient.publishEpisode(payload.title(), payload.description(),
+					EpisodeStatus.PUBLISH, EpisodeType.PUBLIC, producedAudioAuthorization.getFileKey(),
+					producedGraphicAuthorization.getFileKey());
+			this.log.debug("published the episode to podbean {}", podbeanEpisode.toString());
+			var permalinkUrl = podbeanEpisode.getPermalinkUrl();
+			if (permalinkUrl != null) {
+				pc.success(pluginName, permalinkUrl);
+				context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
+				context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
+				context.put(CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS,
+						Long.toString(podbeanEpisode.getPublishTime().getTime()));
+				return;
+			} //
+			errorMessage = "the published episode's (Episode#%s) podbean URL is null".formatted(payload.id());
 		} //
-		else {
-			this.log.debug("the published episode's (Episode#{}) podbean url is null", payload.id());
+		catch (Throwable throwable) {
+			errorMessage = throwable.getMessage();
+
 		}
-		context.put(CONTEXT_PODBEAN_PODCAST_ID, podbeanEpisode.getPodcastId());
-		context.put(CONTEXT_PODBEAN_EPISODE_ID, podbeanEpisode.getId());
-		context.put(CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS,
-				Long.toString(podbeanEpisode.getPublishTime().getTime()));
-		this.log.debug("published episode to podbean: [{}]", podbeanEpisode);
+		pc.failure(pluginName, errorMessage);
 	}
 
 	private File download(Resource resource, File file) {

@@ -75,7 +75,7 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 					postContext.media(uris);
 				});
 				response.postIds()
-					.forEach((platformObj, posted) -> context.outcome(platformObj.platformCode().toLowerCase(), true,
+					.forEach((platformObj, posted) -> context.success(platformObj.platformCode().toLowerCase(),
 							posted.postUrl()));
 			}
 		}
