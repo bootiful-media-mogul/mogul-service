@@ -299,10 +299,8 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Podcast updatePodcast(Long podcastId, String title) {
 		this.db.sql(" update podcast   set title = ? where id = ? ").params(title, podcastId).update();
+		this.invalidatePodcastCache(podcastId);
 		var podcast = this.getPodcastById(podcastId);
-		if (this.log.isDebugEnabled())
-			this.log.debug("updated podcast {} with title {}", podcastId, title);
-
 		Assert.state((null != podcast.title() && title != null), "you must provide a valid title");
 		Assert.state(title.equals(podcast.title()), "you must provide a valid title");
 		this.invalidatePodcastCache(podcastId);

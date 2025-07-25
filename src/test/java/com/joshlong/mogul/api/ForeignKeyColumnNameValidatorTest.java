@@ -34,7 +34,8 @@ class ForeignKeyColumnNameValidatorTest {
 
 					// Check if the FK column name ends with "_id"
 					if (!fkColumnName.toLowerCase().endsWith("_id")) {
-						bad.add(String.format("Table '%s' has foreign key column '%s' referencing '%s' which does NOT end with '_id'%n",
+						bad.add(String.format(
+								"Table '%s' has foreign key column '%s' referencing '%s' which does NOT end with '_id'%n",
 								tableName, fkColumnName, pkTableName));
 						counterOfBadForeignKeys += 1;
 					}
@@ -44,11 +45,11 @@ class ForeignKeyColumnNameValidatorTest {
 
 			tables.close();
 
-
-			this.log.info("found {} bad foreign keys: {}{}", counterOfBadForeignKeys , System.lineSeparator() ,
+			this.log.info("found {} bad foreign keys: {}{}", counterOfBadForeignKeys, System.lineSeparator(),
 					CollectionUtils.join(bad, ""));
 
-			Assertions.assertEquals(0, counterOfBadForeignKeys, "there should be no foreign keys that do not end with '_id'");
+			Assertions.assertEquals(0, counterOfBadForeignKeys,
+					"there should be no foreign keys that do not end with '_id'");
 		}
 
 	}
