@@ -25,9 +25,9 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 	public Episode mapRow(ResultSet resultSet, int rowNum) throws SQLException {
 		var episodeId = resultSet.getLong("id");
 
-		var graphicId = resultSet.getLong("graphic");
-		var producedGraphicId = resultSet.getLong("produced_graphic");
-		var producedAudioId = resultSet.getLong("produced_audio");
+		var graphicId = resultSet.getLong("graphic_managed_file_id");
+		var producedGraphicId = resultSet.getLong("produced_graphic_managed_file_id");
+		var producedAudioId = resultSet.getLong("produced_audio_managed_file_id");
 		var list = Set.of(graphicId, producedAudioId, producedGraphicId);
 		var all = deep ? managedFileFunction.apply(list) : Map.<Long, ManagedFile>of();
 		var graphic = all.get(graphicId);
@@ -36,7 +36,7 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 
 		return new Episode(//
 				episodeId, //
-				resultSet.getLong("podcast"), //
+				resultSet.getLong("podcast_id"), //
 				resultSet.getString("title"), //
 				resultSet.getString("description"), //
 				resultSet.getTimestamp("created"), //
