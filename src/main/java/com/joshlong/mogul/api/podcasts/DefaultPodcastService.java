@@ -10,7 +10,7 @@ import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.podcasts.production.MediaNormalizer;
+import com.joshlong.mogul.api.media.MediaNormalizer;
 import com.joshlong.mogul.api.transcription.Transcriber;
 import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
@@ -287,7 +287,7 @@ class DefaultPodcastService implements PodcastService {
 	public Podcast createPodcast(Long mogulId, String title) {
 		var generatedKeyHolder = new GeneratedKeyHolder();
 		this.db.sql(
-				" insert into podcast (mogul , title) values (?,?) on conflict on constraint podcast_mogul_id_title_key do update set title = excluded.title ")
+				" insert into podcast (mogul_id , title) values (?,?) on conflict on constraint podcast_mogul_id_title_key do update set title = excluded.title ")
 			.params(mogulId, title)
 			.update(generatedKeyHolder);
 		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
@@ -299,10 +299,8 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Podcast updatePodcast(Long podcastId, String title) {
 		this.db.sql(" update podcast   set title = ? where id = ? ").params(title, podcastId).update();
+		this.invalidatePodcastCache(podcastId);
 		var podcast = this.getPodcastById(podcastId);
-		if (this.log.isDebugEnabled())
-			this.log.debug("updated podcast {} with title {}", podcastId, title);
-
 		Assert.state((null != podcast.title() && title != null), "you must provide a valid title");
 		Assert.state(title.equals(podcast.title()), "you must provide a valid title");
 		this.invalidatePodcastCache(podcastId);
@@ -597,7 +595,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void ensurePodcastBelongsToMogul(Long currentMogulId, Long podcastId) {
-		var match = this.db.sql("select p.id as id  from podcast p where p.id =  ? and p.mogul = ?  ")
+		var match = this.db.sql("select p.id as id  from podcast p where p.id =  ? and p.mogul_id = ?  ")
 			.params(podcastId, currentMogulId)
 			.query((rs, rowNum) -> rs.getInt("id"))
 			.list();
@@ -677,18 +675,16 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Collection<Podcast> getAllPodcastsByMogul(Long mogulId) {
 		return this.db //
-			.sql("select * from podcast p where p.mogul = ?")//
+			.sql("select * from podcast p where p.mogul_id = ?")//
 			.param(mogulId)//
 			.query(this.podcastRowMapper)//
 			.list();
 	}
 
 	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
-		this.log.debug("going to transcribe for mogul {} the key {} and subject {} ", mogulId, key, subject.getName());
 		var reply = this.transcriber.transcribe(resource);
 		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
 		this.publisher.publishEvent(tpe);
-		this.log.debug("transcribed for mogul {} the key {} and subject {} ", mogulId, key, subject.getName());
 	}
 
 }

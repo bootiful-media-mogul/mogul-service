@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts.production;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.media.AudioEncoder;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

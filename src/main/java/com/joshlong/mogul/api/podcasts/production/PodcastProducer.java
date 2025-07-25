@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.podcasts.production;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.media.AudioEncoder;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.utils.FileUtils;

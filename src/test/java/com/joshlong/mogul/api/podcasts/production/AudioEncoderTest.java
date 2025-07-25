@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.production;
 
+import com.joshlong.mogul.api.media.AudioEncoder;
 import org.springframework.util.Assert;
 import org.springframework.util.SystemPropertyUtils;
 

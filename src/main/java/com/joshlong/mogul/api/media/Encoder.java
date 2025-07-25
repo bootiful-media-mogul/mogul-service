@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.podcasts.production;
+package com.joshlong.mogul.api.media;
 
 import java.io.File;
 

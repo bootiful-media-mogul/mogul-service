@@ -8,6 +8,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 public abstract class CollectionUtils {
 
@@ -32,6 +33,10 @@ public abstract class CollectionUtils {
 			.evictionListener(removalListener)
 			.build()
 			.asMap();
+	}
+
+	public static String join(Collection<?> collection, String delimiter) {
+		return collection.stream().map(Object::toString).collect(Collectors.joining(delimiter));
 	}
 
 	public static <K, V> ConcurrentMap<K, V> evictingConcurrentMap(int maxSize, Duration ttl) {

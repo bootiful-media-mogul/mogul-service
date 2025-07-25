@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.podcasts.production;
+package com.joshlong.mogul.api.media;
 
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
@@ -9,7 +9,7 @@ import org.springframework.util.Assert;
 import java.io.File;
 
 @Component
-class AudioEncoder implements Encoder {
+public class AudioEncoder implements Encoder {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 

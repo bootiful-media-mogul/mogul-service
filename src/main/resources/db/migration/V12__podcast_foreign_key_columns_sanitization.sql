@@ -1,0 +1,1 @@
+alter table podcast rename column mogul to mogul_id;
