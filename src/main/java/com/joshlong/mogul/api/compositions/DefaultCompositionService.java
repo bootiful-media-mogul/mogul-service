@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.compositions;
 
+import com.joshlong.mogul.api.compositions.attachments.previews.MarkdownPreview;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
@@ -41,8 +42,11 @@ class DefaultCompositionService implements CompositionService {
 
 	private final ResultSetExtractor<Collection<Composition>> compositionResultSetExtractor;
 
+	private final MarkdownPreview[] markdownPreviews;
+
 	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db, Cache compositionsByKeyCache,
-			Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService) {
+			Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService,
+			MarkdownPreview[] markdownPreviews) {
 		this.db = db;
 		this.compositionsByIdCache = compositionsByIdCache;
 		this.attachmentsCache = attachmentsCache;
@@ -50,6 +54,7 @@ class DefaultCompositionService implements CompositionService {
 		this.managedFileService = managedFileService;
 		this.attachmentRowMapper = attachmentRowMapper;
 		this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
+		this.markdownPreviews = markdownPreviews;
 	}
 
 	@Override
@@ -99,12 +104,23 @@ class DefaultCompositionService implements CompositionService {
 		this.invalidateCompositionCacheByKey(composition);
 	}
 
+	@Override
+	public String createMarkdownPreview(Attachment attachment) {
+		for (var candidate : this.markdownPreviews) {
+			if (candidate.supports(attachment)) {
+				return candidate.preview(attachment);
+			}
+		}
+		return null;
+	}
+
 	private Attachment readThroughAttachmentById(Long id) {
 		var attachment = this.attachmentsCache.get(id, Attachment.class);
 		if (attachment == null) {
-			var attachments = this.db.sql("select * from composition_attachment where id = ?")
-				.param(id)
-				.query(this.attachmentRowMapper)
+			var attachments = this.db //
+				.sql("select * from composition_attachment where id = ?") //
+				.param(id) //
+				.query(this.attachmentRowMapper)//
 				.list();
 			Assert.state(attachments.size() == 1, "there should be exactly one attachment for the given id " + id
 					+ " but there were " + attachments.size() + " instead");
@@ -138,8 +154,6 @@ class DefaultCompositionService implements CompositionService {
 				.params(clazzName, key, field)//
 				.query(this.compositionResultSetExtractor));
 		});
-
-		// return res;
 	}
 
 	private void invalidateCompositionCacheById(Long compositionId) {
@@ -164,11 +178,10 @@ class DefaultCompositionService implements CompositionService {
 		var payloadKeyAsJson = JsonUtils.write(payload.compositionKey());
 		var composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
 		if (composition == null) {
-			// 1. find the composition by the three fields.
 			this.db //
 				.sql("""
 
-						      insert into composition(payload, payload_class, field) values (?,?,?)
+						  insert into composition(payload, payload_class, field) values (?,?,?)
 						  on conflict on constraint composition_payload_class_payload_field_key
 						  do nothing
 

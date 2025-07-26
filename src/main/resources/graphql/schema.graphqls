@@ -15,7 +15,7 @@ type Attachment {
     id: Int
     caption: String
     managedFile: ManagedFile
-    embedding: String
+    markdown: String
 }
 
 type Publication {

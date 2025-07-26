@@ -1,15 +1,11 @@
 package com.joshlong.mogul.api.compositions;
 
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.StringUtils;
 
 /**
  * handles looking up details associated with all compositions.
@@ -17,28 +13,18 @@ import org.springframework.util.StringUtils;
 @Controller
 class CompositionController {
 
-	private final static String NLS = System.lineSeparator() + System.lineSeparator();
-
 	private final CompositionService compositionService;
-
-	private final ManagedFileService managedFileService;
 
 	private final MogulService mogulService;
 
-	CompositionController(CompositionService compositionService, ManagedFileService managedFileService,
-			MogulService mogulService) {
+	CompositionController(CompositionService compositionService, MogulService mogulService) {
 		this.compositionService = compositionService;
-		this.managedFileService = managedFileService;
 		this.mogulService = mogulService;
 	}
 
 	@SchemaMapping
-	String embedding(Attachment attachment) {
-		var managedFile = attachment.managedFile();
-		var publicUrl = this.managedFileService.getPublicUrlForManagedFile(managedFile.id());
-		var embedding = StringUtils.hasText(attachment.caption())
-				? "![%s](%s)".formatted(attachment.caption(), publicUrl) : publicUrl;
-		return NLS + embedding + NLS;
+	String markdown(Attachment attachment) {
+		return this.compositionService.createMarkdownPreview(attachment);
 	}
 
 	@QueryMapping
@@ -54,7 +40,7 @@ class CompositionController {
 
 	@MutationMapping
 	Attachment createCompositionAttachment(@Argument Long compositionId) {
-		var mogulId = mogulService.getCurrentMogul().id();
+		var mogulId = this.mogulService.getCurrentMogul().id();
 		return this.compositionService.createCompositionAttachment(mogulId, compositionId, "");
 	}
 

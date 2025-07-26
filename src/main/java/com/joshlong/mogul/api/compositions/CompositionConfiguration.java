@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.compositions;
 
+import com.joshlong.mogul.api.compositions.attachments.previews.MarkdownPreview;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.cache.CacheManager;
@@ -17,13 +18,13 @@ class CompositionConfiguration {
 	}
 
 	@Bean
-	DefaultCompositionService compositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db,
-			CacheManager cacheManager, ManagedFileService managedFileService) {
+	DefaultCompositionService compositionService(MarkdownPreview[] previews, AttachmentRowMapper attachmentRowMapper,
+			JdbcClient db, CacheManager cacheManager, ManagedFileService managedFileService) {
 		var cacheById = cacheManager.getCache("compositionsById");
 		var cacheByKey = cacheManager.getCache("compositionsByKey");
 		var attachments = cacheManager.getCache("compositionAttachments");
 		return new DefaultCompositionService(attachmentRowMapper, db, cacheByKey, cacheById, attachments,
-				managedFileService);
+				managedFileService, previews);
 	}
 
 }
