@@ -105,7 +105,7 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
-	public String createMarkdownPreview(Attachment attachment) {
+	public String createMarkdownPreviewForAttachment(Attachment attachment) {
 		for (var candidate : this.markdownPreviews) {
 			if (candidate.supports(attachment)) {
 				return candidate.preview(attachment);
@@ -180,11 +180,9 @@ class DefaultCompositionService implements CompositionService {
 		if (composition == null) {
 			this.db //
 				.sql("""
-
 						  insert into composition(payload, payload_class, field) values (?,?,?)
 						  on conflict on constraint composition_payload_class_payload_field_key
 						  do nothing
-
 						""")//
 				.params(payloadKeyAsJson, clazz, field) //
 				.update();

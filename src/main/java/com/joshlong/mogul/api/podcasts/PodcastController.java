@@ -1,9 +1,11 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.Transcription;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.transcription.TranscriptionService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
@@ -27,9 +29,11 @@ class PodcastController {
 
 	private final PodcastService podcastService;
 
-	PodcastController(MogulService mogulService, PodcastService podcastService) {
+	PodcastController(MogulService mogulService, PodcastService podcastService,
+			TranscriptionService transcriptionService) {
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
+		this.transcriptionService = transcriptionService;
 	}
 
 	@QueryMapping
@@ -204,5 +208,12 @@ class PodcastController {
 		} //
 
 	}
+
+	@SchemaMapping
+	Transcription transcription(Segment segment) {
+		return this.transcriptionService.transcribe(segment);
+	}
+
+	private final TranscriptionService transcriptionService;
 
 }

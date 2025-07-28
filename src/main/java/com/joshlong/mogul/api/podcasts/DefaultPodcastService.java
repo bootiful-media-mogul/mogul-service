@@ -164,10 +164,12 @@ class DefaultPodcastService implements PodcastService {
 						.params(new Date(), episodeId)
 						.update();
 					this.invalidatePodcastEpisodeCache(episodeId);
-					if (segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
-						this.transcribe(mf.mogulId(), segment.id(), Segment.class,
-								this.managedFileService.read(segment.producedAudio().id()));
-					}
+					/*
+					 * todo this should somehow be roughly when we re-transcribe the code
+					 * if ( !StringUtils.hasText(segment.transcript())) {
+					 * this.transcribe(mf.mogulId(), segment.id(), Segment.class,
+					 * this.managedFileService.read(segment.producedAudio().id())); }
+					 */
 					updatedFlag.set(true);
 					this.log.debug(
 							"got a {}, updated the produced audio for podcast episode segment {} and managedFile {}",
@@ -556,7 +558,7 @@ class DefaultPodcastService implements PodcastService {
 		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
 		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
 		var mogul = this.mogulService.getCurrentMogul().id();
-		if (null != segment && segment.transcribable()) {
+		if (null != segment) {
 			this.transcribe(mogul, segment.id(), Segment.class,
 					this.managedFileService.read(segment.producedAudio().id()));
 		}

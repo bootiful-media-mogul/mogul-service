@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-// @EnableConfigurationProperties(TranscriptionProperties.class)
 class TranscriptionConfiguration {
 
 	@Bean
@@ -14,6 +13,11 @@ class TranscriptionConfiguration {
 			OpenAiAudioTranscriptionModel transcriptionModel) {
 		var root = transcriptionProperties.transcriptions().root();
 		return new ChunkingTranscriber(transcriptionModel, root, (10 * 1024 * 1024));
+	}
+
+	@Bean
+	TranscriptionRowMapper transcriptionRowMapper() {
+		return new TranscriptionRowMapper();
 	}
 
 }

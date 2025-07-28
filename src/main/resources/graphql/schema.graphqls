@@ -11,6 +11,13 @@ type Composition  {
     attachments: [Attachment]
 }
 
+
+type Transcription {
+    id: Int
+    mogulId: Int
+    transcript: String
+}
+
 type Attachment {
     id: Int
     caption: String
@@ -92,6 +99,7 @@ type Segment {
     producedAudio : ManagedFile
     order : Int
     crossFadeDuration : Int
+    transcription: Transcription
 }
 
 type Podcast {
