@@ -211,7 +211,7 @@ class PodcastController {
 
 	@SchemaMapping
 	Transcription transcription(Segment segment) {
-		return this.transcriptionService.transcribe(segment);
+		return this.transcriptionService.transcription(segment);
 	}
 
 	private final TranscriptionService transcriptionService;

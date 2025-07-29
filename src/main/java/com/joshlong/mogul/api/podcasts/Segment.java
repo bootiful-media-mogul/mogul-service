@@ -18,11 +18,6 @@ public record Segment(Long episodeId, Long id, ManagedFile audio, ManagedFile pr
 		String name, int order) implements Transcribable {
 
 	@Override
-	public Resource source() {
-		return null;
-	}
-
-	@Override
 	public Long transcriptionKey() {
 		return this.id();
 	}

@@ -170,6 +170,7 @@ class DefaultPodcastService implements PodcastService {
 					 * this.transcribe(mf.mogulId(), segment.id(), Segment.class,
 					 * this.managedFileService.read(segment.producedAudio().id())); }
 					 */
+
 					updatedFlag.set(true);
 					this.log.debug(
 							"got a {}, updated the produced audio for podcast episode segment {} and managedFile {}",

@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.utils;
 
-import com.joshlong.mogul.api.Publication;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ResolvableType;
 import org.springframework.util.Assert;
@@ -18,7 +17,7 @@ public abstract class ReflectionUtils {
 		}
 		catch (ClassNotFoundException e) {
 			log.warn("classNotFoundException when trying to do Class.forName({}) to resolve the class for a {} ", name,
-					Publication.class.getName(), e);
+					(name), e);
 		}
 		return null;
 	}
