@@ -16,9 +16,8 @@ import java.io.FileOutputStream;
 import java.util.HashSet;
 import java.util.function.Function;
 
-/** todo can this be moved to a root packaged called `media`? */
 @Component
-public class MediaNormalizer {
+class Normalization {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -28,13 +27,13 @@ public class MediaNormalizer {
 
 	private final ManagedFileService managedFileService;
 
-	MediaNormalizer(ImageEncoder imageEncoder, AudioEncoder audioEncoder, ManagedFileService managedFileService) {
+	Normalization(ImageEncoder imageEncoder, AudioEncoder audioEncoder, ManagedFileService managedFileService) {
 		this.imageEncoder = imageEncoder;
 		this.audioEncoder = audioEncoder;
 		this.managedFileService = managedFileService;
 	}
 
-	public void normalize(ManagedFile input, ManagedFile output) throws Exception {
+	void normalize(ManagedFile input, ManagedFile output) throws Exception {
 
 		if (!input.written()) {
 			log.debug("the input file {} has not been written yet, so we can't normalize it", input.id());
@@ -59,9 +58,9 @@ public class MediaNormalizer {
 		} //
 		finally {
 			for (var f : filesToDelete) {
-				FileUtils.delete(f);
-				if (f != null) {
-					this.log.debug("deleting {} after file normalization.", f.getAbsolutePath());
+				if (f.exists()) {
+					FileUtils.delete(f);
+					this.log.info("deleting {} after file normalization.", f.getAbsolutePath());
 				}
 			}
 		}

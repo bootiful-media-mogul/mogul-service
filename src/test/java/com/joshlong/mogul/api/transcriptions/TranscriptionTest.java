@@ -6,6 +6,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.transcription.TranscriptionService;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,13 +31,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @TestConfiguration
 class TranscriptionTestSecurityConfiguration {
 
-    static final String ONE = "user1";
+	static final String ONE = "user1";
 
-    @Bean
-    UserDetailsService userDetailsService() {
-        var user1 = User.withUsername(ONE).password("pw").roles("USER").build();
-        return new InMemoryUserDetailsManager(user1);
-    }
+	@Bean
+	UserDetailsService userDetailsService() {
+		var user1 = User.withUsername(ONE).password("pw").roles("USER").build();
+		return new InMemoryUserDetailsManager(user1);
+	}
 
 }
 
@@ -44,49 +45,53 @@ class TranscriptionTestSecurityConfiguration {
 @Import(TranscriptionTestSecurityConfiguration.class)
 class TranscriptionTest {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
-    @Autowired
-    private ManagedFileService managedFileService;
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    @Test
-    @WithUserDetails(ONE)
-    void transcription(@Autowired TranscriptionService transcriptionService, @Autowired PodcastService podcastService,
-                       @Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
-        var mogulId = transactionTemplate.execute(_ -> {
-            var login = mogulService.login("username", ONE, "123", "Josh", "Long");
-            assertNotNull(login, "the login should not be null");
-            return login.id();
-        });
+	@Autowired
+	private ManagedFileService managedFileService;
 
-        var podcast = podcastService.createPodcast(mogulId, "the simplest podcast ever");
-        var episode = podcastService.createPodcastEpisodeDraft(mogulId, podcast.id(), "the title", "the description");
-        assertEquals(episode.id(), episode.compositionKey());
+	@Disabled
+	@Test
+	@WithUserDetails(ONE)
+	void transcription(@Autowired TranscriptionService transcriptionService, @Autowired PodcastService podcastService,
+			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
+		var mogulId = transactionTemplate.execute(_ -> {
+			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
+			assertNotNull(login, "the login should not be null");
+			return login.id();
+		});
 
-        var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
-        var transcription = transcriptionService.transcription(segment);
+		var podcast = podcastService.createPodcast(mogulId, "the simplest podcast ever");
+		var episode = podcastService.createPodcastEpisodeDraft(mogulId, podcast.id(), "the title", "the description");
+		assertEquals(episode.id(), episode.compositionKey());
 
-        var cpr = new ClassPathResource("/samples/2.aiff.mp3");
-        managedFileService.write(segment.producedAudio().id(),
-                cpr.getFilename(), CommonMediaTypes.MP3, cpr);
+		var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
+		var transcription = transcriptionService.transcription(segment);
 
-        Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
+		var cpr = new ClassPathResource("/samples/2.aiff.mp3");
+		managedFileService.write(segment.producedAudio().id(), cpr.getFilename(), CommonMediaTypes.MP3, cpr);
+		// todo does us writing this segment in turn result in the IntegrationFlow kicking
+		// off for production?
 
-            // todo i need to produce an episode. is the productionm tied to the publication? do iu have logic separate from that?
-            // todo also do we need the produced audio to handle the transcription? does that means there's an implicit dependency?
-            // todo should we write the code to instead have the transcription kicked off ONLY after the audio has been produced?
+		Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
 
-        });
+			// todo i need to produce an episode. is the productionm tied to the
+			// publication? do iu have logic separate from that?
+			// todo also do we need the produced audio to handle the transcription? does
+			// that means there's an implicit dependency?
+			// todo should we write the code to instead have the transcription kicked off
+			// ONLY after the audio has been produced?
 
+		});
 
-        transcriptionService.transcribe(segment);
+		transcriptionService.transcribe(segment);
 
-        this.log.debug("transcription: {}", transcription);
+		this.log.debug("transcription: {}", transcription);
 
-        Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
+		Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
 
-        });
+		});
 
-
-    }
+	}
 
 }

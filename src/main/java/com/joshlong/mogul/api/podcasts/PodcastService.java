@@ -9,8 +9,6 @@ import java.util.Map;
 
 public interface PodcastService {
 
-	// String PODCAST_EPISODES_BUCKET = "mogul-managedfiles";
-
 	Composition getPodcastEpisodeTitleComposition(Long episodeId);
 
 	Composition getPodcastEpisodeDescriptionComposition(Long episodeId);

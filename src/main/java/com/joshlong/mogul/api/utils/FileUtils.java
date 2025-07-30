@@ -35,7 +35,7 @@ public abstract class FileUtils {
 	public static boolean delete(File file) {
 		if (file != null && file.exists()) {
 			if (file.isDirectory())
-				FileSystemUtils.deleteRecursively(file);
+				return FileSystemUtils.deleteRecursively(file);
 			return file.delete();
 		}
 		return false;
