@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.Transcription;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
@@ -80,22 +81,21 @@ class PodcastController {
 		this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
 		return true;
 	}
-
-	@MutationMapping
-	boolean transcribePodcastEpisodeSegment(@Argument Long podcastEpisodeSegmentId) {
-		// this.podcastService.transcribePodcastEpisodeSegment(podcastEpisodeSegmentId);
-		// todo this should not be commented out!
-		return true;
-	}
-
-	@MutationMapping
-	boolean setPodcastEpisodeSegmentTranscript(@Argument Long podcastEpisodeSegmentId, @Argument boolean transcribable,
-			@Argument String transcript) {
-		// todo fix this line below it should not be commented out.
-		// this.podcastService.setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId,
-		// transcribable, transcript);
-		return true;
-	}
+	/*
+	 * TODO the UI should call a TranscriptionController, not the PodcastController, to
+	 * update the transcript private Segment transcribable(Long segmentId) { var
+	 * transcribableRepository = transcriptionService.repositoryFor(Segment.class); return
+	 * transcribableRepository.find(segmentId); }
+	 *
+	 * @MutationMapping boolean setPodcastEpisodeSegmentTranscript(
+	 *
+	 * @Argument Long podcastEpisodeSegmentId,
+	 *
+	 * @Argument String transcript ) { var transcribable =
+	 * transcribable(podcastEpisodeSegmentId);
+	 * this.transcriptionService.writeTranscript(transcribable, transcript); return true;
+	 * }
+	 */
 
 	@SchemaMapping
 	long created(Podcast podcast) {

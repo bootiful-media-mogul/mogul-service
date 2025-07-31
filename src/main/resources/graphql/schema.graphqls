@@ -148,7 +148,7 @@ type Mutation {
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
-    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcribable: Boolean, transcript: String) : Boolean
+    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
     transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
     movePodcastEpisodeSegmentDown(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean

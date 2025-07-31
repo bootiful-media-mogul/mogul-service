@@ -31,42 +31,18 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/*
-
- * //todo this code needs to exist, perhaps in the repository? SOMEWHERE, surely. can
- * we move the resolution of the Repositories to the controller? // could we have a
- * transcriptionController that handles updating transcriptions for all things in a
- * generic fashion? // @Override public void setPodcastEpisodeSegmentTranscript(Long
- * episodeSegmentId, boolean transcribable, String transcript) { var segment =
- * this.getPodcastEpisodeSegmentById(episodeSegmentId); if (null != segment) { var
- * updated = this.db
- * .sql("update podcast_episode_segment set transcript = ?, transcribable = ?  where id = ? "
- * ) .params(transcript, transcribable, segment.id()) .update(); Assert.state(updated
- * != 0, "there should be at least " + "one transcript set for segment # " +
- * segment.id()); var podcastEpisodeId = db
- * .sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?"
- * ) .param(episodeSegmentId) .query((rs, _) -> rs.getLong("podcast_episode_id"))
- * .single(); this.invalidatePodcastEpisodeCache(podcastEpisodeId); } // else {
- * this.log.debug("could not find the podcast episode segment with id: {} ",
- * episodeSegmentId); } }
- *
- * @Override public void transcribePodcastEpisodeSegment(Long episodeSegmentId) {
- * this.log.debug("going to refresh the transcription for segment {}. ",
- * episodeSegmentId); var segment =
- * this.getPodcastEpisodeSegmentById(episodeSegmentId); var mogul =
- * this.mogulService.getCurrentMogul().id(); if (null != segment) {// todo //
- * this.transcribe(mogul, segment.id(), Segment.class, //
- * this.managedFileService.read(segment.producedAudio().id())); } }
- * we'll have two different flows: one to handle processing an image, and another to handle processing segments. processing, in this case, refers to things like:
- *
- * <li>resizing images </li>
+/**
+ * <li>resizing images</li>
  * <li>transcoding audio segments</li>
  * <li>creating transcripts</li>
  * <p>
  * Once all these things are done, we'll communicate state changes via events.
  * <p>
- * we need to decouple {@link  PodcastService podcastService} from everything to do with <EM>transcription</EM> or <em>media normalization</em>. the {@link  PodcastService podcastService}
- * handles operations in a transaction. The transcription and normalization should <EM>not</EM> happen in a transaction, as this will block the SQL database and thwart scalability.
+ * we need to decouple {@link PodcastService podcastService} from everything to do with
+ * <EM>transcription</EM> or <em>media normalization</em>. the {@link PodcastService
+ * podcastService} handles operations in a transaction. The transcription and
+ * normalization should <EM>not</EM> happen in a transaction, as this will block the SQL
+ * database and thwart scalability.
  */
 
 @Transactional
@@ -142,6 +118,13 @@ class DefaultPodcastService implements PodcastService {
 		return new ArrayList<>(episodeSegmentsFromDb);
 	}
 
+	private void triggerTranscription(Long mogulId, Long episodeId, Long segmentId) {
+		var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
+				PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
+		this.publisher.publishEvent(
+				new TranscriptionInvalidatedEvent(mogulId, segmentId, Segment.class, podcastEpisodeContextKey));
+	}
+
 	@ApplicationModuleListener
 	void mediaNormalized(MediaNormalizedEvent normalizedEvent) {
 
@@ -153,10 +136,7 @@ class DefaultPodcastService implements PodcastService {
 				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 					.params(new Date(), episodeId)
 					.update();
-				var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
-						PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
-				this.publisher.publishEvent(new TranscriptionInvalidatedEvent(normalizedEvent.in().mogulId(), segmentId,
-						Segment.class, podcastEpisodeContextKey));
+				this.triggerTranscription(normalizedEvent.in().mogulId(), episodeId, segmentId);
 			}
 			this.refreshPodcastEpisodeCompleteness(episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
@@ -207,12 +187,12 @@ class DefaultPodcastService implements PodcastService {
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
 		this.transactions.execute(_ -> {
-			this.doBroadcast(episodeId);
+			this.doBroadcastOfEpisodeCompleteness(episodeId);
 			return null;
 		});
 	}
 
-	private void doBroadcast(Long episodeId) {
+	private void doBroadcastOfEpisodeCompleteness(Long episodeId) {
 		this.invalidatePodcastEpisodeCache(episodeId);
 		var episode = this.getPodcastEpisodeById(episodeId);
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
@@ -464,7 +444,6 @@ class DefaultPodcastService implements PodcastService {
 			.param(podcastId)//
 			.query(this.podcastRowMapper)//
 			.single());
-
 	}
 
 	@Override
@@ -529,24 +508,6 @@ class DefaultPodcastService implements PodcastService {
 		this.invalidatePodcastEpisodeCache(episodeId);
 		return this.getPodcastEpisodeSegmentById(id.longValue());
 	}
-
-	/*
-	 * void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean
-	 * transcribable, String transcript) {
-	 *
-	 * var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId); if (null !=
-	 * segment) { var updated = this.db //
-	 * .sql("update podcast_episode_segment set transcript = ?, transcribable = ?  where id = ? "
-	 * ) // .params(transcript, transcribable, segment.id()) // .update();
-	 * Assert.state(updated != 0, "there should be at least " +
-	 * "one transcript set for segment # " + segment.id()); var podcastEpisodeId = db
-	 * .sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?"
-	 * ) .param(episodeSegmentId).query((rs, _) -> rs.getLong("podcast_episode_id"))
-	 * .single(); this.invalidatePodcastEpisodeCache(podcastEpisodeId); } // else {
-	 * this.log.debug("could not find the podcast episode segment with id: {} ",
-	 * episodeSegmentId); } }
-	 *
-	 */
 
 	@Override
 	public Segment getPodcastEpisodeSegmentById(Long episodeSegmentId) {
