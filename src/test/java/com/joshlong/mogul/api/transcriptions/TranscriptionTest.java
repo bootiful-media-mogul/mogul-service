@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import com.joshlong.mogul.api.transcription.TranscriptionService;
+import com.joshlong.mogul.api.transcription.Transcriptions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -41,6 +41,7 @@ class TranscriptionTestSecurityConfiguration {
 
 }
 
+// todo restore this test!
 @SpringBootTest
 @Import(TranscriptionTestSecurityConfiguration.class)
 class TranscriptionTest {
@@ -53,7 +54,7 @@ class TranscriptionTest {
 	@Disabled
 	@Test
 	@WithUserDetails(ONE)
-	void transcription(@Autowired TranscriptionService transcriptionService, @Autowired PodcastService podcastService,
+	void transcription(@Autowired Transcriptions transcriptions, @Autowired PodcastService podcastService,
 			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
 		var mogulId = transactionTemplate.execute(_ -> {
 			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
@@ -66,31 +67,32 @@ class TranscriptionTest {
 		assertEquals(episode.id(), episode.compositionKey());
 
 		var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
-		var transcription = transcriptionService.transcription(segment);
+		var transcription = transcriptions.transcription(segment);
 
 		var cpr = new ClassPathResource("/samples/2.aiff.mp3");
 		managedFileService.write(segment.producedAudio().id(), cpr.getFilename(), CommonMediaTypes.MP3, cpr);
-		// todo does us writing this segment in turn result in the IntegrationFlow kicking
-		// off for production?
-
-		Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
-
-			// todo i need to produce an episode. is the productionm tied to the
-			// publication? do iu have logic separate from that?
-			// todo also do we need the produced audio to handle the transcription? does
-			// that means there's an implicit dependency?
-			// todo should we write the code to instead have the transcription kicked off
-			// ONLY after the audio has been produced?
-
-		});
-
-		transcriptionService.transcribe(segment);
-
-		this.log.debug("transcription: {}", transcription);
-
-		Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
-
-		});
+		// // todo does us writing this segment in turn result in the IntegrationFlow
+		// kicking
+		// // off for production?
+		//
+		// Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
+		//
+		// // todo i need to produce an episode. is the productionm tied to the
+		// // publication? do iu have logic separate from that?
+		// // todo also do we need the produced audio to handle the transcription? does
+		// // that means there's an implicit dependency?
+		// // todo should we write the code to instead have the transcription kicked off
+		// // ONLY after the audio has been produced?
+		//
+		// });
+		//
+		// transcriptions.transcribe(segment);
+		//
+		// this.log.debug("transcription: {}", transcription);
+		//
+		// Awaitility.await().atLeast(Duration.ofMinutes(1)).untilAsserted(() -> {
+		//
+		// });
 
 	}
 

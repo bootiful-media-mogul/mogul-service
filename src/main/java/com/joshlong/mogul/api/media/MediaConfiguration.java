@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
  * managedFiles}.
  */
 @Configuration
-class MediaNormalizationIntegrationFlowConfiguration {
+class MediaConfiguration {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 

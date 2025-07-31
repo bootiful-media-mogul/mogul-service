@@ -8,6 +8,7 @@ import org.springframework.util.Assert;
 
 import java.io.File;
 
+// todo refactor so that this type can be package private.
 @Component
 public class AudioEncoder implements Encoder {
 

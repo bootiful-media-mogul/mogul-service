@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcription.audio;
 
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;

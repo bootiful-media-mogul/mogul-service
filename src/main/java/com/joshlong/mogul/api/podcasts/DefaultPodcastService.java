@@ -12,7 +12,8 @@ import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
+import com.joshlong.mogul.api.transcription.TranscriptionCompletedEvent;
+import com.joshlong.mogul.api.transcription.Transcriptions;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -21,17 +22,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -73,21 +71,21 @@ class DefaultPodcastService implements PodcastService {
 
 	private final TransactionTemplate transactions;
 
-	private final MessageChannel mediaChannel;
+	private final Transcriptions transcriptions;
 
 	DefaultPodcastService(CompositionService compositionService, Media media, JdbcClient db,
 			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Cache podcastCache,
 			Cache podcastEpisodesCache, MogulService mogulService, TransactionTemplate transactions,
-			MessageChannel mediaChannel) {
+			Transcriptions transcriptions) {
 		this.podcastEpisodesCache = podcastEpisodesCache;
 		this.podcastCache = podcastCache;
 		this.compositionService = compositionService;
 		this.db = db;
 		this.media = media;
+		this.transcriptions = transcriptions;
 		this.managedFileService = managedFileService;
 		this.publisher = publisher;
 		this.transactions = transactions;
-		this.mediaChannel = mediaChannel;
 		this.podcastRowMapper = new PodcastRowMapper();
 		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFileById);
 		this.mogulService = mogulService;
@@ -133,12 +131,16 @@ class DefaultPodcastService implements PodcastService {
 
 			if (normalizedEvent.context().containsKey(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY)) {
 
+				var segmentId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY);
+				var segment = this.getPodcastEpisodeSegmentById(segmentId);
 				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 					.params(new Date(), episodeId)
 					.update();
 
 				// todo we should kick off the transcription from this point onward.
-
+				var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
+						PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
+				this.transcriptions.transcribe(normalizedEvent.in().mogulId(), segment, podcastEpisodeContextKey);
 			}
 
 			this.refreshPodcastEpisodeCompleteness(episodeId);
@@ -196,10 +198,10 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@ApplicationModuleListener
-	void onPodcastEpisodeSegmentTranscription(TranscriptProcessedEvent processedEvent) throws Exception {
+	void onPodcastEpisodeSegmentTranscription(TranscriptionCompletedEvent processedEvent) throws Exception {
 		var key = processedEvent.key();
-		var txt = processedEvent.transcript();
-		var clzz = processedEvent.subject();
+		var txt = processedEvent.text();
+		var clzz = processedEvent.type();
 		var mogulId = processedEvent.mogulId();
 		if (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName())
 				&& key instanceof Number number) {
@@ -208,7 +210,7 @@ class DefaultPodcastService implements PodcastService {
 		}
 
 		var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId, processedEvent,
-				processedEvent.key().toString(), processedEvent.transcript());
+				processedEvent.key().toString(), processedEvent.text());
 		NotificationEvents.notify(notificationEvent);
 	}
 
@@ -566,9 +568,9 @@ class DefaultPodcastService implements PodcastService {
 		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
 		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
 		var mogul = this.mogulService.getCurrentMogul().id();
-		if (null != segment) {
-			this.transcribe(mogul, segment.id(), Segment.class,
-					this.managedFileService.read(segment.producedAudio().id()));
+		if (null != segment) {// todo
+			// this.transcribe(mogul, segment.id(), Segment.class,
+			// this.managedFileService.read(segment.producedAudio().id()));
 		}
 	}
 
@@ -689,12 +691,6 @@ class DefaultPodcastService implements PodcastService {
 			.param(mogulId)//
 			.query(this.podcastRowMapper)//
 			.list();
-	}
-
-	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
-		// var reply = this.transcriber.transcribe(resource);
-		// var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
-		// this.publisher.publishEvent(tpe);
 	}
 
 }

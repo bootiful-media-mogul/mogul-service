@@ -15,7 +15,7 @@ public interface PodcastService {
 
 	Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade);
 
-	void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript);
+//	void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript);
 
 	void transcribePodcastEpisodeSegment(Long episodeSegmentId);
 

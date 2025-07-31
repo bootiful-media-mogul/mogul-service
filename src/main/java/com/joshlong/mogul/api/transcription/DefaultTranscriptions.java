@@ -6,24 +6,18 @@ import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.core.GenericHandler;
-import org.springframework.integration.dsl.IntegrationFlow;
-import org.springframework.integration.event.inbound.ApplicationEventListeningMessageProducer;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Service
 @Transactional
 @SuppressWarnings("unchecked")
-class DefaultTranscriptionService implements TranscriptionService {
+class DefaultTranscriptions implements Transcriptions {
 
 	private final JdbcClient db;
 
@@ -31,13 +25,13 @@ class DefaultTranscriptionService implements TranscriptionService {
 
 	private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
 
-	private final ApplicationEventPublisher publisher;
+	private final MessageChannel requests;
 
-	DefaultTranscriptionService(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
-			ApplicationEventPublisher publisher, Map<String, TranscribableRepository<?>> repositories) {
+	DefaultTranscriptions(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
+			Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
-		this.publisher = publisher;
+		this.requests = requests;
 		this.repositories.putAll(repositories);
 	}
 
@@ -66,9 +60,8 @@ class DefaultTranscriptionService implements TranscriptionService {
 	}
 
 	@Override
-	public void transcribe(Transcribable payload) {
-		this.publisher
-			.publishEvent(new TranscriptionStartedEvent(payload.transcriptionKey(), payload.getClass().getName()));
+	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
+		this.requests.send(MessageBuilder.withPayload(new TranscriptionRequest(mogulId, payload, context)).build());
 	}
 
 	@Override
@@ -84,47 +77,9 @@ class DefaultTranscriptionService implements TranscriptionService {
 
 	@ApplicationModuleListener
 	void record(TranscriptionCompletedEvent event) {
-		var aClass = (Class<? extends Transcribable>) ReflectionUtils.classForName(event.type());
+		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.repositoryFor(aClass);
 		transcribableRepository.write(event.key(), event.text());
-	}
-
-}
-
-record TranscriptionStartedEvent(Long key, String type) {
-}
-
-record TranscriptionCompletedEvent(Long key, String type, String text) {
-}
-
-/**
- * we do this in a Spring Integration flow so that the requests are serialized and that no
- * more than one segment is being transcribed at a time. Hopefully this'll improve
- * scalability.
- */
-@Configuration
-@SuppressWarnings("unchecked")
-class TranscriptionIntegrationFlowConfiguration {
-
-	@Bean
-	IntegrationFlow integrationFlow(TransactionTemplate transactionTemplate, ApplicationEventPublisher publisher,
-			TranscriptionService transcriptionService, Transcriber transcriber) {
-		var ae = new ApplicationEventListeningMessageProducer();
-		ae.setEventTypes(TranscriptionStartedEvent.class);
-		return IntegrationFlow.from(ae) //
-			.handle((GenericHandler<TranscriptionStartedEvent>) (payload, _) -> { //
-				var clazz = (Class<? extends Transcribable>) ReflectionUtils.classForName(payload.type());
-				var repository = transcriptionService.repositoryFor(clazz);
-				var key = payload.key();
-				var audio = repository.audio(key);
-				var txtContent = transcriber.transcribe(audio);
-				transactionTemplate.execute(_ -> {
-					publisher.publishEvent(new TranscriptionCompletedEvent(key, payload.type(), txtContent));
-					return null;
-				});
-				return null;
-			}) //
-			.get();
 	}
 
 }
