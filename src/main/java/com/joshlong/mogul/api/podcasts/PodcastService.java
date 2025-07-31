@@ -9,54 +9,49 @@ import java.util.Map;
 
 public interface PodcastService {
 
-	Composition getPodcastEpisodeTitleComposition(Long episodeId);
+    Composition getPodcastEpisodeTitleComposition(Long episodeId);
 
-	Composition getPodcastEpisodeDescriptionComposition(Long episodeId);
+    Composition getPodcastEpisodeDescriptionComposition(Long episodeId);
 
-	Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade);
+    Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade);
 
-	// void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean
-	// transcribable, String transcript);
+    void movePodcastEpisodeSegmentUp(Long episode, Long segment);
 
-	// void transcribePodcastEpisodeSegment(Long episodeSegmentId);
+    void movePodcastEpisodeSegmentDown(Long episode, Long segment);
 
-	void movePodcastEpisodeSegmentUp(Long episode, Long segment);
+    void deletePodcastEpisodeSegment(Long episodeSegmentId);
 
-	void movePodcastEpisodeSegmentDown(Long episode, Long segment);
+    Segment getPodcastEpisodeSegmentById(Long episodeSegmentId);
 
-	void deletePodcastEpisodeSegment(Long episodeSegmentId);
+    Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);
 
-	Segment getPodcastEpisodeSegmentById(Long episodeSegmentId);
+    List<Segment> getPodcastEpisodeSegmentsByEpisode(Long id);
 
-	Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);
+    Collection<Podcast> getAllPodcastsByMogul(Long mogulId);
 
-	List<Segment> getPodcastEpisodeSegmentsByEpisode(Long id);
+    Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep);
 
-	Collection<Podcast> getAllPodcastsByMogul(Long mogulId);
+    Podcast createPodcast(Long mogulId, String title);
 
-	Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep);
+    Episode createPodcastEpisode(Long podcastId, String title, String description, ManagedFile graphic,
+                                 ManagedFile producedGraphic, ManagedFile producedAudio);
 
-	Podcast createPodcast(Long mogulId, String title);
+    Podcast getPodcastById(Long podcastId);
 
-	Episode createPodcastEpisode(Long podcastId, String title, String description, ManagedFile graphic,
-			ManagedFile producedGraphic, ManagedFile producedAudio);
+    Episode getPodcastEpisodeById(Long episodeId);
 
-	Podcast getPodcastById(Long podcastId);
+    Podcast updatePodcast(Long podcastId, String title);
 
-	Episode getPodcastEpisodeById(Long episodeId);
+    void deletePodcast(Long podcastId);
 
-	Podcast updatePodcast(Long podcastId, String title);
+    void deletePodcastEpisode(Long episodeId);
 
-	void deletePodcast(Long podcastId);
+    Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description);
 
-	void deletePodcastEpisode(Long episodeId);
+    Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description);
 
-	Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description);
+    void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
 
-	Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description);
-
-	void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
-
-	Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds);
+    Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds);
 
 }

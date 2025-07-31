@@ -18,7 +18,4 @@ public interface TranscribableRepository<T extends Transcribable> {
 	 * {@link Transcribable transcribable}
 	 */
 	Resource audio(Long key);
-
-	void write(Long key, String transcript);
-
 }

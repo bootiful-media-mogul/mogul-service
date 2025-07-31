@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Map;
 
-public interface Media {
+public interface MediaService {
 
 	/**
 	 * an asynchronous operation that publishes a {@link MediaNormalizedEvent} on success.
