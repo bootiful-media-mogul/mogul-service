@@ -13,15 +13,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 class PodcastServiceConfiguration {
 
-    @Bean
-    DefaultPodcastService defaultPodcastService(
-            CompositionService cs, MediaService mn, JdbcClient db, ManagedFileService mfs,
-            ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate,
-            CacheManager cacheManager) {
-        var podcastsCache = cacheManager.getCache("podcasts");
-        var podcastEpisodesCache = cacheManager.getCache("podcastEpisodes");
-        return new DefaultPodcastService(cs, mn, db, mfs, publisher, podcastsCache, podcastEpisodesCache,
-                transactionTemplate);
-    }
+	@Bean
+	DefaultPodcastService defaultPodcastService(CompositionService cs, MediaService mn, JdbcClient db,
+			ManagedFileService mfs, ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate,
+			CacheManager cacheManager) {
+		var podcastsCache = cacheManager.getCache("podcasts");
+		var podcastEpisodesCache = cacheManager.getCache("podcastEpisodes");
+		return new DefaultPodcastService(cs, mn, db, mfs, publisher, podcastsCache, podcastEpisodesCache,
+				transactionTemplate);
+	}
 
 }

@@ -23,4 +23,5 @@ class DefaultMediaService implements MediaService {
 			.build();
 		this.requests.send(episodeMediaNormalizationRequest);
 	}
+
 }

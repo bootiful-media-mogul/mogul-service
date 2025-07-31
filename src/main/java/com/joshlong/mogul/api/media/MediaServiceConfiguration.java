@@ -23,45 +23,46 @@ import java.util.concurrent.Executors;
 @Configuration
 class MediaServiceConfiguration {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    @Bean
-    DefaultMediaService mediaService(@MediaNormalizationMessageChannel MessageChannel channel) {
-        return new DefaultMediaService(channel);
-    }
+	@Bean
+	DefaultMediaService mediaService(@MediaNormalizationMessageChannel MessageChannel channel) {
+		return new DefaultMediaService(channel);
+	}
 
-    @Bean
-    @MediaNormalizationMessageChannel
-    PublishSubscribeChannelSpec<?> mediaNormalizationRequests() {
-        return MessageChannels.publishSubscribe(executor);
-    }
+	@Bean
+	@MediaNormalizationMessageChannel
+	PublishSubscribeChannelSpec<?> mediaNormalizationRequests() {
+		return MessageChannels.publishSubscribe(executor);
+	}
 
-    @Bean
-    IntegrationFlow mediaNormalizationIntegrationFlow( //
-                                                       @MediaNormalizationMessageChannel MessageChannel inbound, //
-                                                       ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate, //
-                                                       Normalization normalization) { //
-        return IntegrationFlow //
-                .from(inbound) //
-                .handle(MediaNormalizationRequest.class, (payload, _) -> { //
-                    try {
-                        normalization.normalize(payload.in(), payload.out());
-                        transactionTemplate.execute(_ -> {
-                            publisher.publishEvent(new MediaNormalizedEvent(payload.in(), payload.out(), payload.context()));
-                            return null;
-                        });
-                        log.debug("media normalization completed for {} to {}", payload.in().id(), payload.out().id());
-                    } //
-                    catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                    return null;
-                }) //
-                        .
+	@Bean
+	IntegrationFlow mediaNormalizationIntegrationFlow( //
+			@MediaNormalizationMessageChannel MessageChannel inbound, //
+			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate, //
+			Normalization normalization) { //
+		return IntegrationFlow //
+			.from(inbound) //
+			.handle(MediaNormalizationRequest.class, (payload, _) -> { //
+				try {
+					normalization.normalize(payload.in(), payload.out());
+					transactionTemplate.execute(_ -> {
+						publisher
+							.publishEvent(new MediaNormalizedEvent(payload.in(), payload.out(), payload.context()));
+						return null;
+					});
+					log.debug("media normalization completed for {} to {}", payload.in().id(), payload.out().id());
+				} //
+				catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				return null;
+			}) //
+			.
 
-                get();
-    }
+			get();
+	}
 
 }

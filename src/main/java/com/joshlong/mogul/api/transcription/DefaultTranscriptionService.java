@@ -20,94 +20,93 @@ import java.util.concurrent.ConcurrentHashMap;
 @SuppressWarnings("unchecked")
 class DefaultTranscriptionService implements TranscriptionService {
 
-    private final JdbcClient db;
+	private final JdbcClient db;
 
-    private final TranscriptionRowMapper transcribableRowMapper;
+	private final TranscriptionRowMapper transcribableRowMapper;
 
-    private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
+	private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
 
-    private final MessageChannel requests;
+	private final MessageChannel requests;
 
-    DefaultTranscriptionService(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
-                                Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
-        this.transcribableRowMapper = transcribableRowMapper;
-        this.db = db;
-        this.requests = requests;
-        this.repositories.putAll(repositories);
-    }
+	DefaultTranscriptionService(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
+			Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
+		this.transcribableRowMapper = transcribableRowMapper;
+		this.db = db;
+		this.requests = requests;
+		this.repositories.putAll(repositories);
+	}
 
-    private Transcription readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
-        // todo some sort of caching.
-        return CollectionUtils
-                .firstOrNull(this.db.sql("select * from transcription where payload_class = ? and payload = ?")
-                        .params(clazz, payloadKeyAsJson)
-                        .query(this.transcribableRowMapper)
-                        .list());
-    }
+	private Transcription readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
+		// todo some sort of caching.
+		return CollectionUtils
+			.firstOrNull(this.db.sql("select * from transcription where payload_class = ? and payload = ?")
+				.params(clazz, payloadKeyAsJson)
+				.query(this.transcribableRowMapper)
+				.list());
+	}
 
-    @Override
-    public Transcription transcription(Transcribable payload) {
-        var clazz = classNameFor(payload);
-        var payloadKeyAsJson = JsonUtils.write(payload.transcriptionKey());
-        var transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-        if (null == transcription) {
-            db //
-                    .sql("insert into transcription(payload, payload_class) values (?,?)") //
-                    .params(payloadKeyAsJson, clazz) //
-                    .update();
-            transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-        }
-        return transcription;
-    }
+	@Override
+	public Transcription transcription(Transcribable payload) {
+		var clazz = classNameFor(payload);
+		var payloadKeyAsJson = JsonUtils.write(payload.transcriptionKey());
+		var transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		if (null == transcription) {
+			db //
+				.sql("insert into transcription(payload, payload_class) values (?,?)") //
+				.params(payloadKeyAsJson, clazz) //
+				.update();
+			transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		}
+		return transcription;
+	}
 
-    @Override
-    public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
-        var message = MessageBuilder //
-                .withPayload(new TranscriptionRequest(mogulId, payload, context)) //
-                .build();
-        this.requests.send(message);
-    }
+	@Override
+	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
+		var message = MessageBuilder //
+			.withPayload(new TranscriptionRequest(mogulId, payload, context)) //
+			.build();
+		this.requests.send(message);
+	}
 
-    @Override
-    public void writeTranscript(Transcribable transcribable, String transcript) {
-        var payloadKeyAsJson = JsonUtils.write(transcribable.transcriptionKey());
-        var clazz = classNameFor(transcribable);
-        this.db
-                .sql("update transcription set transcript = ? where payload_class = ? and payload = ?")
-                .params(transcript, clazz, payloadKeyAsJson)
-                .update();
-    }
+	@Override
+	public void writeTranscript(Transcribable transcribable, String transcript) {
+		var payloadKeyAsJson = JsonUtils.write(transcribable.transcriptionKey());
+		var clazz = classNameFor(transcribable);
+		this.db.sql("update transcription set transcript = ? where payload_class = ? and payload = ?")
+			.params(transcript, clazz, payloadKeyAsJson)
+			.update();
+	}
 
-    private static String classNameFor(Transcribable transcribable) {
-        return transcribable.getClass().getName();
-    }
+	private static String classNameFor(Transcribable transcribable) {
+		return transcribable.getClass().getName();
+	}
 
-    @Override
-    public <T extends Transcribable> TranscribableRepository<T> repositoryFor(Class<T> clazz) {
-        for (var repository : this.repositories.values()) {
-            if (repository.supports(clazz)) {
-                return (TranscribableRepository<T>) repository;
-            }
-        }
-        throw new IllegalStateException(
-                "there's no " + TranscribableRepository.class.getName() + " for " + clazz.getName());
-    }
+	@Override
+	public <T extends Transcribable> TranscribableRepository<T> repositoryFor(Class<T> clazz) {
+		for (var repository : this.repositories.values()) {
+			if (repository.supports(clazz)) {
+				return (TranscribableRepository<T>) repository;
+			}
+		}
+		throw new IllegalStateException(
+				"there's no " + TranscribableRepository.class.getName() + " for " + clazz.getName());
+	}
 
-    @ApplicationModuleListener
-    void recordCompletedTranscript(TranscriptionCompletedEvent event) {
-        var aClass = (Class<? extends Transcribable>) (event.type());
-        var transcribableRepository = this.repositoryFor(aClass);
-        this.writeTranscript(transcribableRepository.find(event.key()), event.text());
-        var notificationEvent = NotificationEvent.systemNotificationEventFor(event.mogulId(), event,
-                event.key().toString(), event.text());
-        NotificationEvents.notify(notificationEvent);
-    }
+	@ApplicationModuleListener
+	void recordCompletedTranscript(TranscriptionCompletedEvent event) {
+		var aClass = (Class<? extends Transcribable>) (event.type());
+		var transcribableRepository = this.repositoryFor(aClass);
+		this.writeTranscript(transcribableRepository.find(event.key()), event.text());
+		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.mogulId(), event,
+				event.key().toString(), event.text());
+		NotificationEvents.notify(notificationEvent);
+	}
 
-    @ApplicationModuleListener
-    void transcriptionInvalidatedEvent(TranscriptionInvalidatedEvent event) {
-        var repository = this.repositoryFor(event.type());
-        var payload = repository.find(event.key());
-        this.transcribe(event.mogulId(), payload, event.context());
-    }
+	@ApplicationModuleListener
+	void transcriptionInvalidatedEvent(TranscriptionInvalidatedEvent event) {
+		var repository = this.repositoryFor(event.type());
+		var payload = repository.find(event.key());
+		this.transcribe(event.mogulId(), payload, event.context());
+	}
 
 }

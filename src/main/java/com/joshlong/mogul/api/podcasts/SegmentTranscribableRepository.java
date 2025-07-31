@@ -34,4 +34,5 @@ class SegmentTranscribableRepository implements TranscribableRepository<Segment>
 		var segment = this.find(key);
 		return this.managedFileService.read(segment.producedAudio().id());
 	}
+
 }
