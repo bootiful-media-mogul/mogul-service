@@ -86,4 +86,11 @@ class DefaultTranscriptionService implements TranscriptionService {
 		NotificationEvents.notify(notificationEvent);
 	}
 
+	@ApplicationModuleListener
+	void transcriptionInvalidatedEvent(TranscriptionInvalidatedEvent event) {
+		var repository = this.repositoryFor(event.type());
+		var payload = repository.find(event.key());
+		this.transcribe(event.mogulId(), payload, event.context());
+	}
+
 }

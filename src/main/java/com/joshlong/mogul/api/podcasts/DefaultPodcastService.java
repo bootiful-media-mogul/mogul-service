@@ -12,8 +12,7 @@ import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.transcription.TranscriptionCompletedEvent;
-import com.joshlong.mogul.api.transcription.TranscriptionService;
+import com.joshlong.mogul.api.transcription.TranscriptionInvalidatedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -123,30 +122,20 @@ class DefaultPodcastService implements PodcastService {
 	void mediaNormalized(MediaNormalizedEvent normalizedEvent) {
 
 		if (normalizedEvent.context().containsKey(PODCAST_EPISODE_CONTEXT_KEY)) {
-			// if its a podcast episode
 			var episodeId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_CONTEXT_KEY);
-			// and if its to do with a podcast episode segment
 			this.invalidatePodcastEpisodeCache(episodeId);
-
 			if (normalizedEvent.context().containsKey(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY)) {
-
 				var segmentId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY);
-				var segment = this.getPodcastEpisodeSegmentById(segmentId);
 				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 					.params(new Date(), episodeId)
 					.update();
-
-				// todo we should kick off the transcription from this point onward.
-				// var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY,
-				// (Object) episodeId,
-				// PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
-				// this.transcriptionService.transcribe(normalizedEvent.in().mogulId(),
-				// segment, podcastEpisodeContextKey);
+				var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
+						PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
+				this.publisher.publishEvent(new TranscriptionInvalidatedEvent(normalizedEvent.in().mogulId(), segmentId,
+						Segment.class, podcastEpisodeContextKey));
 			}
-
 			this.refreshPodcastEpisodeCompleteness(episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
-
 		}
 
 	}
@@ -331,22 +320,22 @@ class DefaultPodcastService implements PodcastService {
 		Assert.notNull(producedGraphic, "the produced graphic is null");
 		var kh = new GeneratedKeyHolder();
 		this.db.sql("""
-					insert into podcast_episode(
-						podcast_id,
-						title,
-						description,
-						graphic_managed_file_id ,
-						produced_graphic_managed_file_id,
-						produced_audio_managed_file_id
-					)
-					values (
-						?,
-						?,
-						?,
-						?,
-						?,
-						?
-					)
+				insert into podcast_episode(
+				podcast_id,
+				title,
+				description,
+				graphic_managed_file_id ,
+				produced_graphic_managed_file_id,
+				produced_audio_managed_file_id
+				)
+				values (
+				?,
+				?,
+				?,
+				?,
+				?,
+				?
+				)
 				""")
 			.params(podcastId, title, description, graphic.id(), producedGraphic.id(), producedAudio.id())
 			.update(kh);
@@ -508,22 +497,22 @@ class DefaultPodcastService implements PodcastService {
 		var uid = UUID.randomUUID().toString();
 		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		var sql = """
-					insert into podcast_episode_segment (
-						podcast_episode_id,
-						segment_audio_managed_file_id ,
-						produced_segment_audio_managed_file_id  ,
-						cross_fade_duration,
-						name,
-						sequence_number
-					)
-					values(
-						?,
-						?,
-						?,
-						?,
-						?,
-					 	?
-					);
+				insert into podcast_episode_segment (
+				podcast_episode_id,
+				segment_audio_managed_file_id ,
+				produced_segment_audio_managed_file_id  ,
+				cross_fade_duration,
+				name,
+				sequence_number
+				)
+				values(
+				?,
+				?,
+				?,
+				?,
+				?,
+				?
+				);
 				""";
 		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, uid, "", 0,
 				CommonMediaTypes.MP3, false);
