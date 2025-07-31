@@ -1,11 +1,12 @@
 package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.TranscribableRepository;
 import com.joshlong.mogul.api.Transcription;
 
 import java.util.Map;
 
-public interface Transcriptions {
+public interface TranscriptionService {
 
 	/**
 	 * returns the thing that holds the state of an ongoing transcription.

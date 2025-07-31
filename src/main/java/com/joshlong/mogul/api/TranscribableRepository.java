@@ -1,6 +1,5 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.Transcribable;
 import org.springframework.core.io.Resource;
 
 import java.io.Serializable;
@@ -12,14 +11,14 @@ public interface TranscribableRepository<T extends Transcribable> {
 
 	boolean supports(Class<?> clazz);
 
-	T find(Serializable key);
+	T find(Long key);
 
 	/**
 	 * load the audio file as appropriate for a particular implementation of
 	 * {@link Transcribable transcribable}
 	 */
-	Resource audio(Serializable key);
+	Resource audio(Long key);
 
-	void write(Serializable key, String transcript);
+	void write(Long key, String transcript);
 
 }

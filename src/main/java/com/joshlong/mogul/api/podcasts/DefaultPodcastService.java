@@ -13,7 +13,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.transcription.TranscriptionCompletedEvent;
-import com.joshlong.mogul.api.transcription.Transcriptions;
+import com.joshlong.mogul.api.transcription.TranscriptionService;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -71,18 +71,17 @@ class DefaultPodcastService implements PodcastService {
 
 	private final TransactionTemplate transactions;
 
-	private final Transcriptions transcriptions;
+	// private final TranscriptionService transcriptionService;
 
 	DefaultPodcastService(CompositionService compositionService, Media media, JdbcClient db,
 			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Cache podcastCache,
-			Cache podcastEpisodesCache, MogulService mogulService, TransactionTemplate transactions,
-			Transcriptions transcriptions) {
+			Cache podcastEpisodesCache, MogulService mogulService, TransactionTemplate transactions) {
 		this.podcastEpisodesCache = podcastEpisodesCache;
 		this.podcastCache = podcastCache;
 		this.compositionService = compositionService;
 		this.db = db;
 		this.media = media;
-		this.transcriptions = transcriptions;
+		// this.transcriptionService = transcriptionService;
 		this.managedFileService = managedFileService;
 		this.publisher = publisher;
 		this.transactions = transactions;
@@ -138,9 +137,11 @@ class DefaultPodcastService implements PodcastService {
 					.update();
 
 				// todo we should kick off the transcription from this point onward.
-				var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
-						PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
-				this.transcriptions.transcribe(normalizedEvent.in().mogulId(), segment, podcastEpisodeContextKey);
+				// var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY,
+				// (Object) episodeId,
+				// PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
+				// this.transcriptionService.transcribe(normalizedEvent.in().mogulId(),
+				// segment, podcastEpisodeContextKey);
 			}
 
 			this.refreshPodcastEpisodeCompleteness(episodeId);
@@ -197,22 +198,24 @@ class DefaultPodcastService implements PodcastService {
 
 	}
 
-	@ApplicationModuleListener
-	void onPodcastEpisodeSegmentTranscription(TranscriptionCompletedEvent processedEvent) throws Exception {
-		var key = processedEvent.key();
-		var txt = processedEvent.text();
-		var clzz = processedEvent.type();
-		var mogulId = processedEvent.mogulId();
-		if (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName())
-				&& key instanceof Number number) {
-			var id = number.longValue();
-			this.setPodcastEpisodeSegmentTranscript(id, true, txt);
-		}
-
-		var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId, processedEvent,
-				processedEvent.key().toString(), processedEvent.text());
-		NotificationEvents.notify(notificationEvent);
-	}
+	/*
+	 * todo could we move this into the transcription service ? arent we already listening
+	 * for this event and recording the change in a generic fashion elsewhere? todo we
+	 * ARE! its in the transcriptionservice! so.... why couldnt we also just publish a
+	 * NotificationEvent and be done with it?
+	 *
+	 * @ApplicationModuleListener void
+	 * onPodcastEpisodeSegmentTranscription(TranscriptionCompletedEvent processedEvent)
+	 * throws Exception { var key = processedEvent.key(); var txt = processedEvent.text();
+	 * var clzz = processedEvent.type(); var mogulId = processedEvent.mogulId(); if
+	 * (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName()) && key
+	 * instanceof Number number) { var id = number.longValue();
+	 * this.setPodcastEpisodeSegmentTranscript(id, true, txt); }
+	 *
+	 * var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId,
+	 * processedEvent, processedEvent.key().toString(), processedEvent.text());
+	 * NotificationEvents.notify(notificationEvent); }
+	 */
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
 		this.transactions.execute(_ -> {
@@ -541,39 +544,32 @@ class DefaultPodcastService implements PodcastService {
 		return this.getPodcastEpisodeSegmentById(id.longValue());
 	}
 
-	@Override
-	public void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript) {
-		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
-		if (null != segment) {
-			var updated = this.db
-				.sql("update podcast_episode_segment set transcript = ?, transcribable = ?  where id = ? ")
-				.params(transcript, transcribable, segment.id())
-				.update();
-			Assert.state(updated != 0,
-					"there should be at least " + "one transcript set for segment # " + segment.id());
-			var podcastEpisodeId = db
-				.sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?")
-				.param(episodeSegmentId)
-				.query((rs, _) -> rs.getLong("podcast_episode_id"))
-				.single();
-			this.invalidatePodcastEpisodeCache(podcastEpisodeId);
-		} //
-		else {
-			this.log.debug("could not find the podcast episode segment with id: {} ", episodeSegmentId);
-		}
-	}
-
-	@Override
-	public void transcribePodcastEpisodeSegment(Long episodeSegmentId) {
-		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
-		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
-		var mogul = this.mogulService.getCurrentMogul().id();
-		if (null != segment) {// todo
-			// this.transcribe(mogul, segment.id(), Segment.class,
-			// this.managedFileService.read(segment.producedAudio().id()));
-		}
-	}
-
+	/*
+	 * //todo this code needs to exist, perhaps in the repository? SOMEWHERE, surely. can
+	 * we move the resolution of the Repositories to the controller? // could we have a
+	 * transcriptionController that handles updating transcriptions for all things in a
+	 * generic fashion? // @Override public void setPodcastEpisodeSegmentTranscript(Long
+	 * episodeSegmentId, boolean transcribable, String transcript) { var segment =
+	 * this.getPodcastEpisodeSegmentById(episodeSegmentId); if (null != segment) { var
+	 * updated = this.db
+	 * .sql("update podcast_episode_segment set transcript = ?, transcribable = ?  where id = ? "
+	 * ) .params(transcript, transcribable, segment.id()) .update(); Assert.state(updated
+	 * != 0, "there should be at least " + "one transcript set for segment # " +
+	 * segment.id()); var podcastEpisodeId = db
+	 * .sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?"
+	 * ) .param(episodeSegmentId) .query((rs, _) -> rs.getLong("podcast_episode_id"))
+	 * .single(); this.invalidatePodcastEpisodeCache(podcastEpisodeId); } // else {
+	 * this.log.debug("could not find the podcast episode segment with id: {} ",
+	 * episodeSegmentId); } }
+	 *
+	 * @Override public void transcribePodcastEpisodeSegment(Long episodeSegmentId) {
+	 * this.log.debug("going to refresh the transcription for segment {}. ",
+	 * episodeSegmentId); var segment =
+	 * this.getPodcastEpisodeSegmentById(episodeSegmentId); var mogul =
+	 * this.mogulService.getCurrentMogul().id(); if (null != segment) {// todo //
+	 * this.transcribe(mogul, segment.id(), Segment.class, //
+	 * this.managedFileService.read(segment.producedAudio().id())); } }
+	 */
 	@Override
 	public Segment getPodcastEpisodeSegmentById(Long episodeSegmentId) {
 		return this.db//

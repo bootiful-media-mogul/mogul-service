@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.TranscribableRepository;
 import com.joshlong.mogul.api.transcription.audio.Transcriber;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -23,25 +24,25 @@ class TranscriptionConfiguration {
 	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	@Bean
-	DefaultTranscriptions defaultTranscriptions(JdbcClient db, Map<String, TranscribableRepository<?>> repositories,
-			@TranscriptionMessageChannel MessageChannel in) {
-		return new DefaultTranscriptions(transcriptionRowMapper(), db, repositories, in);
+	DefaultTranscriptionService defaultTranscriptions(JdbcClient db,
+			Map<String, TranscribableRepository<?>> repositories, @TranscriptionMessageChannel MessageChannel in) {
+		return new DefaultTranscriptionService(transcriptionRowMapper(), db, repositories, in);
 	}
 
 	@Bean
 	IntegrationFlow transcriptionIntegrationFlow(ApplicationEventPublisher publisher,
-			@TranscriptionMessageChannel MessageChannel inbound, Transcriptions transcriptions, Transcriber transcriber,
-			TransactionTemplate tx) {
+			@TranscriptionMessageChannel MessageChannel inbound, TranscriptionService transcriptionService,
+			Transcriber transcriber, TransactionTemplate tx) {
 		return IntegrationFlow //
 			.from(inbound) //
 			.handle((GenericHandler<TranscriptionRequest>) (payload, headers) -> {
 				var transcribable = payload.payload();
 				var mogulId = payload.mogulId();
-				var transcription = transcriptions.transcription(transcribable);
+				var transcription = transcriptionService.transcription(transcribable);
 				var clazz = (Class<? extends Transcribable>) transcription.payloadClass();
 				this.publishInTransaction(publisher, tx,
 						new TranscriptionStartedEvent(mogulId, transcribable.transcriptionKey(), clazz));
-				var repository = transcriptions.repositoryFor(clazz);
+				var repository = transcriptionService.repositoryFor(clazz);
 				var audio = repository.audio(transcribable.transcriptionKey());
 				var content = transcriber.transcribe(audio);
 				this.publishInTransaction(publisher, tx,

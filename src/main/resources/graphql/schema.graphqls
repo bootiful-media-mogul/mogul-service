@@ -121,7 +121,7 @@ type NotificationEvent {
 
 type Mutation {
 
-    # publications
+    # publicationService
     unpublish( publicationId: Int): Boolean
     publish( publishableId: Int,
         publishableType: String,
@@ -171,7 +171,7 @@ type Query {
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
-    # publications
+    # publicationService
     publicationsForPublishable( type : String, id: Int ) : [Publication]
     canPublish ( publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
 

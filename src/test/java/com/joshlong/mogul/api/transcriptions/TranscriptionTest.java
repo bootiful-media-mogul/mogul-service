@@ -4,8 +4,7 @@ import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import com.joshlong.mogul.api.transcription.Transcriptions;
-import org.awaitility.Awaitility;
+import com.joshlong.mogul.api.transcription.TranscriptionService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -21,8 +20,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import java.time.Duration;
 
 import static com.joshlong.mogul.api.transcriptions.TranscriptionTestSecurityConfiguration.ONE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,7 +51,7 @@ class TranscriptionTest {
 	@Disabled
 	@Test
 	@WithUserDetails(ONE)
-	void transcription(@Autowired Transcriptions transcriptions, @Autowired PodcastService podcastService,
+	void transcription(@Autowired TranscriptionService transcriptionService, @Autowired PodcastService podcastService,
 			@Autowired MogulService mogulService, @Autowired TransactionTemplate transactionTemplate) {
 		var mogulId = transactionTemplate.execute(_ -> {
 			var login = mogulService.login("username", ONE, "123", "Josh", "Long");
@@ -67,7 +64,7 @@ class TranscriptionTest {
 		assertEquals(episode.id(), episode.compositionKey());
 
 		var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
-		var transcription = transcriptions.transcription(segment);
+		var transcription = transcriptionService.transcription(segment);
 
 		var cpr = new ClassPathResource("/samples/2.aiff.mp3");
 		managedFileService.write(segment.producedAudio().id(), cpr.getFilename(), CommonMediaTypes.MP3, cpr);

@@ -15,7 +15,7 @@ class SettingsLookupClient implements Function<DefaultPublicationService.Setting
 
 	@Override
 	public Map<String, String> apply(DefaultPublicationService.SettingsLookup settingsLookup) {
-		return settings.getAllValuesByCategory(settingsLookup.mogulId(), settingsLookup.category());
+		return this.settings.getAllValuesByCategory(settingsLookup.mogulId(), settingsLookup.category());
 	}
 
 }

@@ -1,11 +1,12 @@
 package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.TranscribableRepository;
 import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
@@ -17,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Transactional
 @SuppressWarnings("unchecked")
-class DefaultTranscriptions implements Transcriptions {
+class DefaultTranscriptionService implements TranscriptionService {
 
 	private final JdbcClient db;
 
@@ -27,7 +28,7 @@ class DefaultTranscriptions implements Transcriptions {
 
 	private final MessageChannel requests;
 
-	DefaultTranscriptions(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
+	DefaultTranscriptionService(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
 			Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
@@ -76,10 +77,13 @@ class DefaultTranscriptions implements Transcriptions {
 	}
 
 	@ApplicationModuleListener
-	void record(TranscriptionCompletedEvent event) {
+	void recordCompletedTranscript(TranscriptionCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.repositoryFor(aClass);
 		transcribableRepository.write(event.key(), event.text());
+		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.mogulId(), event,
+				event.key().toString(), event.text());
+		NotificationEvents.notify(notificationEvent);
 	}
 
 }

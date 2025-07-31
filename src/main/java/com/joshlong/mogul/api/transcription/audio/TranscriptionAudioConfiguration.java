@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 class TranscriptionAudioConfiguration {
 
 	@Bean
-	ChunkingTranscriber chunkingTranscriptionService(ApiProperties transcriptionProperties,
+	ChunkingTranscriber chunkingTranscriber(ApiProperties transcriptionProperties,
 			OpenAiAudioTranscriptionModel transcriptionModel) {
 		var root = transcriptionProperties.transcriptions().root();
 		return new ChunkingTranscriber(transcriptionModel, root, (10 * 1024 * 1024));

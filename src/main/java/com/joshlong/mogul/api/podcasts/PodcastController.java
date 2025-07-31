@@ -5,7 +5,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.transcription.Transcriptions;
+import com.joshlong.mogul.api.transcription.TranscriptionService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
@@ -29,12 +29,13 @@ class PodcastController {
 
 	private final PodcastService podcastService;
 
-	private final Transcriptions transcriptions;
+	private final TranscriptionService transcriptionService;
 
-	PodcastController(MogulService mogulService, PodcastService podcastService, Transcriptions transcriptions) {
+	PodcastController(MogulService mogulService, PodcastService podcastService,
+			TranscriptionService transcriptionService) {
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
-		this.transcriptions = transcriptions;
+		this.transcriptionService = transcriptionService;
 	}
 
 	@QueryMapping
@@ -82,14 +83,17 @@ class PodcastController {
 
 	@MutationMapping
 	boolean transcribePodcastEpisodeSegment(@Argument Long podcastEpisodeSegmentId) {
-		this.podcastService.transcribePodcastEpisodeSegment(podcastEpisodeSegmentId);
+		// this.podcastService.transcribePodcastEpisodeSegment(podcastEpisodeSegmentId);
+		// todo this should not be commented out!
 		return true;
 	}
 
 	@MutationMapping
 	boolean setPodcastEpisodeSegmentTranscript(@Argument Long podcastEpisodeSegmentId, @Argument boolean transcribable,
 			@Argument String transcript) {
-		this.podcastService.setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId, transcribable, transcript);
+		// todo fix this line below it should not be commented out.
+		// this.podcastService.setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId,
+		// transcribable, transcript);
 		return true;
 	}
 
@@ -212,7 +216,7 @@ class PodcastController {
 
 	@SchemaMapping
 	Transcription transcription(Segment segment) {
-		return this.transcriptions.transcription(segment);
+		return this.transcriptionService.transcription(segment);
 	}
 
 }
