@@ -102,7 +102,7 @@ class PodcastEpisodeFeedController {
 	}
 
 	private String publicationUrl(Episode episode) {
-		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
+		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publishableId(),
 				Episode.class);
 		if (episode.complete() && !publications.isEmpty()) {
 			var publication = publications//

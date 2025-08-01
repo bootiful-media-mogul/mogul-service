@@ -5,6 +5,6 @@ package com.joshlong.mogul.api;
  */
 public interface Transcribable {
 
-	Long transcriptionKey();
+	Long transcribableId();
 
 }

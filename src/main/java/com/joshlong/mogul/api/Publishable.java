@@ -6,6 +6,6 @@ package com.joshlong.mogul.api;
  */
 public interface Publishable {
 
-	Long publicationKey();
+	Long publishableId();
 
 }

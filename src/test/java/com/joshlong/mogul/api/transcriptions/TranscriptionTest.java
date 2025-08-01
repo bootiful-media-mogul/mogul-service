@@ -64,7 +64,7 @@ class TranscriptionTest {
 		assertEquals(episode.id(), episode.compositionKey());
 
 		var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
-		var transcription = transcriptionService.transcription(segment);
+		var transcription = transcriptionService.transcription(mogulId, segment);
 
 		var cpr = new ClassPathResource("/samples/2.aiff.mp3");
 		managedFileService.write(segment.producedAudio().id(), cpr.getFilename(), CommonMediaTypes.MP3, cpr);

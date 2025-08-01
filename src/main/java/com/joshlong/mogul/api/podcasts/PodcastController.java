@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.Transcription;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
@@ -81,21 +80,6 @@ class PodcastController {
 		this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
 		return true;
 	}
-	/*
-	 * TODO the UI should call a TranscriptionController, not the PodcastController, to
-	 * update the transcript private Segment transcribable(Long segmentId) { var
-	 * transcribableRepository = transcriptionService.repositoryFor(Segment.class); return
-	 * transcribableRepository.find(segmentId); }
-	 *
-	 * @MutationMapping boolean setPodcastEpisodeSegmentTranscript(
-	 *
-	 * @Argument Long podcastEpisodeSegmentId,
-	 *
-	 * @Argument String transcript ) { var transcribable =
-	 * transcribable(podcastEpisodeSegmentId);
-	 * this.transcriptionService.writeTranscript(transcribable, transcript); return true;
-	 * }
-	 */
 
 	@SchemaMapping
 	long created(Podcast podcast) {
@@ -211,12 +195,12 @@ class PodcastController {
 			this.log.warn("experienced an exception when trying to emit "
 					+ "a podcast completed event for podcast episode id # {}", id);
 		} //
-
 	}
 
 	@SchemaMapping
 	Transcription transcription(Segment segment) {
-		return this.transcriptionService.transcription(segment);
+		var mogul = this.mogulService.getCurrentMogul();
+		return this.transcriptionService.transcription(mogul.id(), segment);
 	}
 
 }

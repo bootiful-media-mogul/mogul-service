@@ -48,11 +48,11 @@ import java.util.stream.Collectors;
 @Transactional
 class DefaultPodcastService implements PodcastService {
 
-	private static final String PODCAST_EPISODE_CONTEXT_KEY = "podcastEpisodeId";
+	static final String PODCAST_EPISODE_CONTEXT_KEY = "podcastEpisodeId";
 
-	private static final String PODCAST_EPISODE_SEGMENT_CONTEXT_KEY = "podcastEpisodeSegmentId";
+	static final String PODCAST_EPISODE_SEGMENT_CONTEXT_KEY = "podcastEpisodeSegmentId";
 
-	private static final String PODCAST_EPISODE_GRAPHIC_CONTEXT_KEY = "podcastEpisodeGraphicId";
+	static final String PODCAST_EPISODE_GRAPHIC_CONTEXT_KEY = "podcastEpisodeGraphicId";
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -118,11 +118,8 @@ class DefaultPodcastService implements PodcastService {
 		return new ArrayList<>(episodeSegmentsFromDb);
 	}
 
-	private void triggerTranscription(Long mogulId, Long episodeId, Long segmentId) {
-		var podcastEpisodeContextKey = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId,
-				PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segmentId);
-		this.publisher.publishEvent(
-				new TranscriptionInvalidatedEvent(mogulId, segmentId, Segment.class, podcastEpisodeContextKey));
+	private void triggerTranscription(Long mogulId, Long segmentId) {
+		this.publisher.publishEvent(new TranscriptionInvalidatedEvent(mogulId, segmentId, Segment.class, Map.of()));
 	}
 
 	@ApplicationModuleListener
@@ -136,7 +133,7 @@ class DefaultPodcastService implements PodcastService {
 				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 					.params(new Date(), episodeId)
 					.update();
-				this.triggerTranscription(normalizedEvent.in().mogulId(), episodeId, segmentId);
+				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId);
 			}
 			this.refreshPodcastEpisodeCompleteness(episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));

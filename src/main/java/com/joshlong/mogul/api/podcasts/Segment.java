@@ -2,7 +2,6 @@ package com.joshlong.mogul.api.podcasts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
-import org.springframework.core.io.Resource;
 
 /**
  * represents an arbitrary segment of a podcast episode.
@@ -18,7 +17,7 @@ public record Segment(Long episodeId, Long id, ManagedFile audio, ManagedFile pr
 		String name, int order) implements Transcribable {
 
 	@Override
-	public Long transcriptionKey() {
+	public Long transcribableId() {
 		return this.id();
 	}
 }

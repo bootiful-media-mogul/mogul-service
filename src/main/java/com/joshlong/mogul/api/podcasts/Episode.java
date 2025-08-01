@@ -11,7 +11,7 @@ public record Episode(Long id, Long podcastId, String title, String description,
 		Date producedAudioAssetsUpdated) implements Publishable, Composable {
 
 	@Override
-	public Long publicationKey() {
+	public Long publishableId() {
 		return this.id();
 	}
 

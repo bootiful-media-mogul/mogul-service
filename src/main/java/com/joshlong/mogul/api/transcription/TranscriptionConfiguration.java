@@ -38,15 +38,14 @@ class TranscriptionConfiguration {
 			.handle((GenericHandler<TranscriptionRequest>) (payload, headers) -> {
 				var transcribable = payload.payload();
 				var mogulId = payload.mogulId();
-				var transcription = transcriptionService.transcription(transcribable);
+				var transcription = transcriptionService.transcription(payload.mogulId(), transcribable);
 				var clazz = (Class<? extends Transcribable>) transcription.payloadClass();
-				this.publishInTransaction(publisher, tx,
-						new TranscriptionStartedEvent(mogulId, transcribable.transcriptionKey(), clazz));
+				var key = transcribable.transcribableId();
+				this.publishInTransaction(publisher, tx, new TranscriptionStartedEvent(mogulId, key, clazz));
 				var repository = transcriptionService.repositoryFor(clazz);
-				var audio = repository.audio(transcribable.transcriptionKey());
+				var audio = repository.audio(key);
 				var content = transcriber.transcribe(audio);
-				this.publishInTransaction(publisher, tx,
-						new TranscriptionCompletedEvent(mogulId, transcribable.transcriptionKey(), clazz, content));
+				this.publishInTransaction(publisher, tx, new TranscriptionCompletedEvent(mogulId, key, clazz, content));
 				return null;
 			}) //
 			.get();

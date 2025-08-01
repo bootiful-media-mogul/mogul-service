@@ -9,7 +9,7 @@ import java.util.Map;
 public record Post(Long mogulId, Long id, String title, Date created, String content, String[] tags, boolean complete,
 		Map<String, ManagedFile> assets) implements Publishable {
 	@Override
-	public Long publicationKey() {
+	public Long publishableId() {
 		return this.id;
 	}
 }

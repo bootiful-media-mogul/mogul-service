@@ -2,7 +2,7 @@ package com.joshlong.mogul.api;
 
 import org.springframework.core.io.Resource;
 
-import java.io.Serializable;
+import java.util.Map;
 
 /**
  * given a
@@ -18,5 +18,14 @@ public interface TranscribableRepository<T extends Transcribable> {
 	 * {@link Transcribable transcribable}
 	 */
 	Resource audio(Long key);
+
+	/**
+	 * the idea is that after the transcription is done, we'll need to publish an event
+	 * that particular subsystems will need to listen to if and only if the event applies
+	 * to them. we leave it up to each subsystem to furnish that configuration.
+	 */
+	default Map<String, Object> defaultContext(Long transcribableId) {
+		return Map.of();
+	}
 
 }

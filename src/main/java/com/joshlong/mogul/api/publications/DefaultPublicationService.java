@@ -123,7 +123,7 @@ class DefaultPublicationService implements PublicationService {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
 			var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-			var publicationData = JsonUtils.write(payload.publicationKey());
+			var publicationData = JsonUtils.write(payload.publishableId());
 			var entityClazz = payload.getClass().getName();
 			var kh = new GeneratedKeyHolder();
 			this.db.sql(
