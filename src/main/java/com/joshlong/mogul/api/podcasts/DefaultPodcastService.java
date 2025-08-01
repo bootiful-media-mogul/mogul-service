@@ -6,13 +6,12 @@ import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
+import com.joshlong.mogul.api.media.MediaNormalizedEvent;
+import com.joshlong.mogul.api.media.MediaService;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.media.MediaNormalizer;
-import com.joshlong.mogul.api.transcription.Transcriber;
-import com.joshlong.mogul.api.transcription.TranscriptProcessedEvent;
+import com.joshlong.mogul.api.transcription.TranscriptionInvalidatedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -21,32 +20,39 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
- * This service uses a caching scheme that you need to be aware of when effecting changes.
- * All podcasts from all moguls are stored, live, in this class. when there is an update,
- * the entire graph for the mogul is reloaded and kept in {@link ConcurrentHashMap}. The
- * key is to make sure all updates to the SQL DB result in a refreshing of the mogul
- * object graph kept in memory.
+ * <li>resizing images</li>
+ * <li>transcoding audio segments</li>
+ * <li>creating transcripts</li>
+ * <p>
+ * Once all these things are done, we'll communicate state changes via events.
+ * <p>
+ * we need to decouple {@link PodcastService podcastService} from everything to do with
+ * <EM>transcription</EM> or <em>media normalization</em>. the {@link PodcastService
+ * podcastService} handles operations in a transaction. The transcription and
+ * normalization should <EM>not</EM> happen in a transaction, as this will block the SQL
+ * database and thwart scalability.
  */
+
 @Transactional
 class DefaultPodcastService implements PodcastService {
+
+	static final String PODCAST_EPISODE_CONTEXT_KEY = "podcastEpisodeId";
+
+	static final String PODCAST_EPISODE_SEGMENT_CONTEXT_KEY = "podcastEpisodeSegmentId";
+
+	static final String PODCAST_EPISODE_GRAPHIC_CONTEXT_KEY = "podcastEpisodeGraphicId";
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -58,35 +64,29 @@ class DefaultPodcastService implements PodcastService {
 
 	private final ManagedFileService managedFileService;
 
-	private final MediaNormalizer mediaNormalizer;
+	private final MediaService mediaService;
 
 	private final JdbcClient db;
 
-	private final Transcriber transcriber;
-
 	private final ApplicationEventPublisher publisher;
-
-	private final MogulService mogulService;
 
 	private final Cache podcastCache, podcastEpisodesCache;
 
-	private final TransactionTemplate tt;
+	private final TransactionTemplate transactions;
 
-	DefaultPodcastService(CompositionService compositionService, MediaNormalizer mediaNormalizer, JdbcClient db,
-			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Transcriber transcriber,
-			Cache podcastCache, Cache podcastEpisodesCache, MogulService mogulService, TransactionTemplate tt) {
+	DefaultPodcastService(CompositionService compositionService, MediaService mediaService, JdbcClient db,
+			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Cache podcastCache,
+			Cache podcastEpisodesCache, TransactionTemplate transactions) {
 		this.podcastEpisodesCache = podcastEpisodesCache;
 		this.podcastCache = podcastCache;
 		this.compositionService = compositionService;
 		this.db = db;
-		this.mediaNormalizer = mediaNormalizer;
+		this.mediaService = mediaService;
 		this.managedFileService = managedFileService;
 		this.publisher = publisher;
-		this.transcriber = transcriber;
-		this.tt = tt;
+		this.transactions = transactions;
 		this.podcastRowMapper = new PodcastRowMapper();
 		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFileById);
-		this.mogulService = mogulService;
 	}
 
 	@Override
@@ -118,10 +118,32 @@ class DefaultPodcastService implements PodcastService {
 		return new ArrayList<>(episodeSegmentsFromDb);
 	}
 
+	private void triggerTranscription(Long mogulId, Long segmentId) {
+		this.publisher.publishEvent(new TranscriptionInvalidatedEvent(mogulId, segmentId, Segment.class, Map.of()));
+	}
+
+	@ApplicationModuleListener
+	void mediaNormalized(MediaNormalizedEvent normalizedEvent) {
+
+		if (normalizedEvent.context().containsKey(PODCAST_EPISODE_CONTEXT_KEY)) {
+			var episodeId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_CONTEXT_KEY);
+			this.invalidatePodcastEpisodeCache(episodeId);
+			if (normalizedEvent.context().containsKey(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY)) {
+				var segmentId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_SEGMENT_CONTEXT_KEY);
+				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
+					.params(new Date(), episodeId)
+					.update();
+				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId);
+			}
+			this.refreshPodcastEpisodeCompleteness(episodeId);
+			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
+		}
+
+	}
+
 	@ApplicationModuleListener
 	void podcastManagedFileUpdated(ManagedFileUpdatedEvent managedFileUpdatedEvent) throws Exception {
 		var mf = managedFileUpdatedEvent.managedFile();
-
 		var sql = """
 				select pes.podcast_episode_id  as id
 				from podcast_episode_segment pes
@@ -133,83 +155,41 @@ class DefaultPodcastService implements PodcastService {
 				""";
 		var episodeId = CollectionUtils
 			.firstOrNull(this.db.sql(sql).params(mf.id(), mf.id()).query((rs, _) -> rs.getLong("id")).set());
-		if (episodeId == null) {
-			this.log.trace(
-					"got a {}, but it doesn't seem to affect any of our podcasts. so, kicking the can down the road",
-					managedFileUpdatedEvent.getClass().getName());
+		if (episodeId == null) { // not our problem.
 			return;
 		}
-
 		this.invalidatePodcastEpisodeCache(episodeId);
 		var episode = this.getPodcastEpisodeById(episodeId);
-
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
-
-		var updatedFlag = new AtomicBoolean(false);
-		if (episode.graphic().id().equals(mf.id())) { // either it's the graphic..
-			updatedFlag.set(true);
-			this.mediaNormalizer.normalize(episode.graphic(), episode.producedGraphic());
-			this.log.debug("got a {}, updated the produced graphic for podcast episode {} and managedFile {}",
-					managedFileUpdatedEvent.getClass().getName(), episode.id(), mf.id());
-			this.invalidatePodcastEpisodeCache(episodeId);
+		if (episode.graphic().id().equals(mf.id())) {
+			var podcastEpisodeContext = Map.of(PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId, //
+					PODCAST_EPISODE_GRAPHIC_CONTEXT_KEY, episode.graphic().id() //
+			);
+			this.mediaService.normalize(episode.graphic(), episode.producedGraphic(), podcastEpisodeContext);
 		} //
 		else {
 			// or it's one of the segments
 			for (var segment : segments) {
 				if (segment.audio().id().equals(mf.id())) {
-					this.mediaNormalizer.normalize(segment.audio(), segment.producedAudio());
-					// if this is older than the last time we have produced any audio,
-					// then we won't reproduce the audio
-					this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
-						.params(new Date(), episodeId)
-						.update();
-					this.invalidatePodcastEpisodeCache(episodeId);
-					if (segment.transcribable() && !StringUtils.hasText(segment.transcript())) {
-						this.transcribe(mf.mogulId(), segment.id(), Segment.class,
-								this.managedFileService.read(segment.producedAudio().id()));
-					}
-					updatedFlag.set(true);
-					this.log.debug(
-							"got a {}, updated the produced audio for podcast episode segment {} and managedFile {}",
-							managedFileUpdatedEvent.getClass().getName(), segment.id(), mf.id());
-
+					var podcastEpisodeSegmentContext = Map.of( //
+							PODCAST_EPISODE_CONTEXT_KEY, (Object) episodeId, //
+							PODCAST_EPISODE_SEGMENT_CONTEXT_KEY, segment.id() //
+					);
+					this.mediaService.normalize(segment.audio(), segment.producedAudio(), podcastEpisodeSegmentContext);
 				}
 			}
 		}
-		// once the file has been normalized, we can worry about completeness
-		if (updatedFlag.get()) {
-			this.refreshPodcastEpisodeCompleteness(episodeId);
-			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
-		}
-	}
 
-	@ApplicationModuleListener
-	void onPodcastEpisodeSegmentTranscription(TranscriptProcessedEvent processedEvent) throws Exception {
-		var key = processedEvent.key();
-		var txt = processedEvent.transcript();
-		var clzz = processedEvent.subject();
-		var mogulId = processedEvent.mogulId();
-		if (StringUtils.hasText(txt) && clzz.getName().equals(Segment.class.getName())
-				&& key instanceof Number number) {
-			var id = number.longValue();
-			this.setPodcastEpisodeSegmentTranscript(id, true, txt);
-		}
-
-		var notificationEvent = NotificationEvent.systemNotificationEventFor(mogulId, processedEvent,
-				processedEvent.key().toString(), processedEvent.transcript());
-		NotificationEvents.notify(notificationEvent);
 	}
 
 	private void refreshPodcastEpisodeCompleteness(Long episodeId) {
-		this.tt.execute(new TransactionCallbackWithoutResult() {
-			@Override
-			protected void doInTransactionWithoutResult(TransactionStatus status) {
-				doBroadcast(episodeId);
-			}
+		this.transactions.execute(_ -> {
+			this.doBroadcastOfEpisodeCompleteness(episodeId);
+			return null;
 		});
 	}
 
-	private void doBroadcast(Long episodeId) {
+	private void doBroadcastOfEpisodeCompleteness(Long episodeId) {
 		this.invalidatePodcastEpisodeCache(episodeId);
 		var episode = this.getPodcastEpisodeById(episodeId);
 		var mogulId = episode.producedAudio().mogulId(); // hacky.
@@ -226,17 +206,15 @@ class DefaultPodcastService implements PodcastService {
 		var detailsOnSegments = new StringBuilder();
 		if (!allSegmentsHaveWrittenAndProducedAudio) {
 			for (var s : segments) {
-				detailsOnSegments.append(s.id())
-					.append(": written audio? ")
-					.append(s.audio().written())
-					.append(" produced audio? ")
-					.append(s.producedAudio().written())
+				detailsOnSegments //
+					.append(s.id()) //
+					.append(": written audio? ") //
+					.append(s.audio().written()) //
+					.append(" produced audio? ")//
+					.append(s.producedAudio().written()) //
 					.append("\n");
 			}
 		}
-
-		// let's build up a report to help us understand what's gone wrong
-		// it would be nice to produce a publication report or something
 
 		var msg = Map.of("graphic written", graphicsWritten, "graphic produced", episode.producedGraphic().written(),
 				"segments not empty?", !segments.isEmpty(), "has a title", StringUtils.hasText(episode.title()),
@@ -316,22 +294,22 @@ class DefaultPodcastService implements PodcastService {
 		Assert.notNull(producedGraphic, "the produced graphic is null");
 		var kh = new GeneratedKeyHolder();
 		this.db.sql("""
-					insert into podcast_episode(
-						podcast_id,
-						title,
-						description,
-						graphic_managed_file_id ,
-						produced_graphic_managed_file_id,
-						produced_audio_managed_file_id
-					)
-					values (
-						?,
-						?,
-						?,
-						?,
-						?,
-						?
-					)
+				insert into podcast_episode(
+				podcast_id,
+				title,
+				description,
+				graphic_managed_file_id ,
+				produced_graphic_managed_file_id,
+				produced_audio_managed_file_id
+				)
+				values (
+				?,
+				?,
+				?,
+				?,
+				?,
+				?
+				)
 				""")
 			.params(podcastId, title, description, graphic.id(), producedGraphic.id(), producedAudio.id())
 			.update(kh);
@@ -463,7 +441,6 @@ class DefaultPodcastService implements PodcastService {
 			.param(podcastId)//
 			.query(this.podcastRowMapper)//
 			.single());
-
 	}
 
 	@Override
@@ -493,22 +470,22 @@ class DefaultPodcastService implements PodcastService {
 		var uid = UUID.randomUUID().toString();
 		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		var sql = """
-					insert into podcast_episode_segment (
-						podcast_episode_id,
-						segment_audio_managed_file_id ,
-						produced_segment_audio_managed_file_id  ,
-						cross_fade_duration,
-						name,
-						sequence_number
-					)
-					values(
-						?,
-						?,
-						?,
-						?,
-						?,
-					 	?
-					);
+				insert into podcast_episode_segment (
+				podcast_episode_id,
+				segment_audio_managed_file_id ,
+				produced_segment_audio_managed_file_id  ,
+				cross_fade_duration,
+				name,
+				sequence_number
+				)
+				values(
+				?,
+				?,
+				?,
+				?,
+				?,
+				?
+				);
 				""";
 		var segmentAudioManagedFile = this.managedFileService.createManagedFile(mogulId, uid, "", 0,
 				CommonMediaTypes.MP3, false);
@@ -527,39 +504,6 @@ class DefaultPodcastService implements PodcastService {
 		this.refreshPodcastEpisodeCompleteness(episodeId);
 		this.invalidatePodcastEpisodeCache(episodeId);
 		return this.getPodcastEpisodeSegmentById(id.longValue());
-	}
-
-	@Override
-	public void setPodcastEpisodeSegmentTranscript(Long episodeSegmentId, boolean transcribable, String transcript) {
-		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
-		if (null != segment) {
-			var updated = this.db
-				.sql("update podcast_episode_segment set transcript = ?, transcribable = ?  where id = ? ")
-				.params(transcript, transcribable, segment.id())
-				.update();
-			Assert.state(updated != 0,
-					"there should be at least " + "one transcript set for segment # " + segment.id());
-			var podcastEpisodeId = db
-				.sql("select pes.podcast_episode_id from podcast_episode_segment pes where pes.id =?")
-				.param(episodeSegmentId)
-				.query((rs, _) -> rs.getLong("podcast_episode_id"))
-				.single();
-			this.invalidatePodcastEpisodeCache(podcastEpisodeId);
-		} //
-		else {
-			this.log.debug("could not find the podcast episode segment with id: {} ", episodeSegmentId);
-		}
-	}
-
-	@Override
-	public void transcribePodcastEpisodeSegment(Long episodeSegmentId) {
-		this.log.debug("going to refresh the transcription for segment {}. ", episodeSegmentId);
-		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
-		var mogul = this.mogulService.getCurrentMogul().id();
-		if (null != segment && segment.transcribable()) {
-			this.transcribe(mogul, segment.id(), Segment.class,
-					this.managedFileService.read(segment.producedAudio().id()));
-		}
 	}
 
 	@Override
@@ -679,12 +623,6 @@ class DefaultPodcastService implements PodcastService {
 			.param(mogulId)//
 			.query(this.podcastRowMapper)//
 			.list();
-	}
-
-	private void transcribe(Long mogulId, Serializable key, Class<?> subject, Resource resource) {
-		var reply = this.transcriber.transcribe(resource);
-		var tpe = new TranscriptProcessedEvent(mogulId, key, reply, subject);
-		this.publisher.publishEvent(tpe);
 	}
 
 }

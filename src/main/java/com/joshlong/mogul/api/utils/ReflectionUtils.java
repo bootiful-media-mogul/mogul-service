@@ -1,11 +1,26 @@
 package com.joshlong.mogul.api.utils;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ResolvableType;
+import org.springframework.util.Assert;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public abstract class ReflectionUtils {
+
+	public static Class<?> classForName(String name) {
+		var log = LoggerFactory.getLogger(ReflectionUtils.class);
+		try {
+			Assert.hasText(name, "you must provide a non-empty class name");
+			return Class.forName(name);
+		}
+		catch (ClassNotFoundException e) {
+			log.warn("classNotFoundException when trying to do Class.forName({}) to resolve the class for a {} ", name,
+					(name), e);
+		}
+		return null;
+	}
 
 	public static Set<Class<?>> genericsFor(Class<?> clzz) {
 		var classes = new HashSet<Class<?>>();

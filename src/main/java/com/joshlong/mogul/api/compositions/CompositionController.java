@@ -24,7 +24,7 @@ class CompositionController {
 
 	@SchemaMapping
 	String markdown(Attachment attachment) {
-		return this.compositionService.createMarkdownPreview(attachment);
+		return this.compositionService.createMarkdownPreviewForAttachment(attachment);
 	}
 
 	@QueryMapping

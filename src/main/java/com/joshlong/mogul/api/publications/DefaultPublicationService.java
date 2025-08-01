@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -122,7 +123,7 @@ class DefaultPublicationService implements PublicationService {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
 			var contextJson = this.textEncryptor.encrypt(JsonUtils.write(context));
-			var publicationData = JsonUtils.write(payload.publicationKey());
+			var publicationData = JsonUtils.write(payload.publishableId());
 			var entityClazz = payload.getClass().getName();
 			var kh = new GeneratedKeyHolder();
 			this.db.sql(
@@ -187,9 +188,10 @@ class DefaultPublicationService implements PublicationService {
 		if (ids.isEmpty() || ids.stream().noneMatch(id -> id > 0))
 			return Collections.emptyMap();
 		var map = new HashMap<Long, Publication>();
-		var collectedIds = ids.stream().map(Object::toString).collect(Collectors.joining(","));
-		var pubs = this.db.sql("select * from publication p where p.id in (" + collectedIds + ") ")
-			.query(this.getPublicationRowMapper())
+		var collectedIds = CollectionUtils.join(ids, ",");
+		var pubs = this.db //
+			.sql("select * from publication p where p.id in (" + collectedIds + ") ") //
+			.query(this.getPublicationRowMapper()) //
 			.list();
 		for (var p : pubs)
 			map.put(p.id(), p);

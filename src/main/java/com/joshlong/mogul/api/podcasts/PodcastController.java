@@ -1,9 +1,11 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.Transcription;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.transcription.TranscriptionService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
@@ -27,9 +29,13 @@ class PodcastController {
 
 	private final PodcastService podcastService;
 
-	PodcastController(MogulService mogulService, PodcastService podcastService) {
+	private final TranscriptionService transcriptionService;
+
+	PodcastController(MogulService mogulService, PodcastService podcastService,
+			TranscriptionService transcriptionService) {
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
+		this.transcriptionService = transcriptionService;
 	}
 
 	@QueryMapping
@@ -72,19 +78,6 @@ class PodcastController {
 	boolean createPodcastEpisodeSegment(@Argument Long podcastEpisodeId) {
 		var mogul = this.mogulService.getCurrentMogul().id();
 		this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
-		return true;
-	}
-
-	@MutationMapping
-	boolean transcribePodcastEpisodeSegment(@Argument Long podcastEpisodeSegmentId) {
-		this.podcastService.transcribePodcastEpisodeSegment(podcastEpisodeSegmentId);
-		return true;
-	}
-
-	@MutationMapping
-	boolean setPodcastEpisodeSegmentTranscript(@Argument Long podcastEpisodeSegmentId, @Argument boolean transcribable,
-			@Argument String transcript) {
-		this.podcastService.setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId, transcribable, transcript);
 		return true;
 	}
 
@@ -202,7 +195,12 @@ class PodcastController {
 			this.log.warn("experienced an exception when trying to emit "
 					+ "a podcast completed event for podcast episode id # {}", id);
 		} //
+	}
 
+	@SchemaMapping
+	Transcription transcription(Segment segment) {
+		var mogul = this.mogulService.getCurrentMogul();
+		return this.transcriptionService.transcription(mogul.id(), segment);
 	}
 
 }

@@ -11,6 +11,12 @@ type Composition  {
     attachments: [Attachment]
 }
 
+type Transcription {
+    id: Int
+    mogulId: Int
+    transcript: String
+}
+
 type Attachment {
     id: Int
     caption: String
@@ -92,6 +98,7 @@ type Segment {
     producedAudio : ManagedFile
     order : Int
     crossFadeDuration : Int
+    transcription: Transcription
 }
 
 type Podcast {
@@ -113,7 +120,11 @@ type NotificationEvent {
 
 type Mutation {
 
-    # publications
+    # transcriptions
+    writeTranscript(transcriptionId:Int, transcript:String): Boolean
+    refreshTranscription(transcriptionId :Int) : Boolean
+
+    # publicationService
     unpublish( publicationId: Int): Boolean
     publish( publishableId: Int,
         publishableType: String,
@@ -140,7 +151,7 @@ type Mutation {
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
-    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcribable: Boolean, transcript: String) : Boolean
+    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
     transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
     movePodcastEpisodeSegmentDown(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
@@ -163,7 +174,7 @@ type Query {
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
-    # publications
+    # publicationService
     publicationsForPublishable( type : String, id: Int ) : [Publication]
     canPublish ( publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
 

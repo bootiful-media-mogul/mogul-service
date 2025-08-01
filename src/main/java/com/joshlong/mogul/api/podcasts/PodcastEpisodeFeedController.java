@@ -10,15 +10,12 @@ import com.joshlong.mogul.api.publications.PublicationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -27,16 +24,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-
-@Configuration
-class FeedConfiguration {
-
-	@Bean
-	ForwardedHeaderTransformer forwardedHeaderTransformer() {
-		return new ForwardedHeaderTransformer();
-	}
-
-}
 
 @Controller
 @ResponseBody
@@ -115,7 +102,7 @@ class PodcastEpisodeFeedController {
 	}
 
 	private String publicationUrl(Episode episode) {
-		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publicationKey(),
+		var publications = this.publicationService.getPublicationsByPublicationKeyAndClass(episode.publishableId(),
 				Episode.class);
 		if (episode.complete() && !publications.isEmpty()) {
 			var publication = publications//

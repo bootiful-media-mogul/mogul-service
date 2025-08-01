@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.publications;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -45,18 +46,6 @@ class PublicationRowMapper implements RowMapper<Publication> {
 		this.db = db;
 	}
 
-	private Class<?> classFor(String name) {
-		try {
-			Assert.hasText(name, "you must provide a non-empty class name");
-			return Class.forName(name);
-		}
-		catch (ClassNotFoundException e) {
-			log.warn("classNotFoundException when trying to do Class.forName({}) to resolve the class for a {} ", name,
-					Publication.class.getName(), e);
-		}
-		return null;
-	}
-
 	@Override
 	public Publication mapRow(ResultSet rs, int rowNum) throws SQLException {
 		var last = rs.isLast();
@@ -75,7 +64,7 @@ class PublicationRowMapper implements RowMapper<Publication> {
 				rs.getTimestamp("published"), //
 				context, //
 				payload, //
-				classFor(rs.getString("payload_class")), //
+				ReflectionUtils.classForName(rs.getString("payload_class")), //
 				stateEnum, this.publicationToOutcomes.computeIfAbsent(publicationId, _ -> new ArrayList<>()));
 
 		if (last) {

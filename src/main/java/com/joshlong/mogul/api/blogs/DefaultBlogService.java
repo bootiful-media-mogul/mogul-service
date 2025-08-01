@@ -91,11 +91,9 @@ class DefaultBlogService implements BlogService {
 	@Override
 	public void deleteBlog(Long id) {
 		if (this.getBlogById(id) != null) {
-
 			// todo queue up all the ManagedFiles associated with this blog for deletion
-			this.db.sql("delete from blog_post where  blog_id =?").params(id).update();
-
-			this.db.sql("delete from blog where id =?").params(id).update();
+			this.db.sql("delete from blog_post where blog_id = ? ").params(id).update();
+			this.db.sql("delete from blog where id = ? ").params(id).update();
 		}
 	}
 

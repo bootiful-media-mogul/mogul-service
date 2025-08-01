@@ -20,6 +20,6 @@ public interface CompositionService {
 
 	void deleteCompositionAttachment(Long id);
 
-	String createMarkdownPreview(Attachment attachment);
+	String createMarkdownPreviewForAttachment(Attachment attachment);
 
 }

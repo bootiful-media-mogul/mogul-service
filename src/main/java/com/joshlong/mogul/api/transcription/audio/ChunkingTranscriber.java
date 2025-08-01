@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcription.audio;
 
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
@@ -135,7 +135,7 @@ class ChunkingTranscriber implements Transcriber {
 
 	private void enqueueForDeletion(File file) {
 		var futureInstant = this.futureInstant(2);
-		this.filesToDelete.computeIfAbsent(futureInstant, k -> new HashSet<>()).add(file);
+		this.filesToDelete.computeIfAbsent(futureInstant, _ -> new HashSet<>()).add(file);
 	}
 
 	private Stream<TranscriptionSegment> divide(File transcriptionForResource, Resource audio) throws Exception {
