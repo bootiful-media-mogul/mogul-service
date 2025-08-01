@@ -11,8 +11,7 @@ create table if not exists transcription
 
 
 insert into transcription(mogul_id, payload_class, payload, transcript, transcribed)
-select
-    (select p.mogul_id
+select (select p.mogul_id
         from podcast p,
              public.podcast_episode pe,
              public.podcast_episode_segment pes
@@ -21,7 +20,7 @@ select
           and pes.id = peso.id
         limit 1),
        'com.joshlong.mogul.api.podcasts.Segment',
-       '"' || peso.id || '"',
+       peso.id::text,
        peso.transcript,
        (select pe.produced_audio_updated
         from podcast p,
@@ -32,6 +31,3 @@ select
           and pes.id = peso.id) as mogul_id
 
 from podcast_episode_segment peso;
-
--- alter table podcast_episode_segment drop column transcript;
--- alter table podcast_episode_segment drop column transcribable;
