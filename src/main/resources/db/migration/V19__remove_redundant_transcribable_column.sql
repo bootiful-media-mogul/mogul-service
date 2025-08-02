@@ -1,0 +1,1 @@
+alter table podcast_episode_segment drop column transcribable;
