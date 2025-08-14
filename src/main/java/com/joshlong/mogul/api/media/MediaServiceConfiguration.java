@@ -60,9 +60,8 @@ class MediaServiceConfiguration {
 				}
 				return null;
 			}) //
-			.
 
-			get();
+                .get();
 	}
 
 }
