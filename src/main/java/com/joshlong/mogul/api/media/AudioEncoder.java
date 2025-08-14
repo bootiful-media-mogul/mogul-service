@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
 
@@ -22,13 +23,15 @@ public class AudioEncoder implements Encoder {
 			Assert.state(input.exists() && input.isFile(),
 					"the input ['" + inputAbsolutePath + "'] must be a valid, existing file");
 			var mp3Ext = "mp3";
-			if (inputAbsolutePath.toLowerCase().endsWith(mp3Ext))
-				return input;
+			// if (inputAbsolutePath.toLowerCase().endsWith(mp3Ext))
+			// return input;
 			var mp3 = FileUtils.createRelativeTempFile(input, "." + mp3Ext);
 			var mp3AbsolutePath = mp3.getAbsolutePath();
 			this.log.debug("mp3: {}", mp3AbsolutePath);
+			// this fixed #113
 			var exit = Runtime.getRuntime()
-				.exec(new String[] { "ffmpeg", "-i", inputAbsolutePath, mp3AbsolutePath })
+				.exec(new String[] { "ffmpeg", "-i", inputAbsolutePath, "-ar", "48000", "-ac", "2", "-c:a",
+						"libmp3lame", "-b:a", "192k", mp3AbsolutePath })
 				.waitFor();
 			Assert.state(exit == 0, "the ffmpeg command ran successfully");
 			return mp3;
