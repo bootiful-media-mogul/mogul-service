@@ -2,11 +2,14 @@ package com.joshlong.mogul.api.podcasts.publication;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
+import com.joshlong.mogul.api.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * this plugin doesn't really 'publish' anything. it just lets the user download the
@@ -44,7 +47,10 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	@Override
 	public void publish(PublishContext<Episode> payload) {
 		this.log.debug("downloading the produced audio file for episode # {}", payload.payload().id());
-		this.managedFileService.setManagedFileVisibility(payload.payload().producedAudio().id(), true);
+		var managedFileId = payload.payload().producedAudio().id();
+		this.managedFileService.setManagedFileVisibility(managedFileId, true);
+		var url = UriUtils.uri(this.managedFileService.getPublicUrlForManagedFile(managedFileId));
+		payload.success(this.name(), url);
 	}
 
 	@Override
