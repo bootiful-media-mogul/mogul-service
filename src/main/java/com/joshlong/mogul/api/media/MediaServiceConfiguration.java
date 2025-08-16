@@ -49,8 +49,8 @@ class MediaServiceConfiguration {
 				try {
 					normalization.normalize(payload.in(), payload.out());
 					transactionTemplate.execute(_ -> {
-                        var event = new MediaNormalizedEvent(payload.in(), payload.out(), payload.context());
-                        publisher.publishEvent(event);
+						var event = new MediaNormalizedEvent(payload.in(), payload.out(), payload.context());
+						publisher.publishEvent(event);
 						return null;
 					});
 					this.log.debug("media normalization completed for {} to {}", payload.in().id(), payload.out().id());
