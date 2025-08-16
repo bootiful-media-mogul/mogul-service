@@ -68,7 +68,7 @@ class SettingsController {
 			var pageIsValid = plugin.isConfigurationValid(valuesByCategory);
 			var page = new SettingsPage(pageIsValid, pluginName, new ArrayList<>());
 			pages.add(page);
-			var requiredKeys = new ArrayList<>(plugin.getRequiredSettingKeys());
+			var requiredKeys = new ArrayList<>(plugin.requiredSettingKeys());
 			requiredKeys.sort(Comparator.naturalOrder());
 			for (var requiredKey : requiredKeys) {
 				var value = settings.getValue(currentMogulId, pluginName, requiredKey);
