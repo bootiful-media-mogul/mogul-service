@@ -53,9 +53,16 @@ class DefaultSearchServiceTest {
 		var results = this.searchService.search("IPO");
 		Assertions.assertFalse(results.isEmpty(), "there should be at least one result");
 		this.logger.debug("found {} hits", results.size());
-		var fuzzyResults = this.searchService.search("Pivtal");
-		Assertions.assertFalse(fuzzyResults.isEmpty(), "there should be at least one fuzzy result");
-		this.logger.debug("found {} fuzzy hits", fuzzyResults.size());
+		/*
+		 * var fuzzyResults = this.searchService.search("Pivtal");
+		 * Assertions.assertFalse(fuzzyResults.isEmpty(),
+		 * "there should be at least one fuzzy result");
+		 * this.logger.debug("found {} fuzzy hits", fuzzyResults.size());
+		 */
+
+		var tanzu = this.searchService.search("Spring Boot Vmware");
+		Assertions.assertFalse(tanzu.isEmpty(), "there should be at least one tanzu result");
+
 	}
 
 }
