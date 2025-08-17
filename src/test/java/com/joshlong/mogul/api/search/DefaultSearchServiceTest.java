@@ -1,22 +1,17 @@
 package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.ApiApplication;
-import com.pgvector.PGvector;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Map;
 
 @SpringBootTest(classes = ApiApplication.class)
@@ -37,7 +32,8 @@ class DefaultSearchServiceTest {
 		template.execute("delete from document");
 
 		var contentAsString = resource.getContentAsString(Charset.defaultCharset());
-		this.searchService.ingest(1L, "Transcript", contentAsString);
+		this.searchService.ingest("Transcript", contentAsString, Map.of("source", "pdf"));
+		this.searchService.ingest("Transcript", contentAsString, Map.of("source", "podcast"));
 		var results = this.searchService.search("IPO");
 		Assertions.assertFalse(results.isEmpty(), "there should be at least one result");
 		this.logger.debug("found {} hits", results.size());
@@ -48,6 +44,9 @@ class DefaultSearchServiceTest {
 
 		var tanzu = this.searchService.search("Spring Boot Vmware");
 		Assertions.assertFalse(tanzu.isEmpty(), "there should be at least one tanzu result");
+
+		var transcriptPdf = this.searchService.search("IPO", Map.of("source", "pdf"));
+		Assertions.assertEquals(1, transcriptPdf.size(), "there should be only one transcript pdf result");
 
 	}
 

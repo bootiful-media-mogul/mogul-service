@@ -3,9 +3,9 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE document
 (
-    id          BIGSERIAL PRIMARY KEY,
-    source_type TEXT NOT NULL, -- e.g. 'podcast', 'pdf', 'blog'
-    source_uri  TEXT,          -- optional (e.g. s3://…)
+    id          serial primary key,
+    source_type TEXT, -- e.g. 'podcast', 'pdf', 'blog'
+    source_uri  TEXT, -- optional (e.g. s3://…)
     title       TEXT,
     created_at  TIMESTAMPTZ DEFAULT now(),
     raw_text    TEXT
@@ -64,4 +64,9 @@ CREATE INDEX idx_document_chunk_tsv ON document_chunk USING GIN (tsv);
 
 -- Optional trigram search on literal text
 CREATE INDEX idx_document_chunk_text_trgm ON document_chunk USING GIN (text gin_trgm_ops);
+
+ALTER TABLE document
+    ADD COLUMN metadata JSONB NOT NULL DEFAULT '{}';
+
+CREATE INDEX idx_document_metadata ON document USING GIN (metadata);
 
