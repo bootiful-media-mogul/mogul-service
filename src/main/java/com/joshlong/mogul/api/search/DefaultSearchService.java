@@ -68,7 +68,7 @@ class DefaultSearchService implements SearchService {
 			var resp = this.embeddingModel.embed(chunkText);
 			this.jdbcClient //
 				.sql("""
-						INSERT INTO document_chunk(document_id, chunk_index, text, emb)
+						INSERT INTO document_chunk(document_id, chunk_index, text, embedding)
 						VALUES (?, ?, ?, ?)
 						""") //
 				.params(documentId, i, chunkText, new PGvector(resp)) //
@@ -141,9 +141,9 @@ class DefaultSearchService implements SearchService {
 				SELECT  dc.document_id  as document_id ,
 				        dc.id,
 				        dc.text,
-				        (1 - (dc.emb <=> CAST(? AS vector))) AS vec_score,
+				        (1 - (dc.embedding <=> CAST(? AS vector))) AS vec_score,
 				        f.fts_score,
-				        0.7*(1 - (dc.emb <=> CAST(? AS vector))) + 0.3 * f.fts_score AS score
+				        0.7*(1 - (dc.embedding <=> CAST(? AS vector))) + 0.3 * f.fts_score AS score
 				FROM fts f
 				JOIN document_chunk dc ON f.id = dc.id
 				%s

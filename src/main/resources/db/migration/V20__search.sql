@@ -17,11 +17,9 @@ CREATE TABLE document_chunk
     id          BIGSERIAL PRIMARY KEY,
     document_id BIGINT NOT NULL REFERENCES document (id) ON DELETE CASCADE,
     chunk_index INT    NOT NULL,
-    start_ms    INT,
-    end_ms      INT,
     text        TEXT   NOT NULL,
     tsv         TSVECTOR,
-    emb         VECTOR(1536),
+    embedding         VECTOR(1536),
     clean_text  TEXT   NOT NULL,
     tokens      TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[]
 );

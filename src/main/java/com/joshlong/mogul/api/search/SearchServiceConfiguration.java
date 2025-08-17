@@ -33,8 +33,8 @@ class SearchServiceConfiguration {
 	}
 
 	@Bean
-	DocumentRowMapper documentRowMapper(ObjectProvider<DefaultSearchService> applicationContext) {
-		return new DocumentRowMapper(documentId -> applicationContext.getObject().documentChunks(documentId));
+	DocumentRowMapper documentRowMapper(ObjectProvider<DefaultSearchService> defaultSearchService) {
+		return new DocumentRowMapper(documentId -> defaultSearchService.getObject().documentChunks(documentId));
 	}
 
 	@Bean
