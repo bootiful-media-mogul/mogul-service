@@ -126,9 +126,13 @@ class DefaultSearchService implements SearchService {
 	}
 
 	private Document byId(Long documentId) {
-		var documentList = this.jdbcClient.sql("""
-				 select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?
-				""").params(documentId).query(this.documentRowMapper).list();
+		var documentList = this.jdbcClient //
+			.sql("""
+					 select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?
+					""") //
+			.params(documentId) //
+			.query(this.documentRowMapper) //
+			.list();
 		return CollectionUtils.firstOrNull(documentList);
 	}
 
