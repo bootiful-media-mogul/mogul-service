@@ -163,17 +163,11 @@ class DefaultSearchService implements SearchService {
 				ORDER BY score DESC
 				LIMIT 20
 				""";
-		// Yes, we could've done the formatting inline in the previous expression, but
-		// IntelliJ IDEA's SQL code formatting
-		// and coloring abandons me if i chain `.formatted` off the end of the String, so
-		// we defer to this line.
 		sql = sql.formatted(metadataSql);
 
-		var sqlStatement = this.jdbcClient.sql(sql);
-		var results = (hasMetadata ? sqlStatement.params(query, query, vec, vec, JsonUtils.write(metadata))
-				: sqlStatement.params(query, query, vec, vec))
-			.query(this.documentChunkRowMapper)
-			.list();
+		var values = hasMetadata ? List.of(query, query, vec, vec, JsonUtils.write(metadata))
+				: List.of(query, query, vec, vec);
+		var results = this.jdbcClient.sql(sql).params(values).query(this.documentChunkRowMapper).list();
 
 		// 2) Fallback fuzzy search using pre-tokenized tokens[] array
 		if (results.isEmpty()) {
