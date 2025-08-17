@@ -32,8 +32,8 @@ class DefaultSearchServiceTest {
 		template.execute("delete from document");
 
 		var contentAsString = resource.getContentAsString(Charset.defaultCharset());
-		this.searchService.ingest("Transcript", contentAsString, Map.of("source", "pdf"));
-		this.searchService.ingest("Transcript", contentAsString, Map.of("source", "podcast"));
+		var pdf = this.searchService.ingest("Transcript", contentAsString, Map.of("source", "pdf"));
+		var podcast = this.searchService.ingest("Transcript", contentAsString, Map.of("source", "podcast"));
 		var results = this.searchService.search("IPO");
 		Assertions.assertFalse(results.isEmpty(), "there should be at least one result");
 		this.logger.debug("found {} hits", results.size());
@@ -47,7 +47,8 @@ class DefaultSearchServiceTest {
 
 		var transcriptPdf = this.searchService.search("IPO", Map.of("source", "pdf"));
 		Assertions.assertEquals(1, transcriptPdf.size(), "there should be only one transcript pdf result");
-
+		Assertions.assertEquals(pdf.id(), transcriptPdf.getFirst().documentId(),
+				"the transcript pdf result should be the same as the pdf document id");
 	}
 
 }

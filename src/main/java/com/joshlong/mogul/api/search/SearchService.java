@@ -157,10 +157,12 @@ class DefaultSearchService implements SearchService {
 				    FROM document_chunk
 				    WHERE tsv @@ plainto_tsquery('english', ?)
 				)
-				SELECT dc.id, dc.text,
-				       (1 - (dc.emb <=> CAST(? AS vector))) AS vec_score,
-				       f.fts_score,
-				       0.7*(1 - (dc.emb <=> CAST(? AS vector))) + 0.3*f.fts_score AS score
+				SELECT  dc.document_id  as document_id ,
+				        dc.id,
+				        dc.text,
+				        (1 - (dc.emb <=> CAST(? AS vector))) AS vec_score,
+				        f.fts_score,
+				        0.7*(1 - (dc.emb <=> CAST(? AS vector))) + 0.3 * f.fts_score AS score
 				FROM fts f
 				JOIN document_chunk dc ON f.id = dc.id
 				%s
@@ -176,7 +178,7 @@ class DefaultSearchService implements SearchService {
 		// 2) Fallback fuzzy search using pre-tokenized tokens[] array
 		if (results.isEmpty()) {
 			var fuzzySql = """
-					SELECT id, text,
+					SELECT document_id , id, text,
 					       (
 					           SELECT MAX(similarity(w, ?))
 					           FROM unnest(tokens) AS w
@@ -210,7 +212,8 @@ class DefaultSearchService implements SearchService {
 
 		@Override
 		public DocumentChunk mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-			return new DocumentChunk(rs.getLong("id"), rs.getString("text"), rs.getDouble("score"));
+			return new DocumentChunk(rs.getLong("id"), rs.getString("text"), rs.getDouble("score"),
+					rs.getLong("document_id"));
 		}
 
 	}
