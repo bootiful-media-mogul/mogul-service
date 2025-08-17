@@ -2,15 +2,21 @@ package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.api.utils.UriUtils;
 import com.pgvector.PGvector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
+import java.util.function.Function;
 
 @Transactional
 class DefaultSearchService implements SearchService {
@@ -163,6 +169,54 @@ class DefaultSearchService implements SearchService {
 			chunks.add(String.join(" ", Arrays.copyOfRange(words, i, end)));
 		}
 		return chunks;
+	}
+
+}
+
+class SearchHitRowMapper implements RowMapper<SearchHit> {
+
+	private final Function<ResultSet, DocumentChunk> documentChunkFunction;
+
+	SearchHitRowMapper(Function<ResultSet, DocumentChunk> documentChunkFunction) {
+		this.documentChunkFunction = documentChunkFunction;
+	}
+
+	@Override
+	public SearchHit mapRow(ResultSet rs, int rowNum) throws SQLException {
+		var documentChunk = this.documentChunkFunction.apply(rs);
+		return new SearchHit(documentChunk, rs.getDouble("score"));
+	}
+
+}
+
+class DocumentRowMapper implements RowMapper<Document> {
+
+	private final ParameterizedTypeReference<Map<String, Object>> mapParameterizedTypeReference = new ParameterizedTypeReference<>() {
+	};
+
+	private final Function<Long, List<DocumentChunk>> documentChunkFunction;
+
+	DocumentRowMapper(Function<Long, List<DocumentChunk>> documentChunkFunction) {
+		this.documentChunkFunction = documentChunkFunction;
+	}
+
+	@Override
+	public Document mapRow(ResultSet rs, int rowNum) throws SQLException {
+		var createdAt = rs.getDate("created_at");
+		var id = rs.getLong("id");
+		var metadata = JsonUtils.read(rs.getString("metadata"), this.mapParameterizedTypeReference);
+		return new Document(id, rs.getString("source_type"), UriUtils.uri(rs.getString("source_uri")),
+				rs.getString("title"), createdAt, rs.getString("raw_text"), metadata,
+				this.documentChunkFunction.apply(id));
+	}
+
+}
+
+class DocumentChunkRowMapper implements RowMapper<DocumentChunk> {
+
+	@Override
+	public DocumentChunk mapRow(ResultSet rs, int rowNum) throws SQLException {
+		return new DocumentChunk(rs.getLong("id"), rs.getString("text"), rs.getLong("document_id"));
 	}
 
 }
