@@ -49,6 +49,7 @@ class DefaultSearchServiceTest {
 		Assertions.assertEquals(1, transcriptPdf.size(), "there should be only one transcript pdf result");
 		Assertions.assertEquals(pdf.id(), transcriptPdf.getFirst().documentId(),
 				"the transcript pdf result should be the same as the pdf document id");
+
 	}
 
 }
