@@ -13,21 +13,27 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Provides a generic subsystem for ingesting and searching documents.
+ * Higher levels of abstraction can work in terms of the {@link Document document}
+ * type, and the {@code documentId}. You can corellate documents to other types with {@code metadata}.
+ */
+public interface SearchService {
+
+    void ingest(Long documentId, String title, String fullText);
+
+    List<Document> search(String query);
+}
+
 @Configuration
 class SearchServiceConfiguration {
+
 
     @Bean
     SearchService searchService(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
         return new DefaultSearchService(embeddingModel, jdbcTemplate);
     }
 
-}
-
-public interface SearchService {
-
-    void ingest(Long documentId, String title, String fullText);
-
-    List<Document> search(String query);
 }
 
 @Transactional
@@ -48,7 +54,6 @@ class DefaultSearchService implements SearchService {
     @Override
     public void ingest(Long documentId, String title, String fullText) {
         var chunks = this.chunk(fullText, 800, 0.15); // very simple tokenizer
-
         this.jdbc.update("""
                     insert into document(id, source_type, source_uri, title, created_at, raw_text )
                     values (?, ?, ? ,?, ?, ? )
@@ -62,15 +67,6 @@ class DefaultSearchService implements SearchService {
                     VALUES (?, ?, ?, ?)
                     """, documentId, i, chunkText, new PGvector(resp));
         }
-    }
-
-    private static class HybridHitRowMapper implements RowMapper<Document> {
-
-        @Override
-        public Document mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-            return new Document(rs.getLong("id"), rs.getString("text"), rs.getDouble("score"));
-        }
-
     }
 
     @Override
@@ -97,18 +93,19 @@ class DefaultSearchService implements SearchService {
         if (results.isEmpty()) {
             results = jdbc.query(
                     """
-                               SELECT id, text,
-                                      (
-                                        SELECT MAX(similarity(w, ?))
-                                        FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
-                                      ) AS score
-                               FROM document_chunk
-                               WHERE (
-                                 SELECT MAX(similarity(w, ?))
-                                 FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
-                               ) > 0.20
-                               ORDER BY score DESC
-                               LIMIT 20
+                    
+                            SELECT id, text,
+                                              (
+                                                SELECT MAX(similarity(w, ?))
+                                                FROM unnest(string_to_array(clean_text, ' ')) AS w
+                                              ) AS score
+                                       FROM document_chunk
+                                       WHERE (
+                                         SELECT MAX(similarity(w, ?))
+                                         FROM unnest(string_to_array(clean_text, ' ')) AS w
+                                       ) > 0.20
+                                       ORDER BY score DESC
+                                       LIMIT 20;
                             """,
                     this.hybridHitRowMapper, query, query);
         }
@@ -124,6 +121,15 @@ class DefaultSearchService implements SearchService {
             chunks.add(String.join(" ", Arrays.copyOfRange(words, i, end)));
         }
         return chunks;
+    }
+
+    private static class HybridHitRowMapper implements RowMapper<Document> {
+
+        @Override
+        public Document mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+            return new Document(rs.getLong("id"), rs.getString("text"), rs.getDouble("score"));
+        }
+
     }
 
 }

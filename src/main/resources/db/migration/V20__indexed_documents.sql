@@ -1,6 +1,4 @@
--- the goal here is to support indexing arbitrary chunks of text.
 
--- one-time per DB
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS hstore;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -31,7 +29,8 @@ CREATE TABLE document_chunk
 
     text        TEXT   NOT NULL,
     tsv         TSVECTOR,        -- full-text vector
-    emb         VECTOR(1536)     -- or VECTOR(3072)
+    emb         VECTOR(1536),     -- or VECTOR(3072)
+    clean_text text not null -- lower-cased, punctuation stripped
 );
 
 CREATE OR REPLACE FUNCTION chunk_tsv_trigger()
@@ -49,20 +48,16 @@ CREATE TRIGGER chunk_tsv_update
     FOR EACH ROW
 EXECUTE PROCEDURE chunk_tsv_trigger();
 
-
-
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-
 CREATE INDEX idx_chunk_text_trgm ON document_chunk USING GIN (text gin_trgm_ops);
 
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
---
--- ALTER TABLE document_chunk
---     ADD COLUMN keywords_text TEXT not null;
---
--- ALTER TABLE document_chunk
---     ADD COLUMN raw_text TEXT NULL;
---
--- CREATE INDEX idx_document_chunk_keywords_trgm
---     ON document_chunk USING GIN (keywords_text gin_trgm_ops);
+CREATE OR REPLACE FUNCTION chunk_clean_text_trigger()
+    RETURNS TRIGGER AS $$
+BEGIN
+    NEW.clean_text := lower(regexp_replace(NEW.text, '[^a-zA-Z0-9 ]', ' ', 'g'));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER chunk_clean_text_update
+    BEFORE INSERT OR UPDATE ON document_chunk
+    FOR EACH ROW EXECUTE PROCEDURE chunk_clean_text_trigger();
