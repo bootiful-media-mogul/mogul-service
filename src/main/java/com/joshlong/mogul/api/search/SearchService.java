@@ -13,8 +13,8 @@ public interface SearchService {
 
 	Document ingest(String title, String fullText, Map<String, Object> metadata);
 
-	List<DocumentChunk> search(String query);
+	List<SearchHit> search(String query);
 
-	List<DocumentChunk> search(String query, Map<String, Object> metadata);
+	List<SearchHit> search(String query, Map<String, Object> metadata);
 
 }

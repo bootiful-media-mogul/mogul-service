@@ -21,7 +21,7 @@ class DefaultSearchServiceTest {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	DefaultSearchServiceTest(@Autowired SearchService searchService) {
+	DefaultSearchServiceTest(@Autowired DefaultSearchService searchService) {
 		this.searchService = searchService;
 	}
 
@@ -47,7 +47,7 @@ class DefaultSearchServiceTest {
 
 		var transcriptPdf = this.searchService.search("IPO", Map.of("source", "pdf"));
 		Assertions.assertEquals(1, transcriptPdf.size(), "there should be only one transcript pdf result");
-		Assertions.assertEquals(pdf.id(), transcriptPdf.getFirst().documentId(),
+		Assertions.assertEquals(pdf.id(), transcriptPdf.getFirst().documentChunk().documentId(),
 				"the transcript pdf result should be the same as the pdf document id");
 
 	}
