@@ -1,7 +1,4 @@
-
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS hstore;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE document
@@ -15,23 +12,20 @@ CREATE TABLE document
 );
 
 
-
--- storage for openai embeddings: 1536 dims for text-embedding-3-small,
--- OR 3072 dims for text-embedding-3-large
 CREATE TABLE document_chunk
 (
     id          BIGSERIAL PRIMARY KEY,
     document_id BIGINT NOT NULL REFERENCES document (id) ON DELETE CASCADE,
-    chunk_index INT    NOT NULL, -- 0,1,2,... in original order
-
-    start_ms    INT,             -- optional: timestamp inside audio/video
+    chunk_index INT    NOT NULL,
+    start_ms    INT,
     end_ms      INT,
-
     text        TEXT   NOT NULL,
-    tsv         TSVECTOR,        -- full-text vector
-    emb         VECTOR(1536),     -- or VECTOR(3072)
-    clean_text text not null -- lower-cased, punctuation stripped
+    tsv         TSVECTOR,
+    emb         VECTOR(1536),
+    clean_text  TEXT   NOT NULL,
+    tokens      TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[]
 );
+
 
 CREATE OR REPLACE FUNCTION chunk_tsv_trigger()
     RETURNS TRIGGER AS
@@ -42,22 +36,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION chunk_clean_text_and_tokens_trigger()
+    RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.clean_text :=
+            lower(regexp_replace(coalesce(NEW.text, ''), '[^a-zA-Z0-9 ]', ' ', 'g'));
+    NEW.tokens := string_to_array(NEW.clean_text, ' ');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER chunk_tsv_update
     BEFORE INSERT OR UPDATE
     ON document_chunk
     FOR EACH ROW
 EXECUTE PROCEDURE chunk_tsv_trigger();
 
-CREATE INDEX idx_chunk_text_trgm ON document_chunk USING GIN (text gin_trgm_ops);
+CREATE TRIGGER chunk_clean_text_and_tokens_update
+    BEFORE INSERT OR UPDATE
+    ON document_chunk
+    FOR EACH ROW
+EXECUTE PROCEDURE chunk_clean_text_and_tokens_trigger();
 
-CREATE OR REPLACE FUNCTION chunk_clean_text_trigger()
-    RETURNS TRIGGER AS $$
-BEGIN
-    NEW.clean_text := lower(regexp_replace(NEW.text, '[^a-zA-Z0-9 ]', ' ', 'g'));
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Full-text GIN index on tsv
+CREATE INDEX idx_document_chunk_tsv ON document_chunk USING GIN (tsv);
 
-CREATE TRIGGER chunk_clean_text_update
-    BEFORE INSERT OR UPDATE ON document_chunk
-    FOR EACH ROW EXECUTE PROCEDURE chunk_clean_text_trigger();
+-- Optional trigram search on literal text
+CREATE INDEX idx_document_chunk_text_trgm ON document_chunk USING GIN (text gin_trgm_ops);
+

@@ -71,44 +71,46 @@ class DefaultSearchService implements SearchService {
 
     @Override
     public List<Document> search(String query) {
-        var resp = this.embeddingModel.embed((query));
-        var pgVec = new PGvector(resp);
+        var vec = new PGvector(embeddingModel.embed(query));
+
+        // 1) Primary hybrid search
         var sql = """
                 WITH fts AS (
-                  SELECT id, ts_rank(tsv, plainto_tsquery('english', ?)) AS fts_score
-                  FROM document_chunk
-                  WHERE tsv @@ plainto_tsquery('english', ?)
+                    SELECT id, ts_rank(tsv, plainto_tsquery('english', ?)) AS fts_score
+                    FROM document_chunk
+                    WHERE tsv @@ plainto_tsquery('english', ?)
                 )
                 SELECT dc.id, dc.text,
                        (1 - (dc.emb <=> CAST(? AS vector))) AS vec_score,
                        f.fts_score,
-                       -- your tunable blended score (or just use vec_score)
                        0.7*(1 - (dc.emb <=> CAST(? AS vector))) + 0.3*f.fts_score AS score
                 FROM fts f
                 JOIN document_chunk dc ON f.id = dc.id
                 ORDER BY score DESC
-                LIMIT 20;
+                LIMIT 20
                 """;
-        var results = this.jdbc.query(sql, this.hybridHitRowMapper, query, query, pgVec, pgVec);
+
+        var results = jdbc.query(sql, hybridHitRowMapper, query, query, vec, vec);
+
+        // 2) Fallback fuzzy search using pre-tokenized tokens[] array
         if (results.isEmpty()) {
-            results = jdbc.query(
-                    """
-                    
-                            SELECT id, text,
-                                              (
-                                                SELECT MAX(similarity(w, ?))
-                                                FROM unnest(string_to_array(clean_text, ' ')) AS w
-                                              ) AS score
-                                       FROM document_chunk
-                                       WHERE (
-                                         SELECT MAX(similarity(w, ?))
-                                         FROM unnest(string_to_array(clean_text, ' ')) AS w
-                                       ) > 0.20
-                                       ORDER BY score DESC
-                                       LIMIT 20;
-                            """,
-                    this.hybridHitRowMapper, query, query);
+            var fuzzySql = """
+                    SELECT id, text,
+                           (
+                               SELECT MAX(similarity(w, ?))
+                               FROM unnest(tokens) AS w
+                           ) AS score
+                    FROM document_chunk
+                    WHERE (
+                       SELECT MAX(similarity(w, ?))
+                       FROM unnest(tokens) AS w
+                    ) > 0.20
+                    ORDER BY score DESC
+                    LIMIT 20
+                    """;
+            results = jdbc.query(fuzzySql, hybridHitRowMapper, query, query);
         }
+
         return results;
     }
 
