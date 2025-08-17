@@ -8,7 +8,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -21,7 +20,6 @@ class SearchServiceConfiguration {
     SearchService searchService(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
         return new SearchService(embeddingModel, jdbcTemplate);
     }
-
 }
 
 @Transactional
@@ -91,19 +89,19 @@ class SearchService {
         var results = this.jdbcTemplate.query(sql, hybridHitRowMapper, query, query, pgVec, pgVec);
         if (results.isEmpty()) {
             results = jdbcTemplate.query("""
-           SELECT id, text,
-                  (
-                    SELECT MAX(similarity(w, ?))
-                    FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
-                  ) AS score
-           FROM document_chunk
-           WHERE (
-             SELECT MAX(similarity(w, ?))
-             FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
-           ) > 0.20
-           ORDER BY score DESC
-           LIMIT 20
-        """, hybridHitRowMapper, query, query);
+                       SELECT id, text,
+                              (
+                                SELECT MAX(similarity(w, ?))
+                                FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
+                              ) AS score
+                       FROM document_chunk
+                       WHERE (
+                         SELECT MAX(similarity(w, ?))
+                         FROM unnest(string_to_array(lower(regexp_replace(text, '[^a-zA-Z0-9 ]', '', 'g')), ' ')) AS w
+                       ) > 0.20
+                       ORDER BY score DESC
+                       LIMIT 20
+                    """, hybridHitRowMapper, query, query);
         }
         return results;
     }
@@ -118,5 +116,4 @@ class SearchService {
         }
         return chunks;
     }
-
 }

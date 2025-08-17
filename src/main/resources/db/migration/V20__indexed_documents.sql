@@ -35,7 +35,8 @@ CREATE TABLE document_chunk
 );
 
 CREATE OR REPLACE FUNCTION chunk_tsv_trigger()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS
+$$
 BEGIN
     NEW.tsv := to_tsvector('english', NEW.text);
     RETURN NEW;
@@ -43,7 +44,25 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER chunk_tsv_update
-    BEFORE INSERT OR UPDATE ON document_chunk
-    FOR EACH ROW EXECUTE PROCEDURE chunk_tsv_trigger();
+    BEFORE INSERT OR UPDATE
+    ON document_chunk
+    FOR EACH ROW
+EXECUTE PROCEDURE chunk_tsv_trigger();
 
 
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+
+CREATE INDEX idx_chunk_text_trgm ON document_chunk USING GIN (text gin_trgm_ops);
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+--
+-- ALTER TABLE document_chunk
+--     ADD COLUMN keywords_text TEXT not null;
+--
+-- ALTER TABLE document_chunk
+--     ADD COLUMN raw_text TEXT NULL;
+--
+-- CREATE INDEX idx_document_chunk_keywords_trgm
+--     ON document_chunk USING GIN (keywords_text gin_trgm_ops);

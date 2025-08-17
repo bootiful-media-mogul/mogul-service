@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.nio.charset.Charset;
+import java.util.List;
 import java.util.Map;
 
 @SpringBootTest(classes = ApiApplication.class)
