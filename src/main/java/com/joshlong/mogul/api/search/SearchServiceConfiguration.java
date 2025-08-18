@@ -1,20 +1,12 @@
 package com.joshlong.mogul.api.search;
 
-import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.UriUtils;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 
 @Configuration
 class SearchServiceConfiguration {

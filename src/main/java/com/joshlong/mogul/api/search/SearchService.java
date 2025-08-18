@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.search;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Provides a generic subsystem for ingesting and searching documents. Higher levels of
@@ -12,6 +13,8 @@ public interface SearchService {
 	Document ingest(String title, String fullText);
 
 	Document ingest(String title, String fullText, Map<String, Object> metadata);
+
+	Document byId(Long id);
 
 	List<SearchHit> search(String query);
 

@@ -4,13 +4,12 @@ import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.UriUtils;
 import com.pgvector.PGvector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
@@ -18,10 +17,9 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
 
+@Service
 @Transactional
 class DefaultSearchService implements SearchService {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final EmbeddingModel embeddingModel;
 
@@ -42,6 +40,10 @@ class DefaultSearchService implements SearchService {
 		this.searchHitRowMapper = searchHitRowMapper;
 	}
 
+	/**
+	 * package private so we can use it in the {@link SearchServiceConfiguration} class
+	 * for wiring purposes.
+	 */
 	List<DocumentChunk> documentChunks(Long documentId) {
 		return jdbcClient //
 			.sql("select dc.* from document_chunk dc where dc.document_id = ? ") //
@@ -62,9 +64,9 @@ class DefaultSearchService implements SearchService {
 		var gkh = new GeneratedKeyHolder();
 		this.jdbcClient //
 			.sql("""
-					   INSERT INTO document(  source_uri, title, created_at, raw_text, metadata)
+					   INSERT INTO document(source_uri, title, created_at, raw_text, metadata)
 					   VALUES ( ?, ?, ?, ?, ?::jsonb)
-					   returning  id
+					   returning id
 					""") //
 			.params("text", title, new Date(), fullText, JsonUtils.write(finalMetadata)) //
 			.update(gkh);
@@ -84,7 +86,8 @@ class DefaultSearchService implements SearchService {
 		return this.byId(documentId);
 	}
 
-	private Document byId(Long documentId) {
+	@Override
+	public Document byId(Long documentId) {
 		var documentList = this.jdbcClient //
 			.sql("""
 					     select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?
