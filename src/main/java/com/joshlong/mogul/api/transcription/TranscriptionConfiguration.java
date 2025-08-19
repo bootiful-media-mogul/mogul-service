@@ -44,7 +44,7 @@ class TranscriptionConfiguration {
 						payload.mogulId(), payload.context(), payload.payload().transcribableId());
 				var transcribable = payload.payload();
 				var mogulId = payload.mogulId();
-				var transcription = transcriptionService.transcription(payload.mogulId(), transcribable);
+				var transcription = transcriptionService.transcript(payload.mogulId(), transcribable);
 				var clazz = (Class<? extends Transcribable>) transcription.payloadClass();
 				var transcribableId = transcribable.transcribableId();
 				this.publishInTransaction(publisher, tx,

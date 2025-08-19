@@ -3,8 +3,6 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.PublishableRepository;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
-
 @Component
 class PodcastPublishableRepository implements PublishableRepository<Episode> {
 
@@ -15,8 +13,8 @@ class PodcastPublishableRepository implements PublishableRepository<Episode> {
 	}
 
 	@Override
-	public Episode find(Serializable serializable) {
-		return podcastService.getPodcastEpisodeById((Long) serializable);
+	public Episode find(Long id) {
+		return podcastService.getPodcastEpisodeById(id);
 	}
 
 	@Override

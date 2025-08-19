@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.index;
 
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
@@ -19,7 +19,7 @@ import java.util.function.Function;
 
 @Service
 @Transactional
-class DefaultSearchService implements SearchService {
+class DefaultIndexService implements IndexService {
 
 	private final EmbeddingModel embeddingModel;
 
@@ -31,7 +31,7 @@ class DefaultSearchService implements SearchService {
 
 	private final SearchHitRowMapper searchHitRowMapper;
 
-	DefaultSearchService(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
+	DefaultIndexService(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
 			DocumentRowMapper documentRowMapper, SearchHitRowMapper searchHitRowMapper) {
 		this.embeddingModel = embeddingModel;
 		this.jdbcClient = jdbc;
@@ -41,8 +41,8 @@ class DefaultSearchService implements SearchService {
 	}
 
 	/**
-	 * package private so we can use it in the {@link SearchServiceConfiguration} class
-	 * for wiring purposes.
+	 * package private so we can use it in the {@link IndexServiceConfiguration} class for
+	 * wiring purposes.
 	 */
 	List<DocumentChunk> documentChunks(Long documentId) {
 		return jdbcClient //

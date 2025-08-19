@@ -41,7 +41,7 @@ class TranscriptionTestSecurityConfiguration {
 // todo restore this test!
 @SpringBootTest
 @Import(TranscriptionTestSecurityConfiguration.class)
-class TranscriptionTest {
+class TranscriptTest {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -64,7 +64,7 @@ class TranscriptionTest {
 		assertEquals(episode.id(), episode.compositionKey());
 
 		var segment = podcastService.createPodcastEpisodeSegment(mogulId, episode.id(), "segment", 0);
-		var transcription = transcriptionService.transcription(mogulId, segment);
+		var transcription = transcriptionService.transcript(mogulId, segment);
 
 		var cpr = new ClassPathResource("/samples/2.aiff.mp3");
 		managedFileService.write(segment.producedAudio().id(), cpr.getFilename(), CommonMediaTypes.MP3, cpr);

@@ -15,7 +15,7 @@ class TranscriptionController {
 
 	@MutationMapping
 	boolean refreshTranscription(@Argument Long transcriptionId) {
-		var transcription = this.transcriptionService.transcriptionById(transcriptionId);
+		var transcription = this.transcriptionService.transcriptById(transcriptionId);
 		this.transcriptionService.transcribe(transcription.mogulId(), transcription.id());
 		return true;
 	}

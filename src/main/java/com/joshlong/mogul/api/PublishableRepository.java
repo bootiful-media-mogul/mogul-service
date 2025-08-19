@@ -26,7 +26,7 @@ public interface PublishableRepository<T extends Publishable> {
 
 	boolean supports(Class<?> clazz);
 
-	T find(Serializable serializable);
+	T find(Long serializable);
 
 }
 

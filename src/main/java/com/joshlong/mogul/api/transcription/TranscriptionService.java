@@ -2,15 +2,17 @@ package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
-import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.Transcript;
 
 import java.util.Map;
 
 public interface TranscriptionService {
 
-	Transcription transcription(Long mogulId, Transcribable payload);
+	<T extends Transcribable> T transcribable(Long transcribableId, Class<T> transcribableClass);
 
-	Transcription transcriptionById(Long id);
+	Transcript transcript(Long mogulId, Transcribable payload);
+
+	Transcript transcriptById(Long id);
 
 	void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context);
 
@@ -25,5 +27,7 @@ public interface TranscriptionService {
 	void writeTranscript(Transcribable transcribable, String transcript);
 
 	void writeTranscript(Long transcriptionId, String transcript);
+
+	<T extends Transcribable> String readTranscript(Long mogulId, T toRead);
 
 }

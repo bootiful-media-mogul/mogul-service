@@ -1,23 +1,23 @@
 package com.joshlong.mogul.api.search;
 
-import java.util.List;
+import com.joshlong.mogul.api.Searchable;
+
+import java.util.Collection;
 import java.util.Map;
 
 /**
- * Provides a generic subsystem for ingesting and searching documents. Higher levels of
- * abstraction can work in terms of the {@link DocumentChunk document} type, and the
- * {@code documentId}. You can correlate documents to other types with {@code metadata}.
+ * implementors of the {@link Searchable searchable} type are expected to call the
+ * {@link SearchService#index(Searchable)} method whenever the indexable text and metadata
+ * may have reasonably changed.
+ * <p>
+ * TODO: should there be some sort of mapping between the {@link Searchable } and the
+ * underlying implementation? After all, given the {@link Searchable#searchableId()}, how
+ * do we load and resolve the source entity?
  */
 public interface SearchService {
 
-	Document ingest(String title, String fullText);
+	<T extends Searchable> void index(T searchable);
 
-	Document ingest(String title, String fullText, Map<String, Object> metadata);
-
-	Document byId(Long id);
-
-	List<SearchHit> search(String query);
-
-	List<SearchHit> search(String query, Map<String, Object> metadata);
+	Collection<? extends Searchable> search(String query, Map<String, Object> metadata);
 
 }

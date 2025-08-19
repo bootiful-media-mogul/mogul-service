@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.index;
 
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
@@ -9,13 +9,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import java.sql.SQLException;
 
 @Configuration
-class SearchServiceConfiguration {
+class IndexServiceConfiguration {
 
 	@Bean
-	DefaultSearchService searchService(EmbeddingModel embeddingModel, JdbcClient jdbcClient,
+	DefaultIndexService defaultIndexService(EmbeddingModel embeddingModel, JdbcClient jdbcClient,
 			DocumentRowMapper documentRowMapper, DocumentChunkRowMapper documentChunkRowMapper,
 			SearchHitRowMapper searchHitRowMapper) {
-		return new DefaultSearchService(jdbcClient, embeddingModel, documentChunkRowMapper, documentRowMapper,
+		return new DefaultIndexService(jdbcClient, embeddingModel, documentChunkRowMapper, documentRowMapper,
 				searchHitRowMapper);
 	}
 
@@ -25,7 +25,7 @@ class SearchServiceConfiguration {
 	}
 
 	@Bean
-	DocumentRowMapper documentRowMapper(ObjectProvider<DefaultSearchService> defaultSearchService) {
+	DocumentRowMapper documentRowMapper(ObjectProvider<DefaultIndexService> defaultSearchService) {
 		return new DocumentRowMapper(documentId -> defaultSearchService.getObject().documentChunks(documentId));
 	}
 

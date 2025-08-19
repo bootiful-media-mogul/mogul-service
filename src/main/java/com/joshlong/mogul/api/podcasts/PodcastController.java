@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -198,9 +198,9 @@ class PodcastController {
 	}
 
 	@SchemaMapping
-	Transcription transcription(Segment segment) {
+	Transcript transcript(Segment segment) {
 		var mogul = this.mogulService.getCurrentMogul();
-		return this.transcriptionService.transcription(mogul.id(), segment);
+		return this.transcriptionService.transcript(mogul.id(), segment);
 	}
 
 }

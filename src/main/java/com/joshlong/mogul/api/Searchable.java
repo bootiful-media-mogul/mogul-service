@@ -9,8 +9,4 @@ public interface Searchable {
 
 	Long searchableId();
 
-	String text();
-
-	Map<String, String> metadata();
-
 }

@@ -1,7 +1,10 @@
 package com.joshlong.mogul.api.podcasts;
 
+import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
+
+import java.util.Map;
 
 /**
  * represents an arbitrary segment of a podcast episode.
@@ -14,10 +17,16 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
  * @param order the relative order of the segment
  */
 public record Segment(Long episodeId, Long id, ManagedFile audio, ManagedFile producedAudio, long crossFadeDuration,
-		String name, int order) implements Transcribable {
+		String name, int order) implements Transcribable, Searchable {
 
 	@Override
 	public Long transcribableId() {
 		return this.id();
 	}
+
+	@Override
+	public Long searchableId() {
+		return this.id();
+	}
+
 }

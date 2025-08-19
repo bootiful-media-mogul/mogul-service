@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
-import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
@@ -41,7 +41,7 @@ class DefaultTranscriptionService implements TranscriptionService {
 		return transcribable.getClass().getName();
 	}
 
-	private Transcription readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
+	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
 		// todo some sort of caching.
 		return CollectionUtils
 			.firstOrNull(this.db.sql("select * from transcription where payload_class = ? and payload = ?")
@@ -51,7 +51,13 @@ class DefaultTranscriptionService implements TranscriptionService {
 	}
 
 	@Override
-	public Transcription transcription(Long mogulId, Transcribable payload) {
+	public <T extends Transcribable> T transcribable(Long transcribableId, Class<T> transcribableClass) {
+		var repo = this.repositoryFor(transcribableClass);
+		return repo.find(transcribableId);
+	}
+
+	@Override
+	public Transcript transcript(Long mogulId, Transcribable payload) {
 		var clazz = classNameFor(payload);
 		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
 		var transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
@@ -66,7 +72,7 @@ class DefaultTranscriptionService implements TranscriptionService {
 	}
 
 	@Override
-	public Transcription transcriptionById(Long id) {
+	public Transcript transcriptById(Long id) {
 		var transcriptions = this.db.sql("select * from transcription where id = ?")
 			.params(id)
 			.query(this.transcribableRowMapper)
@@ -86,20 +92,20 @@ class DefaultTranscriptionService implements TranscriptionService {
 		this.transcribe(mogulId, payload, ctx);
 	}
 
-	private Long keyFor(Transcription transcription) {
-		return JsonUtils.read(transcription.payload(), Long.class);
+	private Long keyFor(Transcript transcript) {
+		return JsonUtils.read(transcript.payload(), Long.class);
 	}
 
 	@Override
 	public void transcribe(Long mogulId, Long transcriptionId) {
-		var transcription = this.transcriptionById(transcriptionId);
+		var transcription = this.transcriptById(transcriptionId);
 		var ctx = this.repositoryFor(transcription.payloadClass()).defaultContext(this.keyFor(transcription));
 		this.transcribe(mogulId, transcriptionId, ctx);
 	}
 
 	@Override
 	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
-		var transcription = this.transcription(mogulId, payload);
+		var transcription = this.transcript(mogulId, payload);
 		var transcribableKey = this.keyFor(transcription);
 		var defaultContext = this.repositoryFor(payload.getClass()).defaultContext(transcribableKey);
 		var finalMap = new HashMap<String, Object>();
@@ -112,7 +118,7 @@ class DefaultTranscriptionService implements TranscriptionService {
 	}
 
 	private Transcribable transcribableFor(Long transcriptionId) {
-		var transcription = this.transcriptionById(transcriptionId);
+		var transcription = this.transcriptById(transcriptionId);
 		var repo = this.repositoryFor((transcription.payloadClass()));
 		return repo.find(JsonUtils.read(transcription.payload(), Long.class));
 	}
@@ -130,6 +136,12 @@ class DefaultTranscriptionService implements TranscriptionService {
 		this.db.sql("update transcription set transcript = ? where  id = ? ")
 			.params(transcript, transcriptionId)
 			.update();
+	}
+
+	@Override
+	public <T extends Transcribable> String readTranscript(Long mogulId, T transcribable) {
+		var transcript = this.transcript(mogulId, transcribable);
+		return transcript.transcript();
 	}
 
 	@Override

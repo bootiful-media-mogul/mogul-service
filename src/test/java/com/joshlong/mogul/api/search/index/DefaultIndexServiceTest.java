@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.index;
 
 import com.joshlong.mogul.api.ApiApplication;
 import org.junit.jupiter.api.Assertions;
@@ -15,13 +15,13 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 @SpringBootTest(classes = ApiApplication.class)
-class DefaultSearchServiceTest {
+class DefaultIndexServiceTest {
 
-	private final SearchService searchService;
+	private final IndexService searchService;
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	DefaultSearchServiceTest(@Autowired DefaultSearchService searchService) {
+	DefaultIndexServiceTest(@Autowired DefaultIndexService searchService) {
 		this.searchService = searchService;
 	}
 
