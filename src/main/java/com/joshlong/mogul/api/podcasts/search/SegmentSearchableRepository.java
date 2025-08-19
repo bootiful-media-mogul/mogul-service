@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.podcasts.search;
 
+import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
 import com.joshlong.mogul.api.search.SearchableRepository;
@@ -11,10 +12,14 @@ class SegmentSearchableRepository implements SearchableRepository<Segment> {
 
 	private final PodcastService podcastService;
 
+	private final MogulService mogulService;
+
 	private final TranscriptionService transcriptionService;
 
-	SegmentSearchableRepository(PodcastService podcastService, TranscriptionService transcriptionService) {
+	SegmentSearchableRepository(PodcastService podcastService, MogulService mogulService,
+			TranscriptionService transcriptionService) {
 		this.podcastService = podcastService;
+		this.mogulService = mogulService;
 		this.transcriptionService = transcriptionService;
 	}
 
@@ -30,8 +35,9 @@ class SegmentSearchableRepository implements SearchableRepository<Segment> {
 
 	@Override
 	public String text(Long searchableId) {
+		var mogul = this.mogulService.getCurrentMogul();
 		var segment = this.find(searchableId);
-		return this.transcriptionService.readTranscript(segment.audio().mogulId(), segment);
+		return this.transcriptionService.readTranscript(mogul.id(), segment);
 	}
 
 }

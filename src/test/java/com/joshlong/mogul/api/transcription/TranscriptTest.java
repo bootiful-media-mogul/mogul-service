@@ -1,10 +1,9 @@
-package com.joshlong.mogul.api.transcriptions;
+package com.joshlong.mogul.api.transcription;
 
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import com.joshlong.mogul.api.transcription.TranscriptionService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -21,7 +20,7 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import static com.joshlong.mogul.api.transcriptions.TranscriptionTestSecurityConfiguration.ONE;
+import static com.joshlong.mogul.api.transcription.TranscriptionTestSecurityConfiguration.ONE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
