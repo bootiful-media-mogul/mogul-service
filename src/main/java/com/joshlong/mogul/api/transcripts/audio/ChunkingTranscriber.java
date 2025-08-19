@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription.audio;
+package com.joshlong.mogul.api.transcripts.audio;
 
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * this is an implementation of {@link Transcriber transcription service} that divides
- * larger files into smaller ones and then transcribes each of those, aggregating all the
- * results into one big transcript. it also takes care to try to divine pauses - gaps of
- * silence - in the audio and cut along those gaps.
+ * this is an implementation of {@link Transcriber} that divides larger files into smaller
+ * ones and then transcribes each of those, aggregating all the results into one big
+ * transcript. it also takes care to try to divine pauses - gaps of silence - in the audio
+ * and cut along those gaps.
  *
  * @author Josh Long
  */
@@ -65,7 +65,7 @@ class ChunkingTranscriber implements Transcriber {
 		Assert.notNull(this.root, "the root directory must not be null");
 		Assert.state(this.maxFileSize > 0, "the max file size must be greater than zero");
 		Assert.state(this.root.exists() || this.root.mkdirs(),
-				"the root for transcription, " + this.root.getAbsolutePath() + ", could not be created");
+				"the root for transcripts, " + this.root.getAbsolutePath() + ", could not be created");
 		try (var scheduledThreadPool = Executors.newScheduledThreadPool(1)) {
 			scheduledThreadPool.scheduleAtFixedRate(this.cleanup, 1, 10, TimeUnit.MINUTES);
 		}
@@ -90,12 +90,12 @@ class ChunkingTranscriber implements Transcriber {
 
 	@Override
 	public String transcribe(Resource audio) {
-		var transcriptionForResource = new File(this.root, UUID.randomUUID().toString());
-		var parentFile = transcriptionForResource.getParentFile();
+		var transcriptForResource = new File(this.root, UUID.randomUUID().toString());
+		var parentFile = transcriptForResource.getParentFile();
 		Assert.state(parentFile.exists() || parentFile.mkdirs(), "the directory into which we're writing this file ["
 				+ parentFile.getAbsolutePath() + "] does not exist, and could not be created.");
 		try {
-			var orderedAudio = this.divide(transcriptionForResource, audio)//
+			var orderedAudio = this.divide(transcriptForResource, audio)//
 				.map(tr -> (Callable<String>) () -> {
 					var audioResource = tr.audio();
 					if (audioResource != null) {
@@ -122,7 +122,7 @@ class ChunkingTranscriber implements Transcriber {
 			throw new RuntimeException(e);
 		} //
 		finally {
-			FileUtils.delete(transcriptionForResource);
+			FileUtils.delete(transcriptForResource);
 		}
 	}
 
@@ -138,15 +138,14 @@ class ChunkingTranscriber implements Transcriber {
 		this.filesToDelete.computeIfAbsent(futureInstant, _ -> new HashSet<>()).add(file);
 	}
 
-	private Stream<TranscriptionSegment> divide(File transcriptionForResource, Resource audio) throws Exception {
+	private Stream<TranscriptionSegment> divide(File file, Resource audio) throws Exception {
 
 		// make sure we have the file locally
-		var originalAudio = new File(transcriptionForResource, "audio.mp3");
-		Assert.state(transcriptionForResource.mkdirs(),
-				"the directory [" + transcriptionForResource.getAbsolutePath() + "] has not been created");
+		var originalAudio = new File(file, "audio.mp3");
+		Assert.state(file.mkdirs(), "the directory [" + file.getAbsolutePath() + "] has not been created");
 		Assert.notNull(audio, "the audio file must be non null!");
 		FileCopyUtils.copy(audio.getInputStream(), new FileOutputStream(originalAudio));
-		this.enqueueForDeletion(transcriptionForResource);
+		this.enqueueForDeletion(file);
 		var duration = this.durationFor(originalAudio);
 		var sizeInBytes = originalAudio.length();
 
@@ -211,7 +210,7 @@ class ChunkingTranscriber implements Transcriber {
 		var listOfSegments = new ArrayList<TranscriptionSegment>();
 		var numberFormat = numberFormat(); // not thread safe. not cheap.
 		for (var r : betterRanges) {
-			var destinationFile = new File(transcriptionForResource, numberFormat.format(indx) + ".mp3");
+			var destinationFile = new File(file, numberFormat.format(indx) + ".mp3");
 			var start = (long) r[0];
 			var stop = (long) r[1];
 			this.bisect(originalAudio, destinationFile, start, stop);

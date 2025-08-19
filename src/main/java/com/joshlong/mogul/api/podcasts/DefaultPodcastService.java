@@ -11,7 +11,7 @@ import com.joshlong.mogul.api.media.MediaService;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.transcription.TranscriptionInvalidatedEvent;
+import com.joshlong.mogul.api.transcripts.TranscriptInvalidatedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -30,20 +30,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
-
-/**
- * <li>resizing images</li>
- * <li>transcoding audio segments</li>
- * <li>creating transcripts</li>
- * <p>
- * Once all these things are done, we'll communicate state changes via events.
- * <p>
- * we need to decouple {@link PodcastService podcastService} from everything to do with
- * <EM>transcription</EM> or <em>media normalization</em>. the {@link PodcastService
- * podcastService} handles operations in a transaction. The transcription and
- * normalization should <EM>not</EM> happen in a transaction, as this will block the SQL
- * database and thwart scalability.
- */
 
 @Transactional
 class DefaultPodcastService implements PodcastService {
@@ -119,7 +105,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void triggerTranscription(Long mogulId, Long segmentId) {
-		this.publisher.publishEvent(new TranscriptionInvalidatedEvent(mogulId, segmentId, Segment.class, Map.of()));
+		this.publisher.publishEvent(new TranscriptInvalidatedEvent(mogulId, segmentId, Segment.class, Map.of()));
 	}
 
 	@ApplicationModuleListener

@@ -121,8 +121,8 @@ type NotificationEvent {
 type Mutation {
 
     # transcriptions
-    writeTranscript(transcriptionId:Int, transcript:String): Boolean
-    refreshTranscription(transcriptionId :Int) : Boolean
+    writeTranscript(transcriptId:Int, transcript:String): Boolean
+    refreshTranscript(transcriptId :Int) : Boolean
 
     # publicationService
     unpublish( publicationId: Int): Boolean
@@ -150,7 +150,7 @@ type Mutation {
 
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
-    createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
+    createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Segment
     setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
     transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean

@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.Transcript;
@@ -9,7 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 @SuppressWarnings("unchecked")
-class TranscriptionRowMapper implements RowMapper<Transcript> {
+class TranscriptRowMapper implements RowMapper<Transcript> {
 
 	@Override
 	public Transcript mapRow(ResultSet rs, int rowNum) throws SQLException {

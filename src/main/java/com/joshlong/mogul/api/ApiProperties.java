@@ -6,8 +6,8 @@ import java.io.File;
 import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
-public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcriptions transcriptions, Podcasts podcasts,
-		Cache cache, Notifications notifications, Settings settings, boolean debug) {
+public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Podcasts podcasts, Cache cache,
+		Notifications notifications, Settings settings, boolean debug) {
 
 	public record Cache(int maxEntries) {
 	}
@@ -19,7 +19,7 @@ public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcriptions t
 
 	}
 
-	public record Transcriptions(File root) {
+	public record Transcripts(File root) {
 	}
 
 	public record Settings(String password, String salt) {

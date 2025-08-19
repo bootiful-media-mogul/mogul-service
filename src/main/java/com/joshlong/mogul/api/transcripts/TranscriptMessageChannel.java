@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcripts;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -8,7 +8,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Qualifier("transcriptionMessageChannel")
-public @interface TranscriptionMessageChannel {
+@Qualifier("transcriptMessageChannel")
+public @interface TranscriptMessageChannel {
 
 }

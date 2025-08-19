@@ -20,9 +20,9 @@ public interface TranscribableRepository<T extends Transcribable> {
 	Resource audio(Long key);
 
 	/**
-	 * the idea is that after the transcription is done, we'll need to publish an event
-	 * that particular subsystems will need to listen to if and only if the event applies
-	 * to them. we leave it up to each subsystem to furnish that configuration.
+	 * the idea is that after the transcript has been created, we'll need to publish an
+	 * event that particular subsystems will need to listen to if and only if the event
+	 * applies to them. we leave it up to each subsystem to furnish that configuration.
 	 */
 	default Map<String, Object> defaultContext(Long transcribableId) {
 		return Map.of();
