@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api;
 
-import java.util.Map;
-
 /**
  * represents a thing that's been indexed for searching.
  */

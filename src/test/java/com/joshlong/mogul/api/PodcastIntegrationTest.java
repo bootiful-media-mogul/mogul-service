@@ -45,20 +45,27 @@ class PodcastIntegrationTest {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private Long mogulId(HttpGraphQlTester tester) {
-
-		var name = (Map<String, Object>) tester.document(" query { me { name, email, givenName, id, familyName } } ")
-			.execute()
-			.returnResponse()
-			.getData();
-		var me = (Map<String, Object>) name.get("me");
-		log.debug("me:", me);
-		Assertions.assertEquals(me.get("email"), "josh@joshlong.com");
-		Assertions.assertEquals(me.get("givenName"), "Josh Long");
+		var me = tester//
+			.document(" query { me { name, email, givenName, id, familyName } } ")//
+			.execute() //
+			.path("me")//
+			.entity(Map.class) //
+			.get();
+		Assertions.assertEquals("Josh", me.get("givenName"));
+		Assertions.assertEquals("Long", me.get("familyName"));
+		Assertions.assertEquals(USER, me.get("name"));
 		return ((Number) me.get("id")).longValue();
 	}
 
-	@WithUserDetails(USER)
+	private Long id(Map<?, ?> map) {
+		if (map != null && map.containsKey("id")) {
+			return ((Number) map.get("id")).longValue();
+		}
+		return null;
+	}
+
 	@Test
+	@WithUserDetails(USER)
 	void podcastE2eTest(@Autowired WebApplicationContext applicationContext,
 			@Autowired TransactionTemplate transactionTemplate, @Autowired MogulService mogulService) throws Exception {
 
@@ -77,8 +84,33 @@ class PodcastIntegrationTest {
 
 		var tester = HttpGraphQlTester.create(client);
 
-		Assertions.assertEquals(mogulId, mogulId(tester),
+		Assertions.assertEquals(mogulId, this.mogulId(tester),
 				"the mogulId returned from the API must match what we've loaded here locally");
+
+		var podcast = tester //
+			.document("mutation($title:String!){ createPodcast(title:$title){ id } }") //
+			.variable("title", "Test Podcast")//
+			.execute() //
+			.path("createPodcast") //
+			.entity(Map.class) //
+			.get();
+
+		var podcastId = this.id(podcast);
+		this.log.info("the podcastId is {}", podcastId);
+
+		// 2) Create episode draft
+		var episode = tester
+			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
+					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")
+			.variable("pid", podcastId)
+			.variable("title", "Test Episode")
+			.variable("desc", "Test Description")
+			.execute()
+			.path("createPodcastEpisodeDraft")
+			.entity(Map.class)
+			.get();
+		var episodeId = this.id(episode);
+		this.log.info("the episodeId is {}", episodeId);
 
 	}
 
@@ -95,7 +127,6 @@ class PodcastIntegrationTest {
 			.entity(Integer.class)
 			.get();
 
-		// 2) Create episode draft
 		var episodeId = graphQlTester
 			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
 					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")

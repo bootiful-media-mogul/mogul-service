@@ -4,8 +4,6 @@ import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
-import java.util.Map;
-
 /**
  * represents an arbitrary segment of a podcast episode.
  *
