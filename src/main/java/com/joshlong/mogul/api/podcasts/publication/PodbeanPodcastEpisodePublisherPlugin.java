@@ -25,8 +25,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component(PodbeanPodcastEpisodePublisherPlugin.PLUGIN_NAME)
 class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin, BeanNameAware {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	/**
 	 * well-known values written to the context after publication.
 	 */
@@ -37,6 +35,8 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	public static final String CONTEXT_PODBEAN_EPISODE_PUBLISH_DATE_IN_MILLISECONDS = "contextPodbeanEpisodePublishDateInMilliseconds";
 
 	public static final String PLUGIN_NAME = "podbean";
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final AtomicReference<String> beanName = new AtomicReference<>();
 
@@ -65,7 +65,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public Set<String> getRequiredSettingKeys() {
+	public Set<String> requiredSettingKeys() {
 		return Set.of("clientId", "clientSecret");
 	}
 

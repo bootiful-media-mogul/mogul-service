@@ -1,0 +1,1 @@
+alter table  transcription rename to transcript;

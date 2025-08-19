@@ -28,7 +28,7 @@ class GithubBlogPostPlugin implements PublisherPlugin<Post>, BeanNameAware {
 	}
 
 	@Override
-	public Set<String> getRequiredSettingKeys() {
+	public Set<String> requiredSettingKeys() {
 		return Set.of("clientId", "clientSecret");
 	}
 

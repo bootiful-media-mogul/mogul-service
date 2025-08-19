@@ -1,8 +1,8 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
-import com.joshlong.mogul.api.transcription.audio.Transcriber;
+import com.joshlong.mogul.api.transcripts.audio.Transcriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,39 +21,39 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 @Configuration
-class TranscriptionConfiguration {
+class TranscriptConfiguration {
 
 	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Bean
-	DefaultTranscriptionService defaultTranscriptions(JdbcClient db,
-			Map<String, TranscribableRepository<?>> repositories, @TranscriptionMessageChannel MessageChannel in) {
-		return new DefaultTranscriptionService(transcriptionRowMapper(), db, repositories, in);
+	DefaultTranscriptService defaultTranscriptService(JdbcClient db,
+			Map<String, TranscribableRepository<?>> repositories, @TranscriptMessageChannel MessageChannel in) {
+		return new DefaultTranscriptService(transcriptRowMapper(), db, repositories, in);
 	}
 
 	@Bean
-	IntegrationFlow transcriptionIntegrationFlow(ApplicationEventPublisher publisher,
-			@TranscriptionMessageChannel MessageChannel inbound, TranscriptionService transcriptionService,
+	IntegrationFlow transcriptIntegrationFlow(ApplicationEventPublisher publisher,
+			@TranscriptMessageChannel MessageChannel inbound, TranscriptService transcriptService,
 			Transcriber transcriber, TransactionTemplate tx) {
 		return IntegrationFlow //
 			.from(inbound) //
 			.handle((GenericHandler<TranscriptionRequest>) (payload, headers) -> {
-				this.log.debug("received a transcription request for mogul# {}, context: {}, transcribable# {}",
+				this.log.debug("received a transcript request for mogul# {}, context: {}, transcribable# {}",
 						payload.mogulId(), payload.context(), payload.payload().transcribableId());
 				var transcribable = payload.payload();
 				var mogulId = payload.mogulId();
-				var transcription = transcriptionService.transcription(payload.mogulId(), transcribable);
-				var clazz = (Class<? extends Transcribable>) transcription.payloadClass();
+				var transcript = transcriptService.transcript(payload.mogulId(), transcribable);
+				var clazz = (Class<? extends Transcribable>) transcript.payloadClass();
 				var transcribableId = transcribable.transcribableId();
 				this.publishInTransaction(publisher, tx,
-						new TranscriptionStartedEvent(mogulId, transcribableId, transcription.id(), clazz));
-				var repository = transcriptionService.repositoryFor(clazz);
+						new TranscriptionStartedEvent(mogulId, transcribableId, transcript.id(), clazz));
+				var repository = transcriptService.repositoryFor(clazz);
 				var audio = repository.audio(transcribableId);
 				var content = transcriber.transcribe(audio);
 				this.publishInTransaction(publisher, tx,
-						new TranscriptionCompletedEvent(mogulId, transcribableId, transcription.id(), clazz, content));
+						new TranscriptCompletedEvent(mogulId, transcribableId, transcript.id(), clazz, content));
 				return null;
 			}) //
 			.get();
@@ -68,14 +68,14 @@ class TranscriptionConfiguration {
 	}
 
 	@Bean
-	@TranscriptionMessageChannel
-	PublishSubscribeChannelSpec<?> transcriptionRequests() {
+	@TranscriptMessageChannel
+	PublishSubscribeChannelSpec<?> transcriptMessageChannel() {
 		return MessageChannels.publishSubscribe(this.executor);
 	}
 
 	@Bean
-	TranscriptionRowMapper transcriptionRowMapper() {
-		return new TranscriptionRowMapper();
+	TranscriptRowMapper transcriptRowMapper() {
+		return new TranscriptRowMapper();
 	}
 
 }

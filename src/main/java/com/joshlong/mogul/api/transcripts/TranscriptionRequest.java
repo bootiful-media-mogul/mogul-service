@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 

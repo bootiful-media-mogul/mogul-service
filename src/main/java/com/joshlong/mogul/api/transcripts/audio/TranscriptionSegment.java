@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.transcription.audio;
+package com.joshlong.mogul.api.transcripts.audio;
 
 import org.springframework.core.io.Resource;
 

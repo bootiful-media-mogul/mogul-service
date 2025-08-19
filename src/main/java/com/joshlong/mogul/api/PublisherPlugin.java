@@ -10,10 +10,10 @@ public interface PublisherPlugin<T extends Publishable> {
 
 	String name();
 
-	Set<String> getRequiredSettingKeys();
+	Set<String> requiredSettingKeys();
 
 	default boolean isConfigurationValid(Map<String, String> context) {
-		var required = this.getRequiredSettingKeys();
+		var required = this.requiredSettingKeys();
 
 		if (context == null)
 			context = new HashMap<>();
@@ -90,11 +90,11 @@ public interface PublisherPlugin<T extends Publishable> {
 		}
 
 		public PublishContext<T> success(String outcomeKey, URI outcome) {
-			return outcome(outcomeKey, true, outcome, null);
+			return this.outcome(outcomeKey, true, outcome, null);
 		}
 
 		public PublishContext<T> failure(String outcomeKey, String errorMessageFromServer) {
-			return outcome(outcomeKey, false, null, errorMessageFromServer);
+			return this.outcome(outcomeKey, false, null, errorMessageFromServer);
 		}
 
 		private PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome, String errorMessage) {

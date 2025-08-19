@@ -1,8 +1,8 @@
-package com.joshlong.mogul.api.transcription;
+package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
-import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
@@ -19,17 +19,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Transactional
 @SuppressWarnings("unchecked")
-class DefaultTranscriptionService implements TranscriptionService {
+class DefaultTranscriptService implements TranscriptService {
 
 	private final JdbcClient db;
 
-	private final TranscriptionRowMapper transcribableRowMapper;
+	private final TranscriptRowMapper transcribableRowMapper;
 
 	private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
 
 	private final MessageChannel requests;
 
-	DefaultTranscriptionService(TranscriptionRowMapper transcribableRowMapper, JdbcClient db,
+	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
 			Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
@@ -41,42 +41,48 @@ class DefaultTranscriptionService implements TranscriptionService {
 		return transcribable.getClass().getName();
 	}
 
-	private Transcription readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
+	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
 		// todo some sort of caching.
 		return CollectionUtils
-			.firstOrNull(this.db.sql("select * from transcription where payload_class = ? and payload = ?")
+			.firstOrNull(this.db.sql("select * from transcript where payload_class = ? and payload = ?")
 				.params(clazz, payloadKeyAsJson)
 				.query(this.transcribableRowMapper)
 				.list());
 	}
 
 	@Override
-	public Transcription transcription(Long mogulId, Transcribable payload) {
-		var clazz = classNameFor(payload);
-		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
-		var transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-		if (null == transcription) {
-			db //
-				.sql("insert into transcription(mogul_id,payload, payload_class) values (?,?,?)") //
-				.params(mogulId, payloadKeyAsJson, clazz) //
-				.update();
-			transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-		}
-		return transcription;
+	public <T extends Transcribable> T transcribable(Long transcribableId, Class<T> transcribableClass) {
+		var repo = this.repositoryFor(transcribableClass);
+		return repo.find(transcribableId);
 	}
 
 	@Override
-	public Transcription transcriptionById(Long id) {
-		var transcriptions = this.db.sql("select * from transcription where id = ?")
+	public Transcript transcript(Long mogulId, Transcribable payload) {
+		var clazz = classNameFor(payload);
+		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
+		var transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		if (null == transcript) {
+			db //
+				.sql("insert into transcript(mogul_id,payload, payload_class) values (?,?,?)") //
+				.params(mogulId, payloadKeyAsJson, clazz) //
+				.update();
+			transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		}
+		return transcript;
+	}
+
+	@Override
+	public Transcript transcriptById(Long id) {
+		var transcripts = this.db.sql("select * from transcript where id = ?")
 			.params(id)
 			.query(this.transcribableRowMapper)
 			.list();
-		return CollectionUtils.firstOrNull(transcriptions);
+		return CollectionUtils.firstOrNull(transcripts);
 	}
 
 	@Override
-	public void transcribe(Long mogulId, Long transcriptionId, Map<String, Object> context) {
-		var transcribable = this.transcribableFor(transcriptionId);
+	public void transcribe(Long mogulId, Long transcriptId, Map<String, Object> context) {
+		var transcribable = this.transcribableFor(transcriptId);
 		this.transcribe(mogulId, transcribable, context);
 	}
 
@@ -86,21 +92,21 @@ class DefaultTranscriptionService implements TranscriptionService {
 		this.transcribe(mogulId, payload, ctx);
 	}
 
-	private Long keyFor(Transcription transcription) {
-		return JsonUtils.read(transcription.payload(), Long.class);
+	private Long keyFor(Transcript transcript) {
+		return JsonUtils.read(transcript.payload(), Long.class);
 	}
 
 	@Override
-	public void transcribe(Long mogulId, Long transcriptionId) {
-		var transcription = this.transcriptionById(transcriptionId);
-		var ctx = this.repositoryFor(transcription.payloadClass()).defaultContext(this.keyFor(transcription));
-		this.transcribe(mogulId, transcriptionId, ctx);
+	public void transcribe(Long mogulId, Long transcriptId) {
+		var transcript = this.transcriptById(transcriptId);
+		var ctx = this.repositoryFor(transcript.payloadClass()).defaultContext(this.keyFor(transcript));
+		this.transcribe(mogulId, transcriptId, ctx);
 	}
 
 	@Override
 	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
-		var transcription = this.transcription(mogulId, payload);
-		var transcribableKey = this.keyFor(transcription);
+		var transcript = this.transcript(mogulId, payload);
+		var transcribableKey = this.keyFor(transcript);
 		var defaultContext = this.repositoryFor(payload.getClass()).defaultContext(transcribableKey);
 		var finalMap = new HashMap<String, Object>();
 		finalMap.putAll(defaultContext);
@@ -111,25 +117,29 @@ class DefaultTranscriptionService implements TranscriptionService {
 		this.requests.send(message);
 	}
 
-	private Transcribable transcribableFor(Long transcriptionId) {
-		var transcription = this.transcriptionById(transcriptionId);
-		var repo = this.repositoryFor((transcription.payloadClass()));
-		return repo.find(JsonUtils.read(transcription.payload(), Long.class));
+	private Transcribable transcribableFor(Long transcriptId) {
+		var transcript = this.transcriptById(transcriptId);
+		var repo = this.repositoryFor((transcript.payloadClass()));
+		return repo.find(JsonUtils.read(transcript.payload(), Long.class));
 	}
 
 	@Override
 	public void writeTranscript(Transcribable transcribable, String transcript) {
 		var payloadKeyAsJson = JsonUtils.write(transcribable.transcribableId());
 		var clazz = classNameFor(transcribable);
-		var transcription = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-		this.writeTranscript(transcription.id(), transcript);
+		var transcriptObject = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		this.writeTranscript(transcriptObject.id(), transcript);
 	}
 
 	@Override
-	public void writeTranscript(Long transcriptionId, String transcript) {
-		this.db.sql("update transcription set transcript = ? where  id = ? ")
-			.params(transcript, transcriptionId)
-			.update();
+	public void writeTranscript(Long transcriptId, String transcript) {
+		this.db.sql("update transcript set transcript = ? where  id = ? ").params(transcript, transcriptId).update();
+	}
+
+	@Override
+	public <T extends Transcribable> String readTranscript(Long mogulId, T transcribable) {
+		var transcript = this.transcript(mogulId, transcribable);
+		return transcript.transcript();
 	}
 
 	@Override
@@ -144,19 +154,19 @@ class DefaultTranscriptionService implements TranscriptionService {
 	}
 
 	@ApplicationModuleListener
-	void transcriptionInvalidatedEvent(TranscriptionInvalidatedEvent event) {
+	void transcriptInvalidatedEvent(TranscriptInvalidatedEvent event) {
 		var repository = this.repositoryFor(event.type());
 		var payload = repository.find(event.key());
 		this.transcribe(event.mogulId(), payload, event.context());
 	}
 
 	@ApplicationModuleListener
-	void recordCompletedTranscript(TranscriptionCompletedEvent event) {
+	void recordCompletedTranscript(TranscriptCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.repositoryFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());
 		this.writeTranscript(transcribable, event.text());
-		var ctx = JsonUtils.write(Map.of("transcript", event.text(), "transcriptionId", event.transcriptionId()));
+		var ctx = JsonUtils.write(Map.of("transcript", event.text(), "transcriptId", event.transcriptId()));
 		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.mogulId(), event,
 				event.transcribableId().toString(), ctx);
 		NotificationEvents.notify(notificationEvent);

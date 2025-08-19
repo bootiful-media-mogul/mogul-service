@@ -3,8 +3,6 @@ package com.joshlong.mogul.api.blogs;
 import com.joshlong.mogul.api.PublishableRepository;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
-
 @Component
 class PostPublishableRepository implements PublishableRepository<Post> {
 
@@ -20,8 +18,8 @@ class PostPublishableRepository implements PublishableRepository<Post> {
 	}
 
 	@Override
-	public Post find(Serializable serializable) {
-		return this.blogService.getPostById((Long) serializable);
+	public Post find(Long id) {
+		return this.blogService.getPostById(id);
 	}
 
 }

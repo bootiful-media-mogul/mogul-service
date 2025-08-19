@@ -35,7 +35,7 @@ class PodcastEpisodeBlogPostPublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public Set<String> getRequiredSettingKeys() {
+	public Set<String> requiredSettingKeys() {
 		return Set.of(CONTEXT_BLOG_ID);
 	}
 

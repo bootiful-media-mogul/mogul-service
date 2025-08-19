@@ -49,11 +49,11 @@ class MediaServiceConfiguration {
 				try {
 					normalization.normalize(payload.in(), payload.out());
 					transactionTemplate.execute(_ -> {
-						publisher
-							.publishEvent(new MediaNormalizedEvent(payload.in(), payload.out(), payload.context()));
+						var event = new MediaNormalizedEvent(payload.in(), payload.out(), payload.context());
+						publisher.publishEvent(event);
 						return null;
 					});
-					log.debug("media normalization completed for {} to {}", payload.in().id(), payload.out().id());
+					this.log.debug("media normalization completed for {} to {}", payload.in().id(), payload.out().id());
 				} //
 				catch (Exception e) {
 					throw new RuntimeException(e);

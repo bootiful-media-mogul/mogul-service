@@ -1,11 +1,11 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.Transcription;
+import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.transcription.TranscriptionService;
+import com.joshlong.mogul.api.transcripts.TranscriptService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
@@ -29,13 +29,12 @@ class PodcastController {
 
 	private final PodcastService podcastService;
 
-	private final TranscriptionService transcriptionService;
+	private final TranscriptService transcriptService;
 
-	PodcastController(MogulService mogulService, PodcastService podcastService,
-			TranscriptionService transcriptionService) {
+	PodcastController(MogulService mogulService, PodcastService podcastService, TranscriptService transcriptService) {
 		this.mogulService = mogulService;
 		this.podcastService = podcastService;
-		this.transcriptionService = transcriptionService;
+		this.transcriptService = transcriptService;
 	}
 
 	@QueryMapping
@@ -75,10 +74,10 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	boolean createPodcastEpisodeSegment(@Argument Long podcastEpisodeId) {
+	Long createPodcastEpisodeSegment(@Argument Long podcastEpisodeId) {
 		var mogul = this.mogulService.getCurrentMogul().id();
-		this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
-		return true;
+		var segment = this.podcastService.createPodcastEpisodeSegment(mogul, podcastEpisodeId, "", 0);
+		return segment.id();
 	}
 
 	@SchemaMapping
@@ -198,9 +197,9 @@ class PodcastController {
 	}
 
 	@SchemaMapping
-	Transcription transcription(Segment segment) {
+	Transcript transcript(Segment segment) {
 		var mogul = this.mogulService.getCurrentMogul();
-		return this.transcriptionService.transcription(mogul.id(), segment);
+		return this.transcriptService.transcript(mogul.id(), segment);
 	}
 
 }

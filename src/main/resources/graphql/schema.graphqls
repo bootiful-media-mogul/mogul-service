@@ -11,7 +11,7 @@ type Composition  {
     attachments: [Attachment]
 }
 
-type Transcription {
+type Transcript {
     id: Int
     mogulId: Int
     transcript: String
@@ -92,13 +92,13 @@ type Episode {
 type Segment {
     id : Int
     name : String
-    transcript : String
     transcribable : Boolean
     audio: ManagedFile
     producedAudio : ManagedFile
     order : Int
     crossFadeDuration : Int
-    transcription: Transcription
+    transcript: Transcript
+
 }
 
 type Podcast {
@@ -121,8 +121,8 @@ type NotificationEvent {
 type Mutation {
 
     # transcriptions
-    writeTranscript(transcriptionId:Int, transcript:String): Boolean
-    refreshTranscription(transcriptionId :Int) : Boolean
+    writeTranscript(transcriptId:Int, transcript:String): Boolean
+    refreshTranscript(transcriptId :Int) : Boolean
 
     # publicationService
     unpublish( publicationId: Int): Boolean
@@ -150,7 +150,7 @@ type Mutation {
 
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
-    createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Boolean
+    createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Segment
     setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
     transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean

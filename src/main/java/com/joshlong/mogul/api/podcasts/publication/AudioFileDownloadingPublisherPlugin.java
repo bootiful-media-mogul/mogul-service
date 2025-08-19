@@ -5,11 +5,9 @@ import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * this plugin doesn't really 'publish' anything. it just lets the user download the
@@ -40,7 +38,7 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	}
 
 	@Override
-	public Set<String> getRequiredSettingKeys() {
+	public Set<String> requiredSettingKeys() {
 		return Set.of();
 	}
 

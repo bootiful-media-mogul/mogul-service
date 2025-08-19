@@ -47,7 +47,7 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public Set<String> getRequiredSettingKeys() {
+	public Set<String> requiredSettingKeys() {
 		return Set.of(AyrshareConstants.API_KEY_SETTING_KEY);
 	}
 

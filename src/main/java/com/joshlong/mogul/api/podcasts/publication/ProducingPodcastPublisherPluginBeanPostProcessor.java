@@ -21,8 +21,8 @@ import org.springframework.util.Assert;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * introduces some behavior to produce - to glue together the intro, the bumper, and the
- * interview for - the audio for a given episode if and only if it hasn't already been
+ * introduces some behavior to produce (to glue together) the intro, the bumper, and the
+ * interview - for the audio for a given episode if and only if it hasn't already been
  * produced. this production happens lazily, just before a publication plugin is run
  */
 class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAware, BeanPostProcessor {
@@ -76,9 +76,10 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 							this.log.debug(
 									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
 									episode, producedManagedFile, podcastProducer);
-							NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
-									new PodcastEpisodeRenderFinishedEvent(episode.id()), Long.toString(episode.id()),
-									null));
+							var podcastEpisodeRenderFinishedEvent = new PodcastEpisodeRenderFinishedEvent(episode.id());
+							var event = NotificationEvent.visibleNotificationEventFor(mogulId,
+									podcastEpisodeRenderFinishedEvent, Long.toString(episode.id()), null);
+							NotificationEvents.notifyAsync(event);
 						}
 						var updatedEpisode = podcastService.getPodcastEpisodeById(episode.id());
 						Assert.notNull(updatedEpisode.producedAudioUpdated(), "the producedAudioUpdated field is null");
