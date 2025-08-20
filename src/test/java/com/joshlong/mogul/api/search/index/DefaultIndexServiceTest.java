@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -26,8 +27,10 @@ class DefaultIndexServiceTest {
 	}
 
 	@Test
-	void index(@Value("classpath:/transcript.txt") Resource resource, @Autowired JdbcTemplate template)
-			throws Exception {
+	void index(@Autowired JdbcTemplate template) throws Exception {
+
+		var resource = new ClassPathResource("samples/transcript.txt");
+
 		template.execute("delete from document_chunk");
 		template.execute("delete from document");
 
@@ -38,11 +41,11 @@ class DefaultIndexServiceTest {
 		Assertions.assertFalse(results.isEmpty(), "there should be at least one result");
 		this.logger.debug("found {} hits", results.size());
 
-		var fuzzyResults = this.searchService.search("Pivtal");
+		var fuzzyResults = this.searchService.search("pivtal");
 		Assertions.assertFalse(fuzzyResults.isEmpty(), "there should be at least one fuzzy result");
 		this.logger.debug("found {} fuzzy hits", fuzzyResults.size());
 
-		var tanzu = this.searchService.search("Spring Boot Vmware");
+		var tanzu = this.searchService.search("Spring Boot vmware");
 		Assertions.assertFalse(tanzu.isEmpty(), "there should be at least one tanzu result");
 
 		var transcriptPdf = this.searchService.search("IPO", Map.of("source", "pdf"));

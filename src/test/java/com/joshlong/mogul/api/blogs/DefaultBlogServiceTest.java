@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.ApiApplication;
 import com.joshlong.mogul.api.mogul.Mogul;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,11 +17,10 @@ import org.springframework.util.StringUtils;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Disabled
-@SpringBootTest
+@SpringBootTest(classes = ApiApplication.class)
 class DefaultBlogServiceTest {
 
-	private static final RowMapper<Mogul> MOGUL_ROW_MAPPER = (rs, rowNum) -> new Mogul(rs.getLong("id"),
+	private static final RowMapper<Mogul> MOGUL_ROW_MAPPER = (rs, _) -> new Mogul(rs.getLong("id"),
 			rs.getString("username"), rs.getString("email"), rs.getString("client_id"), rs.getString("given_name"),
 			rs.getString("family_name"), rs.getDate("updated"));
 
@@ -41,8 +41,8 @@ class DefaultBlogServiceTest {
 
 	@BeforeAll
 	static void reset(@Autowired JdbcClient db) {
-		MOGUL.set(db.sql("select * from mogul where email ilike ? ")
-			.params("%" + "josh@joshlong.com" + "%")
+		MOGUL.set(db.sql("select * from mogul where email = ? ")
+			.params("josh@joshlong.com")
 			.query(MOGUL_ROW_MAPPER)
 			.single()
 			.id());
@@ -92,14 +92,6 @@ class DefaultBlogServiceTest {
 		var summary = this.blogService.summarize(content);
 		this.log.info("summary: {}", summary);
 		Assertions.assertTrue(content.length() > summary.length(), "the summary should be smaller than the content");
-	}
-
-	@Test
-	void createPostAsset() {
-	}
-
-	@Test
-	void resolveAssetsForPost() {
 	}
 
 }

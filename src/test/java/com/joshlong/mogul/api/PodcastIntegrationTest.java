@@ -1,28 +1,30 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.graphql.test.tester.HttpGraphQlTester;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.test.web.servlet.client.MockMvcWebTestClient;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.reactive.function.BodyInserters;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @TestConfiguration
 class TestSecurityConfiguration {
@@ -65,8 +67,6 @@ class PodcastIntegrationTest {
 		return null;
 	}
 
-	// todo make this work!!
-	@Disabled
 	@Test
 	@WithUserDetails(USER)
 	void podcastE2eTest(@Autowired WebApplicationContext applicationContext,
@@ -80,12 +80,9 @@ class PodcastIntegrationTest {
 
 		this.log.info("the mogulId is {}", mogulId);
 
-		var client = MockMvcWebTestClient.bindToApplicationContext(applicationContext)
-			.configureClient()
-			.baseUrl("/graphql")
-			.build();
-
-		var tester = HttpGraphQlTester.create(client);
+		var builder = MockMvcWebTestClient.bindToApplicationContext(applicationContext).configureClient();
+		var webTestClient = builder.build();
+		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
 
 		Assertions.assertEquals(mogulId, this.mogulId(tester),
 				"the mogulId returned from the API must match what we've loaded here locally");
@@ -115,51 +112,8 @@ class PodcastIntegrationTest {
 		var episodeId = this.id(episode);
 		this.log.info("the episodeId is {}", episodeId);
 
-		// 3) Create segment
-		var segmentId = tester.document("mutation($eid:Int!){ createPodcastEpisodeSegment(podcastEpisodeId:$eid) }")
-			.variable("eid", episodeId)
-			.execute()
-			.path("createPodcastEpisodeSegment")
-			.entity(Integer.class)
-			.get();
-
-	}
-
-	void endToEndPodcastTranscriptFlow(@LocalServerPort int port, @Autowired WebTestClient.Builder builder)
-			throws Exception {
-		var webTestClient = builder.build();
-		var graphQlTester = HttpGraphQlTester.builder(builder).url("/api/graphql").build();
-
-		// 1) Create podcast
-		var podcastId = graphQlTester.document("mutation($title:String!){ createPodcast(title:$title){ id } }")
-			.variable("title", "Test Podcast")
-			.execute()
-			.path("createPodcast.id")
-			.entity(Integer.class)
-			.get();
-
-		var episodeId = graphQlTester
-			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
-					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")
-			.variable("pid", podcastId)
-			.variable("title", "Test Episode")
-			.variable("desc", "Test Description")
-			.execute()
-			.path("createPodcastEpisodeDraft.id")
-			.entity(Integer.class)
-			.get();
-
-		// 3) Create segment
-		var segmentId = graphQlTester
-			.document("mutation($eid:Int!){ createPodcastEpisodeSegment(podcastEpisodeId:$eid) }")
-			.variable("eid", episodeId)
-			.execute()
-			.path("createPodcastEpisodeSegment")
-			.entity(Integer.class)
-			.get();
-
-		// 4) Fetch graphic + audio ManagedFile IDs
-		var graphicFileId = graphQlTester
+		// we need to get the segment by its id so we can look at the managedfile for it.
+		var graphicManagedFileId = tester
 			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic{ id } } }")
 			.variable("id", episodeId)
 			.execute()
@@ -167,7 +121,7 @@ class PodcastIntegrationTest {
 			.entity(Integer.class)
 			.get();
 
-		var audioFileId = graphQlTester
+		var segmentManagedFileId = tester
 			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ segments{ audio{ id } }}}")
 			.variable("id", episodeId)
 			.execute()
@@ -175,48 +129,64 @@ class PodcastIntegrationTest {
 			.entity(Integer.class)
 			.get();
 
-		// 5) Upload files via REST
-		var graphicContent = Files.readAllBytes(Paths.get("src/test/resources/test.jpg"));
-		var audioContent = Files.readAllBytes(Paths.get("src/test/resources/test.mp3"));
+		this.log.debug("graphicManagedFileId is {}", graphicManagedFileId);
+		this.log.debug("segmentManagedFileId is {}", segmentManagedFileId);
+		// 5) Upload files via REST endpoint.
+		var mappings = Map.of( //
+				segmentManagedFileId, new ClassPathResource("samples/sample-segment-1.mp3"), //
+				graphicManagedFileId, new ClassPathResource("samples/sample-picture.png") //
+		);
 
-		webTestClient.post()
-			.uri("/managedfiles/{id}", graphicFileId)
-			.bodyValue(graphicContent)
-			.header("Content-Type", "multipart/form-data")
-			.exchange()
-			.expectStatus()
-			.is2xxSuccessful();
-
-		webTestClient.post()
-			.uri("/managedfiles/{id}", audioFileId)
-			.bodyValue(audioContent)
-			.header("Content-Type", "multipart/form-data")
-			.exchange()
-			.expectStatus()
-			.is2xxSuccessful();
-
-		// 6) Poll up to 30s (every 2s) until transcript appears
-		String transcriptText = null;
-		long start = System.currentTimeMillis();
-		do {
-			transcriptText = graphQlTester
-				.document("query($ep:Int!){ podcastEpisodeById(podcastEpisodeId:$ep){"
-						+ " segments { id transcript { transcript } } }}")
-				.variable("ep", episodeId)
-				.execute()
-				.path("podcastEpisodeById.segments[0].transcript.transcript")
-				.entity(String.class)
-				.get();
-
-			if (transcriptText != null && !transcriptText.isBlank()) {
-				break;
-			}
-			Thread.sleep(2000L);
+		for (var entry : mappings.entrySet()) {
+			var mfId = entry.getKey();
+			var resource = entry.getValue();
+			Assertions.assertTrue(resource.exists(), "the resource [" + resource + "] must exist");
+			webTestClient.post()
+				.uri("/managedfiles/{id}", mfId)
+				.contentType(MediaType.MULTIPART_FORM_DATA)
+				.body(BodyInserters.fromMultipartData("file", resource))
+				.exchange()
+				.expectStatus()
+				.is2xxSuccessful();
 		}
-		while (System.currentTimeMillis() - start < 30_000L);
 
-		assert transcriptText != null && !transcriptText.isBlank()
-				: "Expected transcript text to be present for segment " + segmentId;
+		this.log.debug("all files uploaded");
+
+		var sleepInSeconds = 10;
+		var ready = new AtomicBoolean(false);
+		var started = System.currentTimeMillis();
+		var finish = started + Duration.ofMinutes(10).toMillis(); // finish watching in 5
+																	// minutes
+		while (!ready.get() && System.currentTimeMillis() < finish) {
+			Thread.sleep(Duration.ofSeconds(sleepInSeconds).toMillis());
+			var transcript = tester.document("""
+					query($id:Int!){
+					  podcastEpisodeById(podcastEpisodeId:$id){
+					    complete,
+					    id,
+					    segments {
+					        transcript { id, transcript },
+					        id
+					    }
+					  }
+					}
+					""").variable("id", episodeId).execute().path("podcastEpisodeById").entity(Map.class).get();
+			this.log.debug("episode is {}", JsonUtils.write(transcript));
+			var complete = (Boolean) transcript.get("complete");
+			var segments = (Collection<Map<String, Object>>) transcript.get("segments");
+			for (var segment : segments) {
+				var transcriptObject = (Map<String, Object>) segment.get("transcript");
+				var transcriptText = (String) transcriptObject.get("transcript");
+				this.log.debug("segment {} has transcript {}", segment.get("id"), transcriptText);
+				if (transcriptText != null && !transcriptText.isEmpty() && complete) {
+					ready.set(true);
+				}
+			}
+		}
+		Assertions.assertTrue(ready.get(), "the transcript should be ready by now");
+		// by this point, the podcast audio should have a transcript and a graphic and a
+		// produced audio file.
+
 	}
 
 }
