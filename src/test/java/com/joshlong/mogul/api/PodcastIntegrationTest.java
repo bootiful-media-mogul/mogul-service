@@ -132,8 +132,10 @@ class PodcastIntegrationTest {
 		this.log.debug("graphicManagedFileId is {}", graphicManagedFileId);
 		this.log.debug("segmentManagedFileId is {}", segmentManagedFileId);
 		// 5) Upload files via REST endpoint.
-		var mappings = Map.of(segmentManagedFileId, new ClassPathResource("samples/sample-segment.mp3"),
-				graphicManagedFileId, new ClassPathResource("samples/sample-picture.png"));
+		var mappings = Map.of( //
+				segmentManagedFileId, new ClassPathResource("samples/sample-segment-1.mp3"), //
+				graphicManagedFileId, new ClassPathResource("samples/sample-picture.png") //
+		);
 
 		for (var entry : mappings.entrySet()) {
 			var mfId = entry.getKey();
