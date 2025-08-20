@@ -159,18 +159,24 @@ class PodcastIntegrationTest {
 																	// minutes
 		while (!ready.get() && System.currentTimeMillis() < finish) {
 			Thread.sleep(Duration.ofSeconds(sleepInSeconds).toMillis());
-			var transcript = tester.document("""
-					query($id:Int!){
-					  podcastEpisodeById(podcastEpisodeId:$id){
-					    complete,
-					    id,
-					    segments {
-					        transcript { id, transcript },
-					        id
-					    }
-					  }
-					}
-					""").variable("id", episodeId).execute().path("podcastEpisodeById").entity(Map.class).get();
+			var transcript = tester //
+				.document("""
+						query($id:Int!){
+						  podcastEpisodeById(podcastEpisodeId:$id){
+						    complete,
+						    id,
+						    segments {
+						        transcript { id, transcript },
+						        id
+						    }
+						  }
+						}
+						""") //
+				.variable("id", episodeId)
+				.execute()
+				.path("podcastEpisodeById")
+				.entity(Map.class)
+				.get();
 			this.log.debug("episode is {}", JsonUtils.write(transcript));
 			var complete = (Boolean) transcript.get("complete");
 			var segments = (Collection<Map<String, Object>>) transcript.get("segments");
@@ -183,9 +189,14 @@ class PodcastIntegrationTest {
 				}
 			}
 		}
+
 		Assertions.assertTrue(ready.get(), "the transcript should be ready by now");
 		// by this point, the podcast audio should have a transcript and a graphic and a
 		// produced audio file.
+
+		// X - publish the podcast episode so we can download the produced audio file
+
+		// X - search for the podcast episode
 
 	}
 
