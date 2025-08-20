@@ -11,7 +11,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.graphql.test.tester.HttpGraphQlTester;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithUserDetails;
@@ -19,9 +22,8 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.test.web.servlet.client.MockMvcWebTestClient;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.reactive.function.BodyInserters;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
 
 @TestConfiguration
@@ -80,12 +82,9 @@ class PodcastIntegrationTest {
 
 		this.log.info("the mogulId is {}", mogulId);
 
-		var client = MockMvcWebTestClient.bindToApplicationContext(applicationContext)
-			.configureClient()
-			.baseUrl("/graphql")
-			.build();
-
-		var tester = HttpGraphQlTester.create(client);
+		var builder = MockMvcWebTestClient.bindToApplicationContext(applicationContext).configureClient();
+		var webTestClient = builder.build();
+		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
 
 		Assertions.assertEquals(mogulId, this.mogulId(tester),
 				"the mogulId returned from the API must match what we've loaded here locally");
@@ -116,12 +115,52 @@ class PodcastIntegrationTest {
 		this.log.info("the episodeId is {}", episodeId);
 
 		// 3) Create segment
-		var segmentId = tester.document("mutation($eid:Int!){ createPodcastEpisodeSegment(podcastEpisodeId:$eid) }")
+		var segmentId = tester //
+			.document("mutation($eid:Int!){ createPodcastEpisodeSegment(podcastEpisodeId:$eid) }")
 			.variable("eid", episodeId)
 			.execute()
 			.path("createPodcastEpisodeSegment")
 			.entity(Integer.class)
 			.get();
+
+		// we need to get the segment by its id so we can look at the managedfile for it.
+		var graphicFileId = tester
+			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic{ id } } }")
+			.variable("id", episodeId)
+			.execute()
+			.path("podcastEpisodeById.graphic.id")
+			.entity(Integer.class)
+			.get();
+
+		var audioFileId = tester
+			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ segments{ audio{ id } }}}")
+			.variable("id", episodeId)
+			.execute()
+			.path("podcastEpisodeById.segments[0].audio.id")
+			.entity(Integer.class)
+			.get();
+
+		this.log.debug("segmentId is {}", segmentId);
+		this.log.debug("graphicManagedFileId is {}", graphicFileId);
+		this.log.debug("segmentManagedFileId is {}", audioFileId);
+		// 5) Upload files via REST endpoint.
+		var mappings = Map.of(audioFileId, new ClassPathResource("samples/sample-segment.mp3"), graphicFileId,
+				new ClassPathResource("samples/sample-picture.png"));
+
+		for (var entry : mappings.entrySet()) {
+			var mfId = entry.getKey();
+			var resource = entry.getValue();
+			Assertions.assertTrue(resource.exists(), "the resource [" + resource + "] must exist");
+			webTestClient.post()
+				.uri("/managedfiles/{id}", mfId)
+				.contentType(MediaType.MULTIPART_FORM_DATA)
+				.body(BodyInserters.fromMultipartData("file", resource))
+				.exchange()
+				.expectStatus()
+				.is2xxSuccessful();
+		}
+
+		this.log.debug("all files uploaded");
 
 	}
 
@@ -175,25 +214,34 @@ class PodcastIntegrationTest {
 			.entity(Integer.class)
 			.get();
 
-		// 5) Upload files via REST
-		var graphicContent = Files.readAllBytes(Paths.get("src/test/resources/test.jpg"));
-		var audioContent = Files.readAllBytes(Paths.get("src/test/resources/test.mp3"));
+		// 5) Upload files via REST endpoint.
+		var mappings = Map.of(audioFileId, new ClassPathResource("samples/sample-segment.mp3"), graphicFileId,
+				new ClassPathResource("samples/sample-picture.png"));
 
-		webTestClient.post()
-			.uri("/managedfiles/{id}", graphicFileId)
-			.bodyValue(graphicContent)
-			.header("Content-Type", "multipart/form-data")
-			.exchange()
-			.expectStatus()
-			.is2xxSuccessful();
+		for (var entry : mappings.entrySet()) {
+			var mfId = entry.getKey();
+			var resource = entry.getValue();
+			webTestClient.post()
+				.uri("/managedfiles/{id}", mfId)
+				.bodyValue(resource)
+				.header(HttpHeaders.CONTENT_TYPE, MediaType.MULTIPART_FORM_DATA_VALUE)
+				.exchange()
+				.expectStatus()
+				.is2xxSuccessful();
+		}
 
-		webTestClient.post()
-			.uri("/managedfiles/{id}", audioFileId)
-			.bodyValue(audioContent)
-			.header("Content-Type", "multipart/form-data")
-			.exchange()
-			.expectStatus()
-			.is2xxSuccessful();
+		/*
+		 * // Files.readAllBytes(Paths.get("src/test/resources/test.jpg")); var
+		 * audioContent = Files.readAllBytes(Paths.get("src/test/resources/test.mp3"));
+		 *
+		 * webTestClient.post() .uri("/managedfiles/{id}", graphicFileId)
+		 * .bodyValue(graphicContent) .header("Content-Type", "multipart/form-data")
+		 * .exchange() .expectStatus() .is2xxSuccessful();
+		 *
+		 * webTestClient.post() .uri("/managedfiles/{id}", audioFileId)
+		 * .bodyValue(audioContent) .header("Content-Type", "multipart/form-data")
+		 * .exchange() .expectStatus() .is2xxSuccessful();
+		 */
 
 		// 6) Poll up to 30s (every 2s) until transcript appears
 		String transcriptText = null;
