@@ -10,6 +10,8 @@ import org.springframework.messaging.support.MessageBuilder;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Configuration
 @RegisterReflectionForBinding(ManagedFile.class)
@@ -25,6 +27,7 @@ class ManagedFilesConfiguration {
 		return IntegrationFlow
 			.from(messageSource,
 					pc -> pc.poller(_ -> PollerFactory.fixedRate(Duration.ofMinutes(10), Duration.ofMinutes(1))))
+
 			.split()
 			// this does the dirty work of deleting the bits from s3.
 			.handle(ManagedFileDeletionRequest.class, (payload, _) -> {

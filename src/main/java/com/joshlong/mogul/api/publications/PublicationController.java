@@ -82,6 +82,11 @@ class PublicationController<T extends Publishable> {
 	@MutationMapping
 	boolean publish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
+
+		this.log.debug(
+				"going to publish the publication with id # {} and type # {} and context JSON :: {} :: and plugin named {}",
+				publishableId, publishableType, contextJson, plugin);
+
 		Assert.hasText(plugin, "the plugin named [" + plugin + "] does not exist!");
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
 		var episode = (T) this.findPublishable(publishableId, publishableType);

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.graphql.test.tester.HttpGraphQlTester;
 import org.springframework.http.MediaType;
@@ -23,8 +24,10 @@ import org.springframework.web.reactive.function.BodyInserters;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @TestConfiguration
 class TestSecurityConfiguration {
@@ -44,6 +47,13 @@ class TestSecurityConfiguration {
 class PodcastIntegrationTest {
 
 	static final String USER = "google-oauth2|107746898487618710317";
+
+	/**
+	 * how long should we busy-wait for long-running tasks in the background? OR, should
+	 * we integrate Ably into this test flow? For now, I think we should use manual
+	 * polling. It keeps things linear.
+	 */
+	private static final long SLEEP_IN_MILLISECONDS = Duration.ofSeconds(10).toMillis();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -131,6 +141,7 @@ class PodcastIntegrationTest {
 
 		this.log.debug("graphicManagedFileId is {}", graphicManagedFileId);
 		this.log.debug("segmentManagedFileId is {}", segmentManagedFileId);
+
 		// 5) Upload files via REST endpoint.
 		var mappings = Map.of( //
 				segmentManagedFileId, new ClassPathResource("samples/sample-segment-1.mp3"), //
@@ -152,13 +163,12 @@ class PodcastIntegrationTest {
 
 		this.log.debug("all files uploaded");
 
-		var sleepInSeconds = 10;
 		var ready = new AtomicBoolean(false);
 		var started = System.currentTimeMillis();
 		var finish = started + Duration.ofMinutes(10).toMillis(); // finish watching in 5
-																	// minutes
+		// minutes
 		while (!ready.get() && System.currentTimeMillis() < finish) {
-			Thread.sleep(Duration.ofSeconds(sleepInSeconds).toMillis());
+			Thread.sleep(SLEEP_IN_MILLISECONDS);
 			var transcript = tester //
 				.document("""
 						query($id:Int!){
@@ -191,13 +201,79 @@ class PodcastIntegrationTest {
 		}
 
 		Assertions.assertTrue(ready.get(), "the transcript should be ready by now");
-		// by this point, the podcast audio should have a transcript and a graphic and a
-		// produced audio file.
+
+		// now we publish the episode using the publication subsystem.
+		tester.document("""
+				mutation Publish($id: Int!) {
+				  publish(
+				    publishableId: $id,
+				    publishableType: "episode",
+				    contextJson: "{}",
+				    plugin: "audioFile"
+				  )
+				}
+				""").variable("id", episodeId).execute().path("publish").entity(Boolean.class).get();
+
+		// todo poll for the publication outcomes OR find some way in these tests to
+
+		var publicationsForPublishableQuery = """
+				 query (
+				   $type: String,
+				   $id: Int
+				 ) {
+				    publicationsForPublishable(
+				      id: $id,
+				      type : $type
+				    ){
+				       id,
+				       plugin,
+				       published,
+				       url,
+				       state,
+				       outcomes  {
+				         id,
+				         success,
+				         url,
+				         key,
+				         serverErrorMessage
+				       }
+				    }
+				}
+				""";
+
+		var published = new AtomicReference<String>();
+		var startPublications = System.currentTimeMillis();
+		var stopPublicationsWaiting = startPublications + Duration.ofMinutes(10).toMillis();
+		while (System.currentTimeMillis() < stopPublicationsWaiting && published.get() == null) {
+			Thread.sleep(SLEEP_IN_MILLISECONDS);
+			var publications = tester //
+				.document(publicationsForPublishableQuery) //
+				.variable("type", "episode")
+				.variable("id", episodeId)
+				.execute()
+				.path("publicationsForPublishable")
+				.entity(new ParameterizedTypeReference<List<Map<String, Object>>>() {
+				})
+				.get();
+			this.log.debug("publications are {}", JsonUtils.write(publications));
+			for (var p : publications) {
+				if (p.containsKey("outcomes")) {
+					var outcomes = (List<Map<String, Object>>) p.get("outcomes");
+					for (var outcome : outcomes) {
+						var success = (Boolean) outcome.get("success");
+						var url = (String) outcome.get("url");
+						if (success) {
+							this.log.info("the publication outcome for {} was {}", p.get("id"), url);
+							published.set(url);
+						}
+					}
+				}
+			}
+		}
+		this.log.debug("the published url is {}", published.get());
 
 		// X - publish the podcast episode so we can download the produced audio file
-
 		// X - search for the podcast episode
-
 	}
 
 }

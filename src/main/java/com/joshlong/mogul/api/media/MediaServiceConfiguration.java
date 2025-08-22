@@ -9,6 +9,8 @@ import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.PublishSubscribeChannelSpec;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.Executor;
@@ -25,8 +27,6 @@ class MediaServiceConfiguration {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-
 	@Bean
 	DefaultMediaService mediaService(@MediaNormalizationMessageChannel MessageChannel channel) {
 		return new DefaultMediaService(channel);
@@ -34,7 +34,7 @@ class MediaServiceConfiguration {
 
 	@Bean
 	@MediaNormalizationMessageChannel
-	PublishSubscribeChannelSpec<?> mediaNormalizationRequests() {
+	PublishSubscribeChannelSpec<?> mediaNormalizationRequests(SimpleAsyncTaskScheduler executor) {
 		return MessageChannels.publishSubscribe(executor);
 	}
 

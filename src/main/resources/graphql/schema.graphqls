@@ -121,19 +121,16 @@ type NotificationEvent {
 type Mutation {
 
     # transcriptions
-    writeTranscript(transcriptId:Int, transcript:String): Boolean
+    writeTranscript(transcriptId:Int, transcript:String) : Boolean
     refreshTranscript(transcriptId :Int) : Boolean
 
     # publicationService
-    unpublish( publicationId: Int): Boolean
-    publish( publishableId: Int,
-        publishableType: String,
-        contextJson: String,
-        plugin: String): Boolean
+    unpublish( publicationId: Int ) : Boolean
+    publish( publishableId: Int, publishableType: String, contextJson: String, plugin: String ) : Boolean
 
     # compositions
-    createCompositionAttachment( compositionId: Int  ) : Attachment
-    deleteCompositionAttachment( compositionAttachmentId: Int  ) : Boolean
+    createCompositionAttachment( compositionId: Int ) : Attachment
+    deleteCompositionAttachment( compositionAttachmentId: Int ) : Boolean
 
     # podcasts
     createPodcast(title:String): Podcast

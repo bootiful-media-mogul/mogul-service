@@ -14,6 +14,8 @@ import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.PublishSubscribeChannelSpec;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Map;
@@ -22,8 +24,6 @@ import java.util.concurrent.Executors;
 
 @Configuration
 class TranscriptConfiguration {
-
-	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -69,8 +69,8 @@ class TranscriptConfiguration {
 
 	@Bean
 	@TranscriptMessageChannel
-	PublishSubscribeChannelSpec<?> transcriptMessageChannel() {
-		return MessageChannels.publishSubscribe(this.executor);
+	PublishSubscribeChannelSpec<?> transcriptMessageChannel(SimpleAsyncTaskScheduler taskScheduler) {
+		return MessageChannels.publishSubscribe(taskScheduler);
 	}
 
 	@Bean
