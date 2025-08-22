@@ -12,6 +12,8 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.graphql.test.tester.HttpGraphQlTester;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.User;
@@ -19,13 +21,16 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.client.MockMvcWebTestClient;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -48,34 +53,9 @@ class PodcastIntegrationTest {
 
 	static final String USER = "google-oauth2|107746898487618710317";
 
-	/**
-	 * how long should we busy-wait for long-running tasks in the background? OR, should
-	 * we integrate Ably into this test flow? For now, I think we should use manual
-	 * polling. It keeps things linear.
-	 */
 	private static final long SLEEP_IN_MILLISECONDS = Duration.ofSeconds(10).toMillis();
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private Long mogulId(HttpGraphQlTester tester) {
-		var me = tester//
-			.document(" query { me { name, email, givenName, id, familyName } } ")//
-			.execute() //
-			.path("me")//
-			.entity(Map.class) //
-			.get();
-		Assertions.assertEquals("Josh", me.get("givenName"));
-		Assertions.assertEquals("Long", me.get("familyName"));
-		Assertions.assertEquals(USER, me.get("name"));
-		return ((Number) me.get("id")).longValue();
-	}
-
-	private Long id(Map<?, ?> map) {
-		if (map != null && map.containsKey("id")) {
-			return ((Number) map.get("id")).longValue();
-		}
-		return null;
-	}
 
 	@Test
 	@WithUserDetails(USER)
@@ -270,10 +250,42 @@ class PodcastIntegrationTest {
 				}
 			}
 		}
+
 		this.log.debug("the published url is {}", published.get());
 
-		// X - publish the podcast episode so we can download the produced audio file
+		Assertions.assertNotNull(published.get(), "there should be a published artifact");
+
+		var remoteMp3Resource = new UrlResource(URI.create(published.get()));
+		var localMp3Resource = new FileSystemResource(
+				System.getProperty("java.io.tmpdir") + "/" + UUID.randomUUID() + "-podcast.mp3");
+
+		try (var in = remoteMp3Resource.getInputStream(); var out = localMp3Resource.getOutputStream()) {
+			FileCopyUtils.copy(in, out);
+		}
+		Assertions.assertTrue(localMp3Resource.exists() && localMp3Resource.getFile().length() > 0,
+				"the file should be non-zero and exist.");
+
 		// X - search for the podcast episode
+	}
+
+	private Long mogulId(HttpGraphQlTester tester) {
+		var me = tester//
+			.document(" query { me { name, email, givenName, id, familyName } } ")//
+			.execute() //
+			.path("me")//
+			.entity(Map.class) //
+			.get();
+		Assertions.assertEquals("Josh", me.get("givenName"));
+		Assertions.assertEquals("Long", me.get("familyName"));
+		Assertions.assertEquals(USER, me.get("name"));
+		return ((Number) me.get("id")).longValue();
+	}
+
+	private Long id(Map<?, ?> map) {
+		if (map != null && map.containsKey("id")) {
+			return ((Number) map.get("id")).longValue();
+		}
+		return null;
 	}
 
 }
