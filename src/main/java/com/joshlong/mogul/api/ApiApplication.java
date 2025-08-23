@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import graphql.scalars.ExtendedScalars;
 import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -12,6 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.graphql.execution.RuntimeWiringConfigurer;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -55,6 +57,14 @@ public class ApiApplication {
 			)//
 			.oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults()))//
 			.build();
+	}
+
+	@Bean
+	RuntimeWiringConfigurer runtimeWiringConfigurer() {
+		return wiringBuilder -> wiringBuilder.scalar(ExtendedScalars.Json)
+			.scalar(ExtendedScalars.DateTime)
+			.scalar(ExtendedScalars.Url)
+			.scalar(ExtendedScalars.Date);
 	}
 
 	@Bean

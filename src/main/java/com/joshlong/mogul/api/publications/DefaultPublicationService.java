@@ -201,11 +201,14 @@ class DefaultPublicationService implements PublicationService {
 
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz) {
-		return this.db //
+		var publications = this.db //
 			.sql("select * from publication where payload = ? and payload_class = ? order by created desc") //
 			.params(Long.toString(publicationKey), clazz.getName())//
 			.query(this.getPublicationRowMapper()) //
 			.list();
+		for (var p : publications)
+			log.info("found publication {} with created {} and published {}", p, p.created(), p.published());
+		return publications;
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {

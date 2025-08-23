@@ -10,8 +10,6 @@ import org.springframework.messaging.support.MessageBuilder;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 @Configuration
 @RegisterReflectionForBinding(ManagedFile.class)

@@ -4,8 +4,6 @@ import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -30,8 +28,6 @@ class PublicationRowMapper implements RowMapper<Publication> {
 	private final Map<Long, List<Publication.Outcome>> publicationToOutcomes = new ConcurrentHashMap<>();
 
 	private final TextEncryptor textEncryptor;
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final JdbcClient db;
 

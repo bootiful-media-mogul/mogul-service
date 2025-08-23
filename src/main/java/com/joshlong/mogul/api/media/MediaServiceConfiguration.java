@@ -9,12 +9,8 @@ import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.PublishSubscribeChannelSpec;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 /**
  * handles normalizing media like audio and images. delegates, ultimately, to

@@ -16,7 +16,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -121,8 +124,17 @@ class PublicationController<T extends Publishable> {
 	}
 
 	@SchemaMapping
-	long created(Publication publication) {
-		return publication.created().getTime();
+	OffsetDateTime published(Publication publication) {
+		var p = this.forDate(publication.published());
+		this.log.info("publication {} published at {}", publication.id(), p);
+		return p;
+	}
+
+	@SchemaMapping
+	OffsetDateTime created(Publication publication) {
+		var c = this.forDate(publication.created());
+		this.log.info("publication {} created at {}", publication.id(), c);
+		return c;
 	}
 
 	@SchemaMapping
@@ -130,9 +142,11 @@ class PublicationController<T extends Publishable> {
 		return publication.state().name().toLowerCase();
 	}
 
-	@SchemaMapping
-	Long published(Publication publication) {
-		return publication.published() != null ? publication.published().getTime() : null;
+	private OffsetDateTime forDate(Date date) {
+		if (date == null) {
+			return null;
+		}
+		return date.toInstant().atOffset(ZoneOffset.UTC);
 	}
 
 	@MutationMapping

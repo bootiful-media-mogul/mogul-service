@@ -1,3 +1,10 @@
+
+#@specifiedBy(url: "https://scalars.graphql.org/andimarek/date-time.html")
+
+scalar DateTime
+scalar JSON
+
+
 type Setting {
     name: String
     value: String
@@ -27,10 +34,10 @@ type Attachment {
 type Publication {
     mogulId: Int
     id: Int
-    plugin:String
-    url:String
-    created: Float
-    published: Float
+    plugin: String
+    url: String
+    created: DateTime
+    published: DateTime
     state : String
     outcomes: [PublicationOutcome]
 }
@@ -38,8 +45,8 @@ type Publication {
 type PublicationOutcome  {
 
     id: Int
-    created:Float
-    success:Boolean
+    created: DateTime
+    success: Boolean
     url:String
     key:String
     serverErrorMessage:String
@@ -167,13 +174,24 @@ type AyrsharePublicationComposition {
     platform: String
 }
 
+
+type Searchable {
+    id: ID!
+    title: String
+    description: String
+}
+
 type Query {
+
+
+    # search
+    search(query: String, metadata: JSON): [Searchable]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
     # publicationService
     publicationsForPublishable( type : String, id: Int ) : [Publication]
-    canPublish ( publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
+    canPublish (publishableId: Int , publishableType: String , contextJson: String , plugin: String) : Boolean
 
     # compositions
     compositionById ( compositionId:Int) : Composition

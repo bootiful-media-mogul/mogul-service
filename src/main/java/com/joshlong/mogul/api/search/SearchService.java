@@ -3,16 +3,10 @@ package com.joshlong.mogul.api.search;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.search.index.IndexService;
 import com.joshlong.mogul.api.search.index.SearchHit;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public interface SearchService {
@@ -57,17 +51,12 @@ class DefaultSearchService implements SearchService {
 		this.index.ingest(titleForSearchable, textForSearchable, Map.of(KEY, searchableId, CLASS, clzz));
 	}
 
-	private String keyFor(Class<?> clzz) {
-		return clzz != null ? clzz.getName() : null;
-	}
-
 	@Override
 	public Collection<? extends Searchable> search(String query, Map<String, Object> metadata) {
 		var results = new LinkedHashSet<Searchable>();
 		try {
 			var all = this.index.search(query, metadata);
 			all.sort(Comparator.comparing(SearchHit::score));
-
 			for (var hit : all) {
 				var documentChunk = hit.documentChunk();
 				var documentId = documentChunk.documentId();
@@ -77,9 +66,10 @@ class DefaultSearchService implements SearchService {
 				var clzz = (String) (resultMetadata.getOrDefault(CLASS, null));
 				var searchableId = ((Number) (resultMetadata.getOrDefault(KEY, null))).longValue();
 				var clzzObj = Class.forName(clzz);
-				var repo = this.repositoryFor(clzzObj);
-				var result = repo.find(searchableId);
-				Assert.notNull(result, () -> "could not find " + clzz + " with id " + searchableId);
+				var repo = Objects.requireNonNull(this.repositoryFor(clzzObj),
+						"there is no repository for " + clzz + ".");
+				var result = Objects.requireNonNull(repo.find(searchableId),
+						"could not find " + clzz + " with id " + searchableId + '.');
 				results.add(result);
 			}
 		} //
@@ -87,6 +77,10 @@ class DefaultSearchService implements SearchService {
 			throw new RuntimeException(throwable);
 		}
 		return results;
+	}
+
+	private String keyFor(Class<?> clzz) {
+		return clzz != null ? clzz.getName() : null;
 	}
 
 }

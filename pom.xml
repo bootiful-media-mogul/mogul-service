@@ -25,6 +25,14 @@
             <version>1.2.33</version>
         </dependency>
         <dependency>
+            <groupId>com.graphql-java</groupId>
+            <artifactId>graphql-java-extended-scalars</artifactId>
+            <version>
+                ${graphql-java.version}
+            </version>
+
+        </dependency>
+        <dependency>
             <groupId>com.joshlong</groupId>
             <artifactId>feed-spring-boot-starter</artifactId>
             <version>0.0.5</version>

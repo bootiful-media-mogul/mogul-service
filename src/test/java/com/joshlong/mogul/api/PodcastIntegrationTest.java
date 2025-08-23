@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.podcasts.PodcastService;
+import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -59,7 +61,7 @@ class PodcastIntegrationTest {
 
 	@Test
 	@WithUserDetails(USER)
-	void podcastE2eTest(@Autowired WebApplicationContext applicationContext,
+	void podcastE2eTest(@Autowired WebApplicationContext applicationContext, @Autowired SearchService searchService,
 			@Autowired TransactionTemplate transactionTemplate, @Autowired MogulService mogulService) throws Exception {
 
 		var mogulId = transactionTemplate.execute(_ -> {
