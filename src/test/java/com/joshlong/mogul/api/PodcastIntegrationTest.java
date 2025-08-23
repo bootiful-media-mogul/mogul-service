@@ -194,8 +194,6 @@ class PodcastIntegrationTest {
 				}
 				""").variable("id", episodeId).execute().path("publish").entity(Boolean.class).get();
 
-		// todo poll for the publication outcomes OR find some way in these tests to
-
 		var publicationsForPublishableQuery = """
 				 query (
 				   $type: String,
@@ -258,14 +256,27 @@ class PodcastIntegrationTest {
 		var remoteMp3Resource = new UrlResource(URI.create(published.get()));
 		var localMp3Resource = new FileSystemResource(
 				System.getProperty("java.io.tmpdir") + "/" + UUID.randomUUID() + "-podcast.mp3");
-
+		var localMp3ResourceFile = localMp3Resource.getFile();
 		try (var in = remoteMp3Resource.getInputStream(); var out = localMp3Resource.getOutputStream()) {
 			FileCopyUtils.copy(in, out);
+			Assertions.assertTrue(localMp3Resource.exists() && localMp3ResourceFile.length() > 0,
+					"the file should be non-zero and exist.");
+		} //
+		finally {
+			if (localMp3Resource.exists()) {
+				try {
+					localMp3ResourceFile.delete();
+				} //
+				catch (Throwable t) {
+					this.log.debug("could not delete the local file at " + localMp3ResourceFile.getAbsolutePath(), t);
+				}
+			}
 		}
-		Assertions.assertTrue(localMp3Resource.exists() && localMp3Resource.getFile().length() > 0,
-				"the file should be non-zero and exist.");
 
-		// X - search for the podcast episode
+		// X - search for the podcast episode and test that the search capabilities work.
+
+		// X - add a note to the episode
+
 	}
 
 	private Long mogulId(HttpGraphQlTester tester) {

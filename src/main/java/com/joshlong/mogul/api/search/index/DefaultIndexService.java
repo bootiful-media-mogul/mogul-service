@@ -83,11 +83,11 @@ class DefaultIndexService implements IndexService {
 				.update();
 		}
 
-		return this.byId(documentId);
+		return this.documentById(documentId);
 	}
 
 	@Override
-	public Document byId(Long documentId) {
+	public Document documentById(Long documentId) {
 		var documentList = this.jdbcClient //
 			.sql("""
 					     select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?

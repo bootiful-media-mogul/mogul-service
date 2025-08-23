@@ -14,7 +14,7 @@ public interface IndexService {
 
 	Document ingest(String title, String fullText, Map<String, Object> metadata);
 
-	Document byId(Long id);
+	Document documentById(Long id);
 
 	List<SearchHit> search(String query);
 
