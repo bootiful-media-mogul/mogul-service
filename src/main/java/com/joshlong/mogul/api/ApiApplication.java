@@ -37,18 +37,6 @@ public class ApiApplication {
 	}
 
 	@Bean
-	ApplicationRunner badPasswordRunner(DataSourceProperties dataSourceProperties) {
-		return args -> {
-			var pw = dataSourceProperties.getPassword();
-			var user = dataSourceProperties.getUsername();
-			var url = dataSourceProperties.getUrl();
-			System.out.println("url:[" + url + "]");
-			System.out.println("pw: [" + pw + "]");
-			System.out.println("user: [" + user + "]");
-		};
-	}
-
-	@Bean
 	CaffeineCacheManager caffeineCacheManager(ApiProperties properties) {
 		var ccm = new CaffeineCacheManager();//
 		var caffeine = Caffeine.newBuilder()//
