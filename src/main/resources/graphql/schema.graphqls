@@ -1,4 +1,3 @@
-
 #@specifiedBy(url: "https://scalars.graphql.org/andimarek/date-time.html")
 
 scalar DateTime
@@ -92,7 +91,7 @@ type Episode {
     graphic: ManagedFile
     producedAudio: ManagedFile
     complete: Boolean
-    created: Float
+    created: DateTime
     segments : [Segment]
 }
 
@@ -112,16 +111,16 @@ type Podcast {
     id: Int
     title: String
     episodes : [Episode]
-    created: Float
+    created: DateTime
 }
 
 type NotificationEvent {
     mogulId: Int
     category: String
     key: String
-    when :  Float
+    when : DateTime
     context : String
-    modal : Boolean ,
+    modal : Boolean
     visible : Boolean
 }
 

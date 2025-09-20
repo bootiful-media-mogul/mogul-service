@@ -22,6 +22,11 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Override
+	public boolean canPublish(PublishContext<Episode> pc) {
+		return this.isConfigurationValid(pc.context()) && pc.payload() != null && pc.payload().complete();
+	}
+
+	@Override
 	public boolean unpublish(UnpublishContext<Episode> episodeUnpublishContext) {
 		return true;
 	}
@@ -38,11 +43,6 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 
 	@Override
 	public boolean isConfigurationValid(Map<String, String> context) {
-		return true;
-	}
-
-	@Override
-	public boolean canPublish(PublishContext<Episode> episodePublishContext) {
 		return true;
 	}
 

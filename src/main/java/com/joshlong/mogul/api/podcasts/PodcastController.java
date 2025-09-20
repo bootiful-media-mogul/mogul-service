@@ -6,6 +6,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
+import com.joshlong.mogul.api.utils.DateUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -81,13 +83,13 @@ class PodcastController {
 	}
 
 	@SchemaMapping
-	long created(Podcast podcast) {
-		return podcast.created().getTime();
+	OffsetDateTime created(Podcast podcast) {
+		return DateUtils.forDate(podcast.created());
 	}
 
 	@SchemaMapping
-	long created(Episode episode) {
-		return episode.created().getTime();
+	OffsetDateTime created(Episode episode) {
+		return DateUtils.forDate(episode.created());
 	}
 
 	@QueryMapping

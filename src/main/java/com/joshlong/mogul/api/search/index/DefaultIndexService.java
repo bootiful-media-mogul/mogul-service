@@ -59,6 +59,7 @@ class DefaultIndexService implements IndexService {
 
 	@Override
 	public Document ingest(String title, String fullText, Map<String, Object> metadata) {
+
 		var chunks = this.chunk(fullText, 800, 0.15); // very simple tokenizer
 		var finalMetadata = metadata == null ? Map.of() : metadata;
 		var gkh = new GeneratedKeyHolder();
@@ -164,6 +165,10 @@ class DefaultIndexService implements IndexService {
 	}
 
 	private List<String> chunk(String text, int tokensPerChunk, double overlap) {
+		if (text == null || text.isBlank()) {
+			return List.of();
+		}
+
 		var words = text.split("\\s+");
 		var step = (int) (tokensPerChunk * (1 - overlap));
 		var chunks = new ArrayList<String>();

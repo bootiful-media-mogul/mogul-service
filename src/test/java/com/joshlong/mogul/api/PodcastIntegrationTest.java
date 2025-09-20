@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
