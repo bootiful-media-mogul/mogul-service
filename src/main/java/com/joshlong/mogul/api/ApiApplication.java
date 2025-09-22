@@ -6,12 +6,9 @@ import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
@@ -64,9 +61,10 @@ public class ApiApplication {
 
 	@Bean
 	RuntimeWiringConfigurer runtimeWiringConfigurer() {
-		return wiringBuilder -> wiringBuilder.scalar(ExtendedScalars.Json)
-			.scalar(ExtendedScalars.DateTime)
-			.scalar(ExtendedScalars.Url)
+		return wiringBuilder -> wiringBuilder //
+			.scalar(ExtendedScalars.Json)//
+			.scalar(ExtendedScalars.DateTime)//
+			.scalar(ExtendedScalars.Url)//
 			.scalar(ExtendedScalars.Date);
 	}
 
