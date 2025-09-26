@@ -60,6 +60,8 @@ class DefaultPodcastService implements PodcastService {
 
 	private final TransactionTemplate transactions;
 
+	private final Comparator<Episode> episodeComparator = Comparator.comparing(Episode::created).reversed();
+
 	DefaultPodcastService(CompositionService compositionService, MediaService mediaService, JdbcClient db,
 			ManagedFileService managedFileService, ApplicationEventPublisher publisher, Cache podcastCache,
 			Cache podcastEpisodesCache, TransactionTemplate transactions) {
@@ -239,11 +241,13 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
 		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);
-		return this.db//
+		var results = this.db//
 			.sql(" select * from podcast_episode pe where pe.podcast_id  = ? ") //
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
+		results.sort(this.episodeComparator);
+		return results;
 	}
 
 	@Override
