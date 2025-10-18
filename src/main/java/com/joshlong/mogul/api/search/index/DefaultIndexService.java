@@ -44,7 +44,7 @@ class DefaultIndexService implements IndexService {
 	 * package private so we can use it in the {@link IndexServiceConfiguration} class for
 	 * wiring purposes.
 	 */
-	List<DocumentChunk> documentChunks(Long documentId) {
+	protected List<DocumentChunk> documentChunks(Long documentId) {
 		return jdbcClient //
 			.sql("select dc.* from document_chunk dc where dc.document_id = ? ") //
 			.params(documentId) //
@@ -57,19 +57,46 @@ class DefaultIndexService implements IndexService {
 		return this.ingest(title, fullText, Map.of());
 	}
 
+	// todo we need to make sure that we have some sort of key that's based on the
+	// metadata so that we can ensure we
+	// don't get duplicate records, but rather update existing ones
+
+	private String keyFor(Map<String, Object> map) {
+		var lhm = new LinkedHashMap<String, Object>();
+		for (var k : map.keySet()) {
+			lhm.put(k, map.get(k));
+		}
+		return JsonUtils.write(lhm);
+	}
+
 	@Override
 	public Document ingest(String title, String fullText, Map<String, Object> metadata) {
 
+		if (metadata == null)
+			metadata = Map.of();
+
+		var key = this.keyFor(metadata);
+
+		// todo find all documents with this key and delete the document and
+		// document_chunks, accordingly
+		var allExistingDocuments = this.jdbcClient.sql("select id from document where key = ? ")
+			.params(key)
+			.query((RowMapper<Number>) (rs, rowNum) -> rs.getLong(1))
+			.list();
+		if (!allExistingDocuments.isEmpty()) {
+			this.jdbcClient.sql("delete from document where key = ? ").params(key).update();
+		}
+		// ok now we will have the freshest of records
 		var chunks = this.chunk(fullText, 800, 0.15); // very simple tokenizer
-		var finalMetadata = metadata == null ? Map.of() : metadata;
+		var finalMetadata = metadata;
 		var gkh = new GeneratedKeyHolder();
 		this.jdbcClient //
 			.sql("""
-					   INSERT INTO document(source_uri, title, created_at, raw_text, metadata)
-					   VALUES ( ?, ?, ?, ?, ?::jsonb)
+					   INSERT INTO document( key, source_uri, title, created_at, raw_text, metadata)
+					   VALUES ( ?, ?, ?, ?, ?, ?::jsonb)
 					   returning id
 					""") //
-			.params("text", title, new Date(), fullText, JsonUtils.write(finalMetadata)) //
+			.params(key, "text", title, new Date(), fullText, JsonUtils.write(finalMetadata)) //
 			.update(gkh);
 		var documentId = ((Integer) Objects.requireNonNull(gkh.getKeys()).values().iterator().next()).longValue();
 		for (var i = 0; i < chunks.size(); i++) {
@@ -129,17 +156,24 @@ class DefaultIndexService implements IndexService {
 					ORDER BY score DESC
 					LIMIT 20
 					""";
-			results = jdbcClient.sql(fuzzySql).params(query, query).query(this.searchHitRowMapper).list();
+			results = jdbcClient //
+				.sql(fuzzySql) //
+				.params(query, query) //
+				.query(this.searchHitRowMapper) //
+				.list();
 		}
 
 		return results;
 	}
 
 	private String buildSearchSqlWithMetadata(boolean hasMetadata) {
-		var metadataSql = hasMetadata ? """
-				    JOIN document d ON dc.document_id = d.id
-				    WHERE d.metadata @> ?::jsonb
-				""" : "";
+		var metadataSql = hasMetadata ? //
+				"""
+						    JOIN document d ON dc.document_id = d.id
+						    WHERE d.metadata @> ?::jsonb
+						""" //
+				: //
+				"";
 
 		// 1) Primary hybrid search
 		var sql = """

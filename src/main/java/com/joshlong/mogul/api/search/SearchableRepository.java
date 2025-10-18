@@ -1,8 +1,18 @@
 package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.Searchable;
+import com.joshlong.mogul.api.Transcribable;
 
 public interface SearchableRepository<T extends Searchable, AGGREGATE> {
+
+	//
+	// /**
+	// * wrapper so that we can have some indirection between the repository and the
+	// transcript.
+	// */
+	// interface TranscriptLoader {
+	// String load(Long mogulId, Transcribable transcribable);
+	// }
 
 	T find(Long searchableId);
 

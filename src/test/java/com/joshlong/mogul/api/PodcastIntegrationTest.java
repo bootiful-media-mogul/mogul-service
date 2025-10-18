@@ -89,7 +89,7 @@ class PodcastIntegrationTest {
 		var podcastId = this.id(podcast);
 		this.log.info("the podcastId is {}", podcastId);
 
-		// 2) Create episode draft
+		// 2) create episode draft
 		var episode = tester
 			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
 					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")

@@ -3,8 +3,11 @@ package com.joshlong.mogul.api.search;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.search.index.IndexService;
 import com.joshlong.mogul.api.search.index.SearchHit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +22,8 @@ public interface SearchService {
 
 @Service
 class DefaultSearchService implements SearchService {
+
+	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
 
 	private static final String KEY = "key";
 
@@ -48,7 +53,12 @@ class DefaultSearchService implements SearchService {
 		Assert.notNull(repo, () -> "there's no repository for " + clzz + "!");
 		var textForSearchable = repo.text(searchableId);
 		var titleForSearchable = repo.title(searchableId);
-		this.index.ingest(titleForSearchable, textForSearchable, Map.of(KEY, searchableId, CLASS, clzz));
+		if (StringUtils.hasText(textForSearchable) && StringUtils.hasText(titleForSearchable)) {
+			this.index.ingest(titleForSearchable, textForSearchable, Map.of(KEY, searchableId, CLASS, clzz));
+		} //
+		else {
+			this.log.debug("we've got nothing to index for searchable {} with class {}!", searchableId, clzz);
+		}
 	}
 
 	@Override

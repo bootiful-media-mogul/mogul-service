@@ -6,10 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.Charset;
@@ -30,13 +28,15 @@ class DefaultIndexServiceTest {
 	void index(@Autowired JdbcTemplate template) throws Exception {
 
 		var resource = new ClassPathResource("samples/transcript.txt");
-
-		template.execute("delete from document_chunk");
-		template.execute("delete from document");
+		for (var cmd : "document_chunk,document".split(",")) {
+			template.execute("delete from " + cmd);
+		}
 
 		var contentAsString = resource.getContentAsString(Charset.defaultCharset());
-		var pdf = this.searchService.ingest("Transcript", contentAsString, Map.of("source", "pdf"));
-		var podcast = this.searchService.ingest("Transcript", contentAsString, Map.of("source", "podcast"));
+		var pdf = this.searchService.ingest("Transcript of a PDF", contentAsString, Map.of("source", "pdf"));
+		var podcast = this.searchService.ingest("Transcript of a podcast", contentAsString,
+				Map.of("source", "podcast"));
+
 		var results = this.searchService.search("IPO");
 		Assertions.assertFalse(results.isEmpty(), "there should be at least one result");
 		this.logger.debug("found {} hits", results.size());

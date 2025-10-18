@@ -1,27 +1,44 @@
 package com.joshlong.mogul.api.podcasts.search;
 
+import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
 import com.joshlong.mogul.api.search.SearchableRepository;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+
+import java.util.function.BiFunction;
+
+@Configuration
+class SegmentSearchConfiguration {
+
+	// todo i dont like that i need to use @Lazy. I have a circular dependency somewhere,
+	// and it needs to be fixed.
+	// todo let's see if it works, at least.
+	@Bean
+	SegmentSearchableRepository segmentSearchableRepository(@Lazy TranscriptService transcriptService,
+			PodcastService podcastService) {
+		return new SegmentSearchableRepository(podcastService, transcriptService::readTranscript);
+	}
+
+}
 
 /**
  * Repository for searches done against {@link Segment segments}.
  */
-@Component
 class SegmentSearchableRepository implements SearchableRepository<Segment, Episode> {
 
 	private final PodcastService podcastService;
 
-	// private final MogulService mogulService;
+	private final BiFunction<Long, Transcribable, String> transcriptLoader;
 
-	private final TranscriptService transcriptService;
-
-	SegmentSearchableRepository(PodcastService podcastService, TranscriptService transcriptService) {
+	SegmentSearchableRepository(PodcastService podcastService,
+			BiFunction<Long, Transcribable, String> transcriptLoader) {
 		this.podcastService = podcastService;
-		this.transcriptService = transcriptService;
+		this.transcriptLoader = transcriptLoader;
 	}
 
 	@Override
@@ -40,7 +57,7 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
 		var podcast = this.podcastService.getPodcastById(episode.podcastId());
 		var mogul = podcast.mogulId();
-		return this.transcriptService.readTranscript(mogul, segment);
+		return this.transcriptLoader.apply(mogul, segment);
 	}
 
 	@Override
@@ -52,8 +69,6 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 
 	@Override
 	public Episode aggregate(Long searchableId) {
-		// inefficient reverse traversal, but everything is cached so maybe it's not a big
-		// deal.
 		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchableId);
 		return this.podcastService.getPodcastEpisodeById(segment.episodeId());
 	}

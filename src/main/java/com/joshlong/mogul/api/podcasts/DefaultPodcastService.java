@@ -12,6 +12,7 @@ import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.transcripts.TranscriptInvalidatedEvent;
+import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
@@ -79,11 +80,13 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
+
 		if (episodes.isEmpty())
 			return new HashMap<>();
+
 		var idsAsString = episodes.stream().map(e -> Long.toString(e)).collect(Collectors.joining(", "));
-		var segments = db
-			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id in (" + idsAsString + ") ")
+		var segments = db.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id in (" //
+				+ idsAsString + ")")
 			.query(this.episodeSegmentRowMapper)
 			.list();
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
@@ -111,8 +114,12 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@ApplicationModuleListener
-	void mediaNormalized(MediaNormalizedEvent normalizedEvent) {
+	void invalidateCacheBecauseOfTranscriptUpdates(TranscriptRecordedEvent recordedEvent) {
+		this.log.info("you've got your transcript, invalidate ur cache for podcast episodes!");
+	}
 
+	@ApplicationModuleListener
+	void mediaNormalized(MediaNormalizedEvent normalizedEvent) {
 		if (normalizedEvent.context().containsKey(PODCAST_EPISODE_CONTEXT_KEY)) {
 			var episodeId = (Long) normalizedEvent.context().get(PODCAST_EPISODE_CONTEXT_KEY);
 			this.invalidatePodcastEpisodeCache(episodeId);
