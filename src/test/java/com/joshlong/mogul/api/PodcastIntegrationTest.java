@@ -128,17 +128,17 @@ class PodcastIntegrationTest {
 				segmentManagedFileId, new ClassPathResource("samples/sample-segment-1.mp3"), //
 				graphicManagedFileId, new ClassPathResource("samples/sample-picture.png") //
 		);
-
 		for (var entry : mappings.entrySet()) {
 			var mfId = entry.getKey();
 			var resource = entry.getValue();
 			Assertions.assertTrue(resource.exists(), "the resource [" + resource + "] must exist");
-			webTestClient.post()
-				.uri("/managedfiles/{id}", mfId)
-				.contentType(MediaType.MULTIPART_FORM_DATA)
-				.body(BodyInserters.fromMultipartData("file", resource))
-				.exchange()
-				.expectStatus()
+			webTestClient //
+				.post() //
+				.uri("/managedfiles/{id}", mfId) //
+				.contentType(MediaType.MULTIPART_FORM_DATA) //
+				.body(BodyInserters.fromMultipartData("file", resource)) //
+				.exchange() //
+				.expectStatus() //
 				.is2xxSuccessful();
 		}
 
@@ -193,7 +193,12 @@ class PodcastIntegrationTest {
 				    plugin: "audioFile"
 				  )
 				}
-				""").variable("id", episodeId).execute().path("publish").entity(Boolean.class).get();
+				""")
+			.variable("id", episodeId) //
+			.execute()
+			.path("publish") //
+			.entity(Boolean.class)
+			.get();
 
 		var publicationsForPublishableQuery = """
 				 query (

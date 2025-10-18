@@ -114,7 +114,6 @@ class DefaultManagedFileService implements ManagedFileService {
 				this.storage.copy(bucket, visibleBucket, fqn, newContentType);
 			} //
 			else {
-				// todo some sort of alerting?
 				this.log.warn("the file {} does not exist and so can't be synced over!", fqn(bucket, fqn));
 			}
 		} //

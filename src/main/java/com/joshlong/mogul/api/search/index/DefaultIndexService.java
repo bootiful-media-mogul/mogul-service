@@ -57,10 +57,6 @@ class DefaultIndexService implements IndexService {
 		return this.ingest(title, fullText, Map.of());
 	}
 
-	// todo we need to make sure that we have some sort of key that's based on the
-	// metadata so that we can ensure we
-	// don't get duplicate records, but rather update existing ones
-
 	private String keyFor(Map<String, Object> map) {
 		var lhm = new LinkedHashMap<String, Object>();
 		for (var k : map.keySet()) {
@@ -79,9 +75,10 @@ class DefaultIndexService implements IndexService {
 
 		// todo find all documents with this key and delete the document and
 		// document_chunks, accordingly
-		var allExistingDocuments = this.jdbcClient.sql("select id from document where key = ? ")
-			.params(key)
-			.query((RowMapper<Number>) (rs, rowNum) -> rs.getLong(1))
+		var allExistingDocuments = this.jdbcClient //
+			.sql("select id from document where key = ? ")//
+			.params(key)//
+			.query((RowMapper<Number>) (rs, rowNum) -> rs.getLong(1)) //
 			.list();
 		if (!allExistingDocuments.isEmpty()) {
 			this.jdbcClient.sql("delete from document where key = ? ").params(key).update();

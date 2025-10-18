@@ -15,9 +15,7 @@ import java.util.function.BiFunction;
 @Configuration
 class SegmentSearchConfiguration {
 
-	// todo i dont like that i need to use @Lazy. I have a circular dependency somewhere,
-	// and it needs to be fixed.
-	// todo let's see if it works, at least.
+	// todo i dont like that i need to use @Lazy. circular dependency somewhere
 	@Bean
 	SegmentSearchableRepository segmentSearchableRepository(@Lazy TranscriptService transcriptService,
 			PodcastService podcastService) {

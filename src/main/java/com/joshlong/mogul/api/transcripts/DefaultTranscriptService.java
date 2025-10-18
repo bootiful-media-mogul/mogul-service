@@ -52,7 +52,6 @@ class DefaultTranscriptService implements TranscriptService {
 	}
 
 	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
-		// todo some sort of caching.
 		return CollectionUtils
 			.firstOrNull(this.db.sql("select * from transcript where payload_class = ? and payload = ?")
 				.params(clazz, payloadKeyAsJson)
