@@ -284,13 +284,12 @@ class PodcastIntegrationTest {
 		}
 
 		// X - search for the podcast episode and test that the search capabilities work.
-		var results = doSearch(tester, "Test Episode", Map.of());
+		// todo why does it not return anything but the IDs?
+		var results = this.doSearch(tester, "Test Episode", Map.of());
 		results.forEach(row -> {
-			log.info("found podcast episode " + row + ":" + JsonUtils.write(row));
-			row.forEach((key, value) -> {
-				log.info("  key {} and value {}", key, value);
-			});
+			log.info("found podcast episode {}", JsonUtils.write(row));
 		});
+
 		// X - add a note to the episode
 
 	}
