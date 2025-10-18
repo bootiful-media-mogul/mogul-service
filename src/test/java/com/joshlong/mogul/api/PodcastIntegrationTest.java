@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -60,7 +59,7 @@ class PodcastIntegrationTest {
 
 	@Test
 	@WithUserDetails(USER)
-	void podcastE2eTest(@Autowired WebApplicationContext applicationContext, @Autowired SearchService searchService,
+	void podcastE2eTest(@Autowired WebApplicationContext applicationContext,
 			@Autowired TransactionTemplate transactionTemplate, @Autowired MogulService mogulService) throws Exception {
 
 		var mogulId = transactionTemplate.execute(_ -> {
@@ -90,11 +89,16 @@ class PodcastIntegrationTest {
 		this.log.info("the podcastId is {}", podcastId);
 
 		// 2) create episode draft
-		var episode = tester
-			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
-					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")
+		var episodeTitle = "Test Episode " + UUID.randomUUID();
+		var episode = tester.document(
+				//
+				"""
+						mutation($pid:Int!,$title:String!,$desc:String!) {
+						    createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id }
+						}
+						""") //
 			.variable("pid", podcastId)
-			.variable("title", "Test Episode")
+			.variable("title", episodeTitle)
 			.variable("desc", "Test Description")
 			.execute()
 			.path("createPodcastEpisodeDraft")
@@ -105,7 +109,7 @@ class PodcastIntegrationTest {
 
 		// we need to get the segment by its id so we can look at the managedfile for it.
 		var graphicManagedFileId = tester
-			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic{ id } } }")
+			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic { id } } }")
 			.variable("id", episodeId)
 			.execute()
 			.path("podcastEpisodeById.graphic.id")
@@ -280,8 +284,34 @@ class PodcastIntegrationTest {
 		}
 
 		// X - search for the podcast episode and test that the search capabilities work.
-
+		var results = doSearch(tester, "Test Episode", Map.of());
+		results.forEach(row -> {
+			log.info("found podcast episode " + row + ":" + JsonUtils.write(row));
+			row.forEach((key, value) -> {
+				log.info("  key {} and value {}", key, value);
+			});
+		});
 		// X - add a note to the episode
+
+	}
+
+	private List<Map<String, Object>> doSearch(HttpGraphQlTester tester, String query, Map<String, Object> metadata) {
+		var document = """
+				query($query: String, $metadata: JSON) {
+				    search(query: $query, metadata: $metadata) {
+				     id, title, description
+				    }
+				}
+				""";
+
+		return tester.document(document)
+			.variable("query", query)
+			.variable("metadata", metadata)
+			.execute()
+			.path("search")
+			.entityList(new ParameterizedTypeReference<Map<String, Object>>() {
+			})
+			.get();
 
 	}
 

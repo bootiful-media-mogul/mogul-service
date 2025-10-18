@@ -68,6 +68,9 @@ class DefaultIndexService implements IndexService {
 	@Override
 	public Document ingest(String title, String fullText, Map<String, Object> metadata) {
 
+		// todo is it better if we put the title in fullText?
+		fullText = title + " " + fullText;
+
 		if (metadata == null)
 			metadata = Map.of();
 
