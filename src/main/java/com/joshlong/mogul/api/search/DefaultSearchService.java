@@ -1,9 +1,14 @@
 package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.Searchable;
+import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.transcripts.TranscriptCompletedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -11,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@Transactional
 class DefaultSearchService implements SearchService {
 
 	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
@@ -81,6 +87,16 @@ class DefaultSearchService implements SearchService {
 
 	private String keyFor(Class<?> clzz) {
 		return clzz != null ? clzz.getName() : null;
+	}
+
+	@ApplicationModuleListener
+	void indexForSearchOnTranscriptCompletion(TranscriptCompletedEvent event) {
+		var aClazz = (Class<? extends Transcribable>) event.type();
+		var repo = this.repositoryFor(aClazz);
+		var transcribable = repo.find(event.transcribableId());
+		if (transcribable instanceof Searchable searchable) {
+			this.index(searchable);
+		}
 	}
 
 }

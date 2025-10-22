@@ -178,13 +178,14 @@ type SearchResult {
     id: ID!
     title: String
     description: String
+    type: String
+    rank: Int
+
 }
 
 type Query {
-
-
     # search
-    search(query: String, metadata: JSON): [Searchable]
+    search(query: String, metadata: JSON): [SearchResult]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 

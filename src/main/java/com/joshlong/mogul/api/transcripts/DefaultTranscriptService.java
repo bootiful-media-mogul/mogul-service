@@ -1,12 +1,10 @@
 package com.joshlong.mogul.api.transcripts;
 
-import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
 import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,8 +24,6 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final JdbcClient db;
 
-	private final SearchService searchService;
-
 	private final TranscriptRowMapper transcribableRowMapper;
 
 	private final ApplicationEventPublisher publisher;
@@ -36,12 +32,11 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final MessageChannel requests;
 
-	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db, SearchService searchService,
+	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
 			Map<String, TranscribableRepository<?>> repositories, ApplicationEventPublisher publisher,
 			MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
-		this.searchService = searchService;
 		this.publisher = publisher;
 		this.requests = requests;
 		this.repositories.putAll(repositories);
@@ -178,7 +173,6 @@ class DefaultTranscriptService implements TranscriptService {
 	@ApplicationModuleListener
 	void recordCompletedTranscript(TranscriptCompletedEvent event) {
 		this.recordTranscript(event);
-		this.indexForSearchOnTranscriptCompletion(event);
 		this.notifyClient(event);
 	}
 
@@ -188,15 +182,6 @@ class DefaultTranscriptService implements TranscriptService {
 		var transcribable = transcribableRepository.find(event.transcribableId());
 		this.writeTranscript(transcribable, event.text());
 		this.publisher.publishEvent(new TranscriptRecordedEvent(event.mogulId(), event.transcribableId()));
-	}
-
-	private void indexForSearchOnTranscriptCompletion(TranscriptCompletedEvent event) {
-		var aClazz = (Class<? extends Transcribable>) event.type();
-		var repo = this.repositoryFor(aClazz);
-		var transcribable = repo.find(event.transcribableId());
-		if (transcribable instanceof Searchable searchable) {
-			this.searchService.index(searchable);
-		}
 	}
 
 	private void notifyClient(TranscriptCompletedEvent event) {
