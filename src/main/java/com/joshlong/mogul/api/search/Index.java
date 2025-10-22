@@ -1,25 +1,24 @@
-package com.joshlong.mogul.api.search.index;
+package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.UriUtils;
 import com.pgvector.PGvector;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.function.Function;
 
+/**
+ * this maintains the low level aggregation of documents and their respective chunks.
+ * provides the low-level atoms for indexing documents, searching for documents, etc.
+ */
 @Service
 @Transactional
-class DefaultIndexService implements IndexService {
+class Index {
 
 	private final EmbeddingModel embeddingModel;
 
@@ -31,7 +30,7 @@ class DefaultIndexService implements IndexService {
 
 	private final SearchHitRowMapper searchHitRowMapper;
 
-	DefaultIndexService(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
+	Index(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
 			DocumentRowMapper documentRowMapper, SearchHitRowMapper searchHitRowMapper) {
 		this.embeddingModel = embeddingModel;
 		this.jdbcClient = jdbc;
@@ -52,8 +51,7 @@ class DefaultIndexService implements IndexService {
 			.list();
 	}
 
-	@Override
-	public Document ingest(String title, String fullText) {
+	Document ingest(String title, String fullText) {
 		return this.ingest(title, fullText, Map.of());
 	}
 
@@ -65,8 +63,7 @@ class DefaultIndexService implements IndexService {
 		return JsonUtils.write(lhm);
 	}
 
-	@Override
-	public Document ingest(String title, String fullText, Map<String, Object> metadata) {
+	Document ingest(String title, String fullText, Map<String, Object> metadata) {
 
 		// todo is it better if we put the title in fullText?
 		fullText = title + " " + fullText;
@@ -114,8 +111,7 @@ class DefaultIndexService implements IndexService {
 		return this.documentById(documentId);
 	}
 
-	@Override
-	public Document documentById(Long documentId) {
+	Document documentById(Long documentId) {
 		var documentList = this.jdbcClient //
 			.sql("""
 					     select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?
@@ -126,13 +122,11 @@ class DefaultIndexService implements IndexService {
 		return CollectionUtils.firstOrNull(documentList);
 	}
 
-	@Override
-	public List<SearchHit> search(String query) {
+	List<IndexHit> search(String query) {
 		return this.search(query, null);
 	}
 
-	@Override
-	public List<SearchHit> search(String query, Map<String, Object> metadata) {
+	List<IndexHit> search(String query, Map<String, Object> metadata) {
 		var vec = new PGvector(this.embeddingModel.embed(query));
 		var hasMetadata = metadata != null && !metadata.isEmpty();
 		var sql = this.buildSearchSqlWithMetadata(hasMetadata);
@@ -211,54 +205,6 @@ class DefaultIndexService implements IndexService {
 			chunks.add(String.join(" ", Arrays.copyOfRange(words, i, end)));
 		}
 		return chunks;
-	}
-
-}
-
-class SearchHitRowMapper implements RowMapper<SearchHit> {
-
-	private final Function<ResultSet, DocumentChunk> documentChunkFunction;
-
-	SearchHitRowMapper(Function<ResultSet, DocumentChunk> documentChunkFunction) {
-		this.documentChunkFunction = documentChunkFunction;
-	}
-
-	@Override
-	public SearchHit mapRow(ResultSet rs, int rowNum) throws SQLException {
-		var documentChunk = this.documentChunkFunction.apply(rs);
-		return new SearchHit(documentChunk, rs.getDouble("score"));
-	}
-
-}
-
-class DocumentRowMapper implements RowMapper<Document> {
-
-	private final ParameterizedTypeReference<Map<String, Object>> mapParameterizedTypeReference = new ParameterizedTypeReference<>() {
-	};
-
-	private final Function<Long, List<DocumentChunk>> documentChunkFunction;
-
-	DocumentRowMapper(Function<Long, List<DocumentChunk>> documentChunkFunction) {
-		this.documentChunkFunction = documentChunkFunction;
-	}
-
-	@Override
-	public Document mapRow(ResultSet rs, int rowNum) throws SQLException {
-		var createdAt = rs.getDate("created_at");
-		var id = rs.getLong("id");
-		var metadata = JsonUtils.read(rs.getString("metadata"), this.mapParameterizedTypeReference);
-		return new Document(id, rs.getString("source_type"), UriUtils.uri(rs.getString("source_uri")),
-				rs.getString("title"), createdAt, rs.getString("raw_text"), metadata,
-				this.documentChunkFunction.apply(id));
-	}
-
-}
-
-class DocumentChunkRowMapper implements RowMapper<DocumentChunk> {
-
-	@Override
-	public DocumentChunk mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new DocumentChunk(rs.getLong("id"), rs.getString("text"), rs.getLong("document_id"));
 	}
 
 }

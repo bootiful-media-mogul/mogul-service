@@ -174,7 +174,7 @@ type AyrsharePublicationComposition {
 }
 
 
-type Searchable {
+type SearchResult {
     id: ID!
     title: String
     description: String

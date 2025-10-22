@@ -90,13 +90,11 @@ class PodcastIntegrationTest {
 
 		// 2) create episode draft
 		var episodeTitle = "Test Episode " + UUID.randomUUID();
-		var episode = tester.document(
-				//
-				"""
-						mutation($pid:Int!,$title:String!,$desc:String!) {
-						    createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id }
-						}
-						""") //
+		var episode = tester.document("""
+				    mutation($pid:Int!,$title:String!,$desc:String!) {
+				        createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id }
+				    }
+				""") //
 			.variable("pid", podcastId)
 			.variable("title", episodeTitle)
 			.variable("desc", "Test Description")
@@ -294,26 +292,6 @@ class PodcastIntegrationTest {
 
 	}
 
-	private List<Map<String, Object>> doSearch(HttpGraphQlTester tester, String query, Map<String, Object> metadata) {
-		var document = """
-				query($query: String, $metadata: JSON) {
-				    search(query: $query, metadata: $metadata) {
-				     id, title, description
-				    }
-				}
-				""";
-
-		return tester.document(document)
-			.variable("query", query)
-			.variable("metadata", metadata)
-			.execute()
-			.path("search")
-			.entityList(new ParameterizedTypeReference<Map<String, Object>>() {
-			})
-			.get();
-
-	}
-
 	private Long mogulId(HttpGraphQlTester tester) {
 		var me = tester//
 			.document(" query { me { name, email, givenName, id, familyName } } ")//
@@ -332,6 +310,44 @@ class PodcastIntegrationTest {
 			return ((Number) map.get("id")).longValue();
 		}
 		return null;
+	}
+
+	private List<Map<String, Object>> doSearch(HttpGraphQlTester tester, String query, Map<String, Object> metadata) {
+		var document = """
+				query($query: String, $metadata: JSON) {
+				    search(query: $query, metadata: $metadata) {
+				     id
+				    }
+				}
+				""";
+
+		return tester.document(document)
+			.variable("query", query)
+			.variable("metadata", metadata)
+			.execute()
+			.path("search")
+			.entityList(new ParameterizedTypeReference<Map<String, Object>>() {
+			})
+			.get();
+
+	}
+
+	@Test
+	@WithUserDetails(USER)
+	void searchE2e(@Autowired TransactionTemplate transactionTemplate,
+			@Autowired WebApplicationContext webApplicationContext, @Autowired MogulService mogulService) {
+
+		var mogulId = transactionTemplate.execute(_ -> {
+			var login = mogulService.getMogulByName(USER);
+			Assertions.assertNotNull(login, "the login should not be null");
+			return login.id();
+		});
+		var builder = MockMvcWebTestClient.bindToApplicationContext(webApplicationContext).configureClient();
+		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
+		var results = this.doSearch(tester, "Test Episode", Map.of());
+		results.forEach(row -> {
+			log.info("found podcast episode {}", JsonUtils.write(row));
+		});
 	}
 
 }
