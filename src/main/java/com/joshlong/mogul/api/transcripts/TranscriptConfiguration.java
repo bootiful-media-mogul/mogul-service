@@ -2,7 +2,6 @@ package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableRepository;
-import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.transcripts.audio.Transcriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

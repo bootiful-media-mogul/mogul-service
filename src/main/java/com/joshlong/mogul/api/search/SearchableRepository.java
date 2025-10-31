@@ -1,7 +1,9 @@
 package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.Searchable;
-import com.joshlong.mogul.api.Transcribable;
+
+// todo rather than having inefficient methods to return the title and text, let's have one method
+//  that returns an aggregate data class wrapper containing the title, text, aggregate, and actual thing
 
 public interface SearchableRepository<T extends Searchable, AGGREGATE> {
 

@@ -18,11 +18,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Transactional
 class DefaultSearchService implements SearchService {
 
-	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
-
 	private static final String KEY = "key";
 
 	private static final String CLASS = "class";
+
+	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
 
 	private final Map<String, SearchableRepository<?, ?>> repositories = new ConcurrentHashMap<>();
 
