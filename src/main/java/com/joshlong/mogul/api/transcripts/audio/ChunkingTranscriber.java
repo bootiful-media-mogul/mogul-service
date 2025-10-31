@@ -100,7 +100,10 @@ class ChunkingTranscriber implements Transcriber {
 					var audioResource = tr.audio();
 					if (audioResource != null) {
 						try {
-							return this.openAiAudioTranscriptionModel.call(audioResource);
+							this.log.debug("transcribe audio resource {}", audioResource);
+							var result = this.openAiAudioTranscriptionModel.call(audioResource);
+							this.log.debug("transcribe audio result {}", result);
+							return result;
 						} //
 						catch (Throwable e) {
 							var formatted = "oops! an error when trying to process a %s # %s"
@@ -111,11 +114,15 @@ class ChunkingTranscriber implements Transcriber {
 					return "";
 				})//
 				.toList();
-			return this.executor//
+			var collected = this.executor//
 				.invokeAll(orderedAudio)//
 				.stream()//
 				.map(ChunkingTranscriber::from)//
 				.collect(Collectors.joining());
+			if (this.log.isInfoEnabled()) {
+				this.log.info("transcriptions:{}", collected);
+			}
+			return collected;
 		} //
 		catch (Exception e) {
 			this.log.error("trouble trying to transcode!", e);

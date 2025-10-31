@@ -1,14 +1,11 @@
 package com.joshlong.mogul.api.search;
 
-import com.joshlong.mogul.api.Searchable;
-import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
-import javax.naming.directory.SearchResult;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +31,7 @@ class SearchController {
 		// todo can the SearchResults be put in the root package? Might other parts of the
 		// system want to talk to the Search API
 		// in terms of the SearchResult object?
-		return List.of();
+		return search;
 	}
 
 }

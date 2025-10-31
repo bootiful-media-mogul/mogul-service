@@ -175,12 +175,11 @@ type AyrsharePublicationComposition {
 
 
 type SearchResult {
-    id: ID!
+    searchableId: Int
     title: String
     description: String
     type: String
-    rank: Int
-
+    rank: Float
 }
 
 type Query {

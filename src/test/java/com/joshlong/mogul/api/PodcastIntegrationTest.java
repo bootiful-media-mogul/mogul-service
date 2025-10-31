@@ -203,7 +203,7 @@ class PodcastIntegrationTest {
 			.get();
 
 		var publicationsForPublishableQuery = """
-				 query (
+				 query(
 				   $type: String,
 				   $id: Int
 				 ) {
@@ -316,7 +316,11 @@ class PodcastIntegrationTest {
 		var document = """
 				query($query: String, $metadata: JSON) {
 				    search(query: $query, metadata: $metadata) {
-				     id
+				                searchableId
+				                title
+				                description
+				                type
+				                rank
 				    }
 				}
 				""";
@@ -344,7 +348,8 @@ class PodcastIntegrationTest {
 		});
 		var builder = MockMvcWebTestClient.bindToApplicationContext(webApplicationContext).configureClient();
 		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
-		var results = this.doSearch(tester, "Test Episode", Map.of());
+		var results = this.doSearch(tester, "rot13", Map.of());
+		log.info("results: {}", results);
 		results.forEach(row -> {
 			log.info("found podcast episode {}", JsonUtils.write(row));
 		});

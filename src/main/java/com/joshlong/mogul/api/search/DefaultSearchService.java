@@ -2,10 +2,9 @@ package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
-import com.joshlong.mogul.api.transcripts.TranscriptCompletedEvent;
+import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,13 +52,18 @@ class DefaultSearchService implements SearchService {
 			this.index.ingest(titleForSearchable, textForSearchable, Map.of(KEY, searchableId, CLASS, clzz));
 		} //
 		else {
-			this.log.debug("we've got nothing to index for searchable {} with class {}!", searchableId, clzz);
+			this.log.debug("we've got nothing to index " + "for searchable {} with class {}!", searchableId, clzz);
 		}
 	}
 
+	// todo refactor this to return a collection of something higher and more immediately
+	// useful.
+	// we shouldn't return raw Searchable. Return a wrapper that contains the document,
+	// rank, type, etc.
+	// use SearchResult
 	@Override
-	public Collection<? extends Searchable> search(String query, Map<String, Object> metadata) {
-		var results = new LinkedHashSet<Searchable>();
+	public Collection<SearchResult> search(String query, Map<String, Object> metadata) {
+		var results = new LinkedHashSet<SearchResult>();
 		try {
 			var all = this.index.search(query, metadata);
 			all.sort(Comparator.comparing(IndexHit::score));
@@ -76,7 +80,13 @@ class DefaultSearchService implements SearchService {
 						"there is no repository for " + clzz + ".");
 				var result = Objects.requireNonNull(repo.find(searchableId),
 						"could not find " + clzz + " with id " + searchableId + '.');
-				results.add(result);
+				// todo not sure if we need that first look up. BUT, itll prolly be
+				// optimized away with caching
+				// since were gonna turn right around and look up the same record in the
+				// same thread by the same ID.
+				var sr = new SearchResult(searchableId, repo.title(searchableId), repo.text(searchableId), clzz,
+						hit.score());
+				results.add(sr);
 			}
 		} //
 		catch (Throwable throwable) {
@@ -90,13 +100,13 @@ class DefaultSearchService implements SearchService {
 	}
 
 	@ApplicationModuleListener
-	void indexForSearchOnTranscriptCompletion(TranscriptCompletedEvent event) {
+	void indexForSearchOnTranscriptCompletion(TranscriptRecordedEvent event) {
 		var aClazz = (Class<? extends Transcribable>) event.type();
 		var repo = this.repositoryFor(aClazz);
 		var transcribable = repo.find(event.transcribableId());
-		if (transcribable instanceof Searchable searchable) {
-			this.index(searchable);
-		}
+		Assert.notNull(transcribable, "the transcribable id " + event.transcribableId() + " was null!");
+		this.log.info("indexing for search transcribable ID {}", event.transcribableId());
+		this.index(transcribable);
 	}
 
 }

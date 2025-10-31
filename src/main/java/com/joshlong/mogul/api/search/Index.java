@@ -16,7 +16,6 @@ import java.util.*;
  * this maintains the low level aggregation of documents and their respective chunks.
  * provides the low-level atoms for indexing documents, searching for documents, etc.
  */
-@Service
 @Transactional
 class Index {
 

@@ -12,7 +12,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,13 +35,16 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final MessageChannel requests;
 
+	private final TransactionTemplate transactionTemplate;
+
 	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
 			Map<String, TranscribableRepository<?>> repositories, ApplicationEventPublisher publisher,
-			MessageChannel requests) {
+			MessageChannel requests, TransactionTemplate transactionTemplate) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
 		this.publisher = publisher;
 		this.requests = requests;
+		this.transactionTemplate = transactionTemplate;
 		this.repositories.putAll(repositories);
 	}
 
@@ -181,7 +187,8 @@ class DefaultTranscriptService implements TranscriptService {
 		var transcribableRepository = this.repositoryFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());
 		this.writeTranscript(transcribable, event.text());
-		this.publisher.publishEvent(new TranscriptRecordedEvent(event.mogulId(), event.transcribableId()));
+		this.publisher
+			.publishEvent(new TranscriptRecordedEvent(event.mogulId(), event.transcribableId(), event.type()));
 	}
 
 	private void notifyClient(TranscriptCompletedEvent event) {

@@ -8,7 +8,6 @@ import com.joshlong.mogul.api.search.SearchableRepository;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 
 import java.util.function.BiFunction;
 
@@ -17,7 +16,7 @@ class SegmentSearchConfiguration {
 
 	// todo i dont like that i need to use @Lazy. circular dependency somewhere
 	@Bean
-	SegmentSearchableRepository segmentSearchableRepository(/* @Lazy */ TranscriptService transcriptService,
+	SegmentSearchableRepository segmentSearchableRepository(TranscriptService transcriptService,
 			PodcastService podcastService) {
 		return new SegmentSearchableRepository(podcastService, transcriptService::readTranscript);
 	}
@@ -39,6 +38,8 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 		this.transcriptLoader = transcriptLoader;
 	}
 
+	// todo make sure that the call to podcatService.getPodcastEpisodeSegmentById is
+	// heavily cached
 	@Override
 	public Segment find(Long searchableId) {
 		return this.podcastService.getPodcastEpisodeSegmentById(searchableId);
