@@ -58,8 +58,8 @@ class DefaultSearchService implements SearchService {
 	}
 
 	@Override
-	public Collection<RankedResult> search(String query, Map<String, Object> metadata) {
-		var results = new LinkedHashSet<RankedResult>();
+	public Collection<RankedSearchResult> search(String query, Map<String, Object> metadata) {
+		var results = new LinkedHashSet<RankedSearchResult>();
 		try {
 			var all = this.index.search(query, metadata);
 			all.sort(Comparator.comparing(IndexHit::score));
@@ -75,7 +75,8 @@ class DefaultSearchService implements SearchService {
 				var repo = Objects.requireNonNull(this.repositoryFor(clzzObj),
 						"there is no repository for " + clzz + ".");
 				var result = repo.result(searchableId);
-				var rankedResult = new RankedResult(searchableId, result.title(), result.text(), clzz, hit.score());
+				var rankedResult = new RankedSearchResult(searchableId, result.title(), result.text(), clzz,
+						hit.score());
 				results.add(rankedResult);
 			}
 		} //

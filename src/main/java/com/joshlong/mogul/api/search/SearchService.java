@@ -9,6 +9,6 @@ public interface SearchService {
 
 	<T extends Searchable> void index(T searchable);
 
-	Collection<RankedResult> search(String query, Map<String, Object> metadata);
+	Collection<RankedSearchResult> search(String query, Map<String, Object> metadata);
 
 }

@@ -174,7 +174,7 @@ type AyrsharePublicationComposition {
 }
 
 
-type RankedResult {
+type RankedSearchResult {
     searchableId: Int
     title: String
     description: String
@@ -184,7 +184,7 @@ type RankedResult {
 
 type Query {
     # search
-    search(query: String, metadata: JSON): [RankedResult]
+    search(query: String, metadata: JSON): [RankedSearchResult]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
