@@ -15,49 +15,45 @@ import java.util.function.BiFunction;
 @Configuration
 class SegmentSearchConfiguration {
 
-    // todo i dont like that i need to use @Lazy. circular dependency somewhere
-    @Bean
-    SegmentSearchableRepository segmentSearchableRepository(TranscriptService transcriptService,
-                                                            PodcastService podcastService) {
-        return new SegmentSearchableRepository(podcastService, transcriptService::readTranscript);
-    }
+	// todo i dont like that i need to use @Lazy. circular dependency somewhere
+	@Bean
+	SegmentSearchableRepository segmentSearchableRepository(TranscriptService transcriptService,
+			PodcastService podcastService) {
+		return new SegmentSearchableRepository(podcastService, transcriptService::readTranscript);
+	}
 
 }
 
 class SegmentSearchableRepository implements SearchableRepository<Segment, Episode> {
 
-    private final PodcastService podcastService;
+	private final PodcastService podcastService;
 
-    private final BiFunction<Long, Transcribable, String> transcriptLoader;
+	private final BiFunction<Long, Transcribable, String> transcriptLoader;
 
-    SegmentSearchableRepository(PodcastService podcastService,
-                                BiFunction<Long, Transcribable, String> transcriptLoader) {
-        this.podcastService = podcastService;
-        this.transcriptLoader = transcriptLoader;
-    }
+	SegmentSearchableRepository(PodcastService podcastService,
+			BiFunction<Long, Transcribable, String> transcriptLoader) {
+		this.podcastService = podcastService;
+		this.transcriptLoader = transcriptLoader;
+	}
 
-    @Override
-    public Segment find(Long searchableId) {
-        return this.podcastService.getPodcastEpisodeSegmentById(searchableId);
-    }
+	@Override
+	public Segment find(Long searchableId) {
+		return this.podcastService.getPodcastEpisodeSegmentById(searchableId);
+	}
 
-    @Override
-    public boolean supports(Class<?> clazz) {
-        return Segment.class.isAssignableFrom(clazz);
-    }
+	@Override
+	public boolean supports(Class<?> clazz) {
+		return Segment.class.isAssignableFrom(clazz);
+	}
 
-    @Override
-    public SearchableResult<Segment, Episode> result(Segment searchable) {
-        var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
-        var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
-        var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
-        return new SearchableResult<>(
-                searchable.searchableId(),
-                searchable,
-                episode.title() + ", (segment " + searchable.searchableId() + ")",
-                this.transcriptLoader.apply(mogul, searchable),
-                episode
-        );
-    }
+	@Override
+	public SearchableResult<Segment, Episode> result(Segment searchable) {
+		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
+		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
+		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
+		return new SearchableResult<>(searchable.searchableId(), searchable,
+				episode.title() + ", (segment " + searchable.searchableId() + ")",
+				this.transcriptLoader.apply(mogul, searchable), episode);
+	}
 
 }

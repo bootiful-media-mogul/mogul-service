@@ -4,16 +4,15 @@ import com.joshlong.mogul.api.Searchable;
 
 public interface SearchableRepository<T extends Searchable, AGGREGATE> {
 
-    T find(Long searchableId);
+	T find(Long searchableId);
 
-    boolean supports(Class<?> clazz);
+	boolean supports(Class<?> clazz);
 
-    SearchableResult<T, AGGREGATE> result(T searchable);
+	SearchableResult<T, AGGREGATE> result(T searchable);
 
-    default SearchableResult<T, AGGREGATE> result(Long searchableId) {
-        T searchable = find(searchableId);
-        return result(searchable);
-    }
+	default SearchableResult<T, AGGREGATE> result(Long searchableId) {
+		T searchable = find(searchableId);
+		return result(searchable);
+	}
 
 }
-

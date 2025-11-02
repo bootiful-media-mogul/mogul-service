@@ -11,5 +11,4 @@ public interface SearchService {
 
 	Collection<RankedResult> search(String query, Map<String, Object> metadata);
 
-
 }
