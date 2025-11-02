@@ -6,8 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
@@ -108,10 +106,15 @@ class ChunkingTranscriber implements Transcriber {
 						try {
 							return this.retryTemplate.execute(_ -> {
 								this.log.debug("start transcribe audio resource {}", audioResource);
-								var result = openAiAudioTranscriptionModel.call(audioResource);
+								var result = this.openAiAudioTranscriptionModel.call(audioResource);
 								this.log.debug("finish transcribe audio result {}", result);
 								return result;
-							}, _ -> "");
+							}, _ -> {
+								this.log.debug("failed transcribe audio resource {}. returning empty string.",
+										audioResource);
+								return "";
+							});
+
 						} //
 						catch (Throwable e) {
 							var formatted = "oops! an error when trying to process a %s # %s"
