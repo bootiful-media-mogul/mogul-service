@@ -33,16 +33,13 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final MessageChannel requests;
 
-	private final TransactionTemplate transactionTemplate;
-
 	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
 			Map<String, TranscribableRepository<?>> repositories, ApplicationEventPublisher publisher,
-			MessageChannel requests, TransactionTemplate transactionTemplate) {
+			MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
 		this.publisher = publisher;
 		this.requests = requests;
-		this.transactionTemplate = transactionTemplate;
 		this.repositories.putAll(repositories);
 	}
 

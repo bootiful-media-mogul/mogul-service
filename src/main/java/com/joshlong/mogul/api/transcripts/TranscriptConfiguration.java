@@ -25,10 +25,9 @@ class TranscriptConfiguration {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Bean
-	DefaultTranscriptService defaultTranscriptService(JdbcClient db, TransactionTemplate tt,
-			ApplicationEventPublisher publisher, Map<String, TranscribableRepository<?>> repositories,
-			@TranscriptMessageChannel MessageChannel in) {
-		return new DefaultTranscriptService(transcriptRowMapper(), db, repositories, publisher, in, tt);
+	DefaultTranscriptService defaultTranscriptService(JdbcClient db, ApplicationEventPublisher publisher,
+			Map<String, TranscribableRepository<?>> repositories, @TranscriptMessageChannel MessageChannel in) {
+		return new DefaultTranscriptService(transcriptRowMapper(), db, repositories, publisher, in);
 	}
 
 	@Bean
