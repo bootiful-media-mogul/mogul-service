@@ -17,7 +17,7 @@ class SearchController {
 	}
 
 	@QueryMapping
-	Collection<SearchResult> search(@Argument String query, @Argument Map<String, Object> metadata) {
+	Collection<RankedResult> search(@Argument String query, @Argument Map<String, Object> metadata) {
 		return this.searchService.search(query, metadata);
 	}
 
