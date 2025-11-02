@@ -25,6 +25,11 @@ class SegmentSearchConfiguration {
 
 /**
  * Repository for searches done against {@link Segment segments}.
+ *
+ * TODO i think we should refactor the {@link SearchableRepository repository} to return
+ * objects usable for displaying search results. An aggregate object that contains a
+ * pointer to the underlying Searchable, the aggregate to which the Searchable belongs, if
+ * any, and text like the title and description.
  */
 class SegmentSearchableRepository implements SearchableRepository<Segment, Episode> {
 
