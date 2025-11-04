@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.search;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
+import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -57,31 +58,32 @@ class DefaultSearchService implements SearchService {
 		}
 	}
 
+	private static String resultName(Class<?> clzz) {
+		var sn = Objects.requireNonNull(clzz).getSimpleName();
+		Assert.hasText(sn, "the simple name should be non-empty!");
+		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
+	}
+
 	@Override
 	public Collection<RankedSearchResult> search(String query, Map<String, Object> metadata) {
 		var results = new LinkedHashSet<RankedSearchResult>();
-		try {
-			var all = this.index.search(query, metadata);
-			all.sort(Comparator.comparing(IndexHit::score));
-			for (var hit : all) {
-				var documentChunk = hit.documentChunk();
-				var documentId = documentChunk.documentId();
-				var document = this.index.documentById(documentId);
-				var resultMetadata = document.metadata();
-				Assert.notNull(resultMetadata, () -> "no metadata found for document id " + documentId);
-				var clzz = (String) (resultMetadata.getOrDefault(CLASS, null));
-				var clzzObj = Class.forName(clzz);
-				var searchableId = ((Number) (resultMetadata.getOrDefault(KEY, null))).longValue();
-				var repo = Objects.requireNonNull(this.repositoryFor(clzzObj),
-						"there is no repository for " + clzz + ".");
-				var result = repo.result(searchableId);
-				var rankedResult = new RankedSearchResult(searchableId, result.title(), result.text(), clzz,
-						hit.score());
-				results.add(rankedResult);
-			}
-		} //
-		catch (Throwable throwable) {
-			throw new RuntimeException(throwable);
+		var all = this.index.search(query, metadata);
+		all.sort(Comparator.comparing(IndexHit::score));
+		for (var hit : all) {
+			var documentChunk = hit.documentChunk();
+			var documentId = documentChunk.documentId();
+			var document = this.index.documentById(documentId);
+			var resultMetadata = document.metadata();
+			Assert.notNull(resultMetadata, () -> "no metadata found for document id " + documentId);
+			var clzz = (String) (resultMetadata.getOrDefault(CLASS, null));
+			var clzzObj = ReflectionUtils.classForName(clzz);
+			var searchableId = ((Number) (resultMetadata.getOrDefault(KEY, null))).longValue();
+			var repo = Objects.requireNonNull(this.repositoryFor(clzzObj), "there is no repository for " + clzz + ".");
+			var result = repo.result(searchableId);
+			var resultType = resultName(clzzObj);
+			var rankedResult = new RankedSearchResult(searchableId, result.title(), result.text(), resultType,
+					hit.score());
+			results.add(rankedResult);
 		}
 		return results;
 	}
