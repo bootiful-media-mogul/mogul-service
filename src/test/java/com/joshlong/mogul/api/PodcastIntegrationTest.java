@@ -276,17 +276,14 @@ class PodcastIntegrationTest {
 					localMp3ResourceFile.delete();
 				} //
 				catch (Throwable t) {
-					this.log.debug("could not delete the local file at " + localMp3ResourceFile.getAbsolutePath(), t);
+					this.log.debug("could not delete the local file at {}", localMp3ResourceFile.getAbsolutePath(), t);
 				}
 			}
 		}
 
 		// X - search for the podcast episode and test that the search capabilities work.
 		// todo why does it not return anything but the IDs?
-		var results = this.doSearch(tester, "Test Episode", Map.of());
-		results.forEach(row -> {
-			log.info("found podcast episode {}", JsonUtils.write(row));
-		});
+		this.doSearch(tester, "rot13", Map.of());
 
 		// X - add a note to the episode
 
@@ -348,11 +345,13 @@ class PodcastIntegrationTest {
 		});
 		var builder = MockMvcWebTestClient.bindToApplicationContext(webApplicationContext).configureClient();
 		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
-		var results = this.doSearch(tester, "rot13", Map.of());
-		log.info("results: {}", results);
-		results.forEach(row -> {
+		var searchResults = this.doSearch(tester, "rot13", Map.of());
+		log.info("results.length: {} results: {}", searchResults.size(), searchResults);
+		searchResults.forEach(row -> {
 			log.info("found podcast episode {}", JsonUtils.write(row));
 		});
+		Assertions.assertFalse(searchResults.isEmpty(), "the search results should not be empty");
+
 	}
 
 }
