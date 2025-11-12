@@ -6,6 +6,7 @@ import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
 import com.joshlong.mogul.api.search.SearchableRepository;
 import com.joshlong.mogul.api.search.SearchableResult;
+import com.joshlong.mogul.api.search.SearchableResultAggregate;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,9 +51,10 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
 		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
 		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
+		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
 		return new SearchableResult<>(searchable.searchableId(), searchable,
 				episode.title() + ", (segment " + searchable.searchableId() + ")",
-				this.transcriptLoader.apply(mogul, searchable), episode);
+				this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult);
 	}
 
 }

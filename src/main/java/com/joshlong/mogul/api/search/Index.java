@@ -3,6 +3,8 @@ package com.joshlong.mogul.api.search;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.pgvector.PGvector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -17,6 +19,8 @@ import java.util.*;
  */
 @Transactional
 class Index {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final EmbeddingModel embeddingModel;
 
@@ -132,6 +136,8 @@ class Index {
 				: List.of(query, query, vec, vec);
 		var results = this.jdbcClient.sql(sql).params(values).query(this.searchHitRowMapper).list();
 
+		this.log.debug("phase 1: there are {} results {}", results.size(), results);
+
 		// 2) Fallback fuzzy search using pre-tokenized tokens[] array
 		if (results.isEmpty()) {
 			var fuzzySql = """
@@ -153,9 +159,14 @@ class Index {
 				.params(query, query) //
 				.query(this.searchHitRowMapper) //
 				.list();
-		}
 
-		return results;
+			this.log.debug("phase 2: there are {} results {}", results.size(), results);
+		}
+		return this.dedupe(results);
+	}
+
+	private List<IndexHit> dedupe(List<IndexHit> results) {
+		return new ArrayList<>(new HashSet<>(results));
 	}
 
 	private String buildSearchSqlWithMetadata(boolean hasMetadata) {

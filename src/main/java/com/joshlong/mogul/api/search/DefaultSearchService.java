@@ -81,11 +81,28 @@ class DefaultSearchService implements SearchService {
 			var repo = Objects.requireNonNull(this.repositoryFor(clzzObj), "there is no repository for " + clzz + ".");
 			var result = repo.result(searchableId);
 			var resultType = resultName(clzzObj);
-			var rankedResult = new RankedSearchResult(searchableId, result.title(), result.text(), resultType,
-					hit.score());
+			var rankedResult = new RankedSearchResult(searchableId, result.aggregate().id(), result.title(),
+					result.text(), resultType, hit.score());
 			results.add(rankedResult);
 		}
-		return results;
+
+		return this.dedupeBySearchableAndType(results);
+	}
+
+	/* we want to return only the highest ranking of each unique result */
+	private ArrayList<RankedSearchResult> dedupeBySearchableAndType(LinkedHashSet<RankedSearchResult> results) {
+		var clean = new ArrayList<RankedSearchResult>();
+		var deduped = new HashMap<String, Set<RankedSearchResult>>();
+		for (var r : results) {
+			var key = r.type() + ":" + r.searchableId();
+			deduped.putIfAbsent(key, new HashSet<>());
+			deduped.get(key).add(r);
+		}
+		for (var candidates : deduped.values()) {
+			candidates.stream().max(Comparator.comparing(RankedSearchResult::rank)).ifPresent(clean::add);
+		}
+		clean.sort(Comparator.comparing(RankedSearchResult::rank));
+		return clean;
 	}
 
 	private String keyFor(Class<?> clzz) {

@@ -175,6 +175,7 @@ type AyrsharePublicationComposition {
 
 
 type RankedSearchResult {
+    aggregateId: Int
     searchableId: Int
     title: String
     description: String

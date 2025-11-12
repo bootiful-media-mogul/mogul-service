@@ -42,7 +42,7 @@ public abstract class ReflectionUtils {
 
 		// Get generics from all implemented interfaces
 		for (var iface : resolvableType.getInterfaces()) {
-			for (ResolvableType generic : iface.getGenerics()) {
+			for (var generic : iface.getGenerics()) {
 				if (generic.resolve() != null) {
 					classes.add(generic.resolve());
 					genericsFor(generic.resolve(), classes);

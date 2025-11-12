@@ -3,6 +3,8 @@ package com.joshlong.mogul.api.podcasts;
 import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.compositions.Composable;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
+import com.joshlong.mogul.api.search.SearchableResult;
+import com.joshlong.mogul.api.search.SearchableResultAggregate;
 
 import java.util.Date;
 
