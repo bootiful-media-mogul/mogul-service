@@ -1,5 +1,3 @@
-Here's the grammar-checked and spell-checked version of your text:
-
 # README
 
 See [the project README for what we're all about](https://github.com/bootiful-media-mogul/.github/blob/main/profile/README.md).
