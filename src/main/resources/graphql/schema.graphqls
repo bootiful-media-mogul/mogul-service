@@ -89,6 +89,7 @@ type Episode {
     description: String
     valid: Boolean
     graphic: ManagedFile
+    podcastId: Int
     producedAudio: ManagedFile
     complete: Boolean
     created: DateTime
