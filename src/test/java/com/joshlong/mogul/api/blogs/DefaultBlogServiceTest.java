@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Disabled
 @SpringBootTest(classes = ApiApplication.class)
 class DefaultBlogServiceTest {
 

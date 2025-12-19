@@ -71,7 +71,7 @@ class SettingsController {
 			var requiredKeys = new ArrayList<>(plugin.requiredSettingKeys());
 			requiredKeys.sort(Comparator.naturalOrder());
 			for (var requiredKey : requiredKeys) {
-				var value = settings.getValue(currentMogulId, pluginName, requiredKey);
+				var value = this.settings.getValue(currentMogulId, pluginName, requiredKey);
 				var valid = StringUtils.hasText(value);
 				var setting = new Setting(requiredKey, valid, value);
 				page.settings().add(setting);

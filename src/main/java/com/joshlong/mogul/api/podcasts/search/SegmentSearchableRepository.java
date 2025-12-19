@@ -1,27 +1,39 @@
 package com.joshlong.mogul.api.podcasts.search;
 
+import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
 import com.joshlong.mogul.api.search.SearchableRepository;
+import com.joshlong.mogul.api.search.SearchableResult;
+import com.joshlong.mogul.api.search.SearchableResultAggregate;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-/**
- * Repository for searches done against {@link Segment segments}.
- */
-@Component
+import java.util.function.BiFunction;
+
+@Configuration
+class SegmentSearchConfiguration {
+
+	@Bean
+	SegmentSearchableRepository segmentSearchableRepository(TranscriptService transcriptService,
+			PodcastService podcastService) {
+		return new SegmentSearchableRepository(podcastService, transcriptService::readTranscript);
+	}
+
+}
+
 class SegmentSearchableRepository implements SearchableRepository<Segment, Episode> {
 
 	private final PodcastService podcastService;
 
-	// private final MogulService mogulService;
+	private final BiFunction<Long, Transcribable, String> transcriptLoader;
 
-	private final TranscriptService transcriptService;
-
-	SegmentSearchableRepository(PodcastService podcastService, TranscriptService transcriptService) {
+	SegmentSearchableRepository(PodcastService podcastService,
+			BiFunction<Long, Transcribable, String> transcriptLoader) {
 		this.podcastService = podcastService;
-		this.transcriptService = transcriptService;
+		this.transcriptLoader = transcriptLoader;
 	}
 
 	@Override
@@ -35,27 +47,14 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 	}
 
 	@Override
-	public String text(Long searchableId) {
-		var segment = this.find(searchableId);
+	public SearchableResult<Segment, Episode> result(Segment searchable) {
+		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
 		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
-		var podcast = this.podcastService.getPodcastById(episode.podcastId());
-		var mogul = podcast.mogulId();
-		return this.transcriptService.readTranscript(mogul, segment);
-	}
-
-	@Override
-	public String title(Long searchableId) {
-		var episodeId = this.find(searchableId).episodeId();
-		var episode = this.podcastService.getPodcastEpisodeById(episodeId);
-		return episode.title() + ", (segment " + searchableId + ")";
-	}
-
-	@Override
-	public Episode aggregate(Long searchableId) {
-		// inefficient reverse traversal, but everything is cached so maybe it's not a big
-		// deal.
-		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchableId);
-		return this.podcastService.getPodcastEpisodeById(segment.episodeId());
+		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
+		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
+		return new SearchableResult<>(searchable.searchableId(), searchable,
+				episode.title() + ", (segment " + searchable.searchableId() + ")",
+				this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult);
 	}
 
 }

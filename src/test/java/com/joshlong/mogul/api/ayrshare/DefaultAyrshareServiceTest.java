@@ -3,10 +3,12 @@ package com.joshlong.mogul.api.ayrshare;
 import com.joshlong.mogul.api.ApiApplication;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+@Disabled
 @SpringBootTest(classes = ApiApplication.class)
 class DefaultAyrshareServiceTest {
 

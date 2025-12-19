@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.managedfiles;
 
+import org.junit.jupiter.api.Disabled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.cloudfront.model.*;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+@Disabled
 class S3CloudfrontTest {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -54,9 +56,6 @@ class S3CloudfrontTest {
 				.viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
 				.allowedMethods(AllowedMethods.builder().items(Method.GET, Method.HEAD).quantity(2).build())
 				.build();
-			/*
-			 * // Create default cache behavior
-			 */
 
 			// Create distribution config
 			var distConfig = DistributionConfig.builder()

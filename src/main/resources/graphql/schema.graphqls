@@ -89,6 +89,7 @@ type Episode {
     description: String
     valid: Boolean
     graphic: ManagedFile
+    podcastId: Int
     producedAudio: ManagedFile
     complete: Boolean
     created: DateTime
@@ -174,17 +175,18 @@ type AyrsharePublicationComposition {
 }
 
 
-type Searchable {
-    id: ID!
+type RankedSearchResult {
+    aggregateId: Int
+    searchableId: Int
     title: String
     description: String
+    type: String
+    rank: Float
 }
 
 type Query {
-
-
     # search
-    search(query: String, metadata: JSON): [Searchable]
+    search(query: String, metadata: JSON): [RankedSearchResult]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 

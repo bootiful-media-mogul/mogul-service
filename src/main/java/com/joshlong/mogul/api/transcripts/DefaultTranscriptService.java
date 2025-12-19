@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
@@ -25,14 +26,18 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final TranscriptRowMapper transcribableRowMapper;
 
+	private final ApplicationEventPublisher publisher;
+
 	private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
 
 	private final MessageChannel requests;
 
 	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
-			Map<String, TranscribableRepository<?>> repositories, MessageChannel requests) {
+			Map<String, TranscribableRepository<?>> repositories, ApplicationEventPublisher publisher,
+			MessageChannel requests) {
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
+		this.publisher = publisher;
 		this.requests = requests;
 		this.repositories.putAll(repositories);
 	}
@@ -42,7 +47,6 @@ class DefaultTranscriptService implements TranscriptService {
 	}
 
 	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
-		// todo some sort of caching.
 		return CollectionUtils
 			.firstOrNull(this.db.sql("select * from transcript where payload_class = ? and payload = ?")
 				.params(clazz, payloadKeyAsJson)
@@ -73,9 +77,10 @@ class DefaultTranscriptService implements TranscriptService {
 
 	@Override
 	public Transcript transcriptById(Long id) {
-		var transcripts = this.db.sql("select * from transcript where id = ?")
-			.params(id)
-			.query(this.transcribableRowMapper)
+		var transcripts = this.db //
+			.sql("select * from transcript where id = ?")//
+			.params(id)//
+			.query(this.transcribableRowMapper) //
 			.list();
 		return CollectionUtils.firstOrNull(transcripts);
 	}
@@ -133,7 +138,10 @@ class DefaultTranscriptService implements TranscriptService {
 
 	@Override
 	public void writeTranscript(Long transcriptId, String transcript) {
-		this.db.sql("update transcript set transcript = ? where  id = ? ").params(transcript, transcriptId).update();
+		this.db //
+			.sql("update transcript set transcript = ? where  id = ? ") //
+			.params(transcript, transcriptId) //
+			.update();
 	}
 
 	@Override
@@ -160,15 +168,27 @@ class DefaultTranscriptService implements TranscriptService {
 		this.transcribe(event.mogulId(), payload, event.context());
 	}
 
+	// todo delete transcripts when the podcast and the segments to which it belongs is
+	// deleted
 	@ApplicationModuleListener
 	void recordCompletedTranscript(TranscriptCompletedEvent event) {
+		this.recordTranscript(event);
+		this.notifyClient(event);
+	}
+
+	private void recordTranscript(TranscriptCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.repositoryFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());
 		this.writeTranscript(transcribable, event.text());
+		this.publisher
+			.publishEvent(new TranscriptRecordedEvent(event.mogulId(), event.transcribableId(), event.type()));
+	}
+
+	private void notifyClient(TranscriptCompletedEvent event) {
 		var ctx = JsonUtils.write(Map.of("transcript", event.text(), "transcriptId", event.transcriptId()));
-		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.mogulId(), event,
-				event.transcribableId().toString(), ctx);
+		var notificationEvent = NotificationEvent //
+			.systemNotificationEventFor(event.mogulId(), event, event.transcribableId().toString(), ctx);
 		NotificationEvents.notify(notificationEvent);
 	}
 

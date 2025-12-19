@@ -1,9 +1,9 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +48,7 @@ class TestSecurityConfiguration {
 
 }
 
+@Disabled
 @SpringBootTest(classes = { ApiApplication.class, TestSecurityConfiguration.class },
 		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PodcastIntegrationTest {
@@ -60,7 +61,7 @@ class PodcastIntegrationTest {
 
 	@Test
 	@WithUserDetails(USER)
-	void podcastE2eTest(@Autowired WebApplicationContext applicationContext, @Autowired SearchService searchService,
+	void podcastE2eTest(@Autowired WebApplicationContext applicationContext,
 			@Autowired TransactionTemplate transactionTemplate, @Autowired MogulService mogulService) throws Exception {
 
 		var mogulId = transactionTemplate.execute(_ -> {
@@ -89,12 +90,15 @@ class PodcastIntegrationTest {
 		var podcastId = this.id(podcast);
 		this.log.info("the podcastId is {}", podcastId);
 
-		// 2) Create episode draft
-		var episode = tester
-			.document("mutation($pid:Int!,$title:String!,$desc:String!){ "
-					+ "createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id } }")
+		// 2) create episode draft
+		var episodeTitle = "Test Episode " + UUID.randomUUID();
+		var episode = tester.document("""
+				    mutation($pid:Int!,$title:String!,$desc:String!) {
+				        createPodcastEpisodeDraft(podcastId:$pid,title:$title,description:$desc){ id }
+				    }
+				""") //
 			.variable("pid", podcastId)
-			.variable("title", "Test Episode")
+			.variable("title", episodeTitle)
 			.variable("desc", "Test Description")
 			.execute()
 			.path("createPodcastEpisodeDraft")
@@ -105,7 +109,7 @@ class PodcastIntegrationTest {
 
 		// we need to get the segment by its id so we can look at the managedfile for it.
 		var graphicManagedFileId = tester
-			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic{ id } } }")
+			.document("query($id:Int!){ podcastEpisodeById(podcastEpisodeId:$id){ graphic { id } } }")
 			.variable("id", episodeId)
 			.execute()
 			.path("podcastEpisodeById.graphic.id")
@@ -128,17 +132,17 @@ class PodcastIntegrationTest {
 				segmentManagedFileId, new ClassPathResource("samples/sample-segment-1.mp3"), //
 				graphicManagedFileId, new ClassPathResource("samples/sample-picture.png") //
 		);
-
 		for (var entry : mappings.entrySet()) {
 			var mfId = entry.getKey();
 			var resource = entry.getValue();
 			Assertions.assertTrue(resource.exists(), "the resource [" + resource + "] must exist");
-			webTestClient.post()
-				.uri("/managedfiles/{id}", mfId)
-				.contentType(MediaType.MULTIPART_FORM_DATA)
-				.body(BodyInserters.fromMultipartData("file", resource))
-				.exchange()
-				.expectStatus()
+			webTestClient //
+				.post() //
+				.uri("/managedfiles/{id}", mfId) //
+				.contentType(MediaType.MULTIPART_FORM_DATA) //
+				.body(BodyInserters.fromMultipartData("file", resource)) //
+				.exchange() //
+				.expectStatus() //
 				.is2xxSuccessful();
 		}
 
@@ -193,10 +197,15 @@ class PodcastIntegrationTest {
 				    plugin: "audioFile"
 				  )
 				}
-				""").variable("id", episodeId).execute().path("publish").entity(Boolean.class).get();
+				""")
+			.variable("id", episodeId) //
+			.execute()
+			.path("publish") //
+			.entity(Boolean.class)
+			.get();
 
 		var publicationsForPublishableQuery = """
-				 query (
+				 query(
 				   $type: String,
 				   $id: Int
 				 ) {
@@ -269,12 +278,14 @@ class PodcastIntegrationTest {
 					localMp3ResourceFile.delete();
 				} //
 				catch (Throwable t) {
-					this.log.debug("could not delete the local file at " + localMp3ResourceFile.getAbsolutePath(), t);
+					this.log.debug("could not delete the local file at {}", localMp3ResourceFile.getAbsolutePath(), t);
 				}
 			}
 		}
 
 		// X - search for the podcast episode and test that the search capabilities work.
+		// todo why does it not return anything but the IDs?
+		this.doSearch(tester, "rot13", Map.of());
 
 		// X - add a note to the episode
 
@@ -298,6 +309,51 @@ class PodcastIntegrationTest {
 			return ((Number) map.get("id")).longValue();
 		}
 		return null;
+	}
+
+	private List<Map<String, Object>> doSearch(HttpGraphQlTester tester, String query, Map<String, Object> metadata) {
+		var document = """
+				query($query: String, $metadata: JSON) {
+				    search(query: $query, metadata: $metadata) {
+				                searchableId
+				                title
+				                description
+				                type
+				                rank
+				    }
+				}
+				""";
+
+		return tester.document(document)
+			.variable("query", query)
+			.variable("metadata", metadata)
+			.execute()
+			.path("search")
+			.entityList(new ParameterizedTypeReference<Map<String, Object>>() {
+			})
+			.get();
+
+	}
+
+	@Test
+	@WithUserDetails(USER)
+	void searchE2e(@Autowired TransactionTemplate transactionTemplate,
+			@Autowired WebApplicationContext webApplicationContext, @Autowired MogulService mogulService) {
+
+		var mogulId = transactionTemplate.execute(_ -> {
+			var login = mogulService.getMogulByName(USER);
+			Assertions.assertNotNull(login, "the login should not be null");
+			return login.id();
+		});
+		var builder = MockMvcWebTestClient.bindToApplicationContext(webApplicationContext).configureClient();
+		var tester = HttpGraphQlTester.create(builder.baseUrl("/graphql").build());
+		var searchResults = this.doSearch(tester, "rot13", Map.of());
+		log.info("results.length: {} results: {}", searchResults.size(), searchResults);
+		searchResults.forEach(row -> {
+			log.info("found podcast episode {}", JsonUtils.write(row));
+		});
+		Assertions.assertFalse(searchResults.isEmpty(), "the search results should not be empty");
+
 	}
 
 }

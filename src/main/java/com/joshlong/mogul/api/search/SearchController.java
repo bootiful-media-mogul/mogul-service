@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.search;
 
-import com.joshlong.mogul.api.Searchable;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
@@ -18,7 +17,7 @@ class SearchController {
 	}
 
 	@QueryMapping
-	Collection<? extends Searchable> search(@Argument String query, @Argument Map<String, Object> metadata) {
+	Collection<RankedSearchResult> search(@Argument String query, @Argument Map<String, Object> metadata) {
 		return this.searchService.search(query, metadata);
 	}
 

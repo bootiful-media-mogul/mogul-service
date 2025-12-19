@@ -34,10 +34,11 @@ abstract class SilenceDetector {
 		Assert.state(result.waitFor(1, TimeUnit.MINUTES), "the result of silence detection should be 0, or good.");
 		try (var output = new InputStreamReader(new FileInputStream(silence))) {
 			var content = FileCopyUtils.copyToString(output);
-			var silenceDetectionLogLines = Stream.of(content.split(System.lineSeparator()))
-				.filter(l -> l.contains("silencedetect"))
-				.map(l -> l.split("]")[1])
-				.toList();
+			var silenceDetectionLogLines = Stream //
+				.of(content.split(System.lineSeparator())) //
+				.filter(l -> l.contains("silencedetect")) //
+				.map(l -> l.split("]")[1]) //
+				.toList(); //
 			var silences = new ArrayList<Silence>();
 			var offset = 0;
 
@@ -64,6 +65,9 @@ abstract class SilenceDetector {
 				}
 				offset += 1;
 			}
+
+			log.debug("silence detection completed. found {} silence gaps.", silences.size());
+
 			return silences.toArray(new Silence[0]);
 		}
 	}

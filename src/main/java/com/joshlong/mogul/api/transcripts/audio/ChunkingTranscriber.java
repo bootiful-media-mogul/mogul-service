@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
@@ -40,6 +41,8 @@ class ChunkingTranscriber implements Transcriber {
 
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
+	private final RetryTemplate retryTemplate;
+
 	private final Map<Instant, Set<File>> filesToDelete = new ConcurrentHashMap<>();
 
 	private final OpenAiAudioTranscriptionModel openAiAudioTranscriptionModel;
@@ -57,7 +60,8 @@ class ChunkingTranscriber implements Transcriber {
 	};
 
 	ChunkingTranscriber(OpenAiAudioTranscriptionModel openAiAudioTranscriptionModel, File root,
-			long maxFileSizeInBytes) {
+			RetryTemplate retryTemplate, long maxFileSizeInBytes) {
+		this.retryTemplate = retryTemplate;
 		this.openAiAudioTranscriptionModel = openAiAudioTranscriptionModel;
 		this.root = root;
 		this.maxFileSize = maxFileSizeInBytes;
@@ -100,7 +104,17 @@ class ChunkingTranscriber implements Transcriber {
 					var audioResource = tr.audio();
 					if (audioResource != null) {
 						try {
-							return this.openAiAudioTranscriptionModel.call(audioResource);
+							return this.retryTemplate.execute(_ -> {
+								this.log.debug("start transcribe audio resource {}", audioResource);
+								var result = this.openAiAudioTranscriptionModel.call(audioResource);
+								this.log.debug("finish transcribe audio result {}", result);
+								return result;
+							}, _ -> {
+								this.log.debug("failed transcribe audio resource {}. returning empty string.",
+										audioResource);
+								return "";
+							});
+
 						} //
 						catch (Throwable e) {
 							var formatted = "oops! an error when trying to process a %s # %s"
@@ -111,11 +125,15 @@ class ChunkingTranscriber implements Transcriber {
 					return "";
 				})//
 				.toList();
-			return this.executor//
+			var collected = this.executor//
 				.invokeAll(orderedAudio)//
 				.stream()//
 				.map(ChunkingTranscriber::from)//
 				.collect(Collectors.joining());
+			if (this.log.isInfoEnabled()) {
+				this.log.info("transcriptions:{}", collected);
+			}
+			return collected;
 		} //
 		catch (Exception e) {
 			this.log.error("trouble trying to transcode!", e);

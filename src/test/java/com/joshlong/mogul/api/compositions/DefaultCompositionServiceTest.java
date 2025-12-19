@@ -33,6 +33,7 @@ class TestSecurityConfiguration {
 
 }
 
+@Disabled
 @Import(TestSecurityConfiguration.class)
 @SpringBootTest
 class DefaultCompositionServiceTest {

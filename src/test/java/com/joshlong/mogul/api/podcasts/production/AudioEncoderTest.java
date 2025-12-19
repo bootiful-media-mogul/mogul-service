@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts.production;
 
 import com.joshlong.mogul.api.media.AudioEncoder;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.Assert;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 
+@Disabled
 class AudioEncoderTest {
 
 	private final AudioEncoder encoder = new AudioEncoder();

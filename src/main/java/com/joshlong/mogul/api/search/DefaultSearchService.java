@@ -1,0 +1,122 @@
+package com.joshlong.mogul.api.search;
+
+import com.joshlong.mogul.api.Searchable;
+import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
+import com.joshlong.mogul.api.utils.ReflectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+@Transactional
+class DefaultSearchService implements SearchService {
+
+	private static final String KEY = "key";
+
+	private static final String CLASS = "class";
+
+	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
+
+	private final Map<String, SearchableRepository<?, ?>> repositories = new ConcurrentHashMap<>();
+
+	private final Index index;
+
+	DefaultSearchService(Map<String, SearchableRepository<?, ?>> repositories, Index index) {
+		this.index = index;
+		this.repositories.putAll(repositories);
+	}
+
+	private SearchableRepository<?, ?> repositoryFor(Class<?> clzz) {
+		for (var sr : this.repositories.values())
+			if (sr.supports(clzz))
+				return sr;
+		return null;
+	}
+
+	@Override
+	public <T extends Searchable> void index(T searchable) {
+		var searchableId = searchable.searchableId();
+		var clzz = keyFor(searchable.getClass());
+		var repo = repositoryFor(searchable.getClass());
+		Assert.notNull(repo, () -> "there's no repository for " + clzz + "!");
+		var result = repo.result(searchableId);
+		var textForSearchable = result.text();
+		var titleForSearchable = result.title();
+		if (StringUtils.hasText(textForSearchable) && StringUtils.hasText(titleForSearchable)) {
+			this.index.ingest(titleForSearchable, textForSearchable, Map.of(KEY, searchableId, CLASS, clzz));
+		} //
+		else {
+			this.log.debug("we've got nothing to index " + "for searchable {} with class {}!", searchableId, clzz);
+		}
+	}
+
+	private static String resultName(Class<?> clzz) {
+		var sn = Objects.requireNonNull(clzz).getSimpleName();
+		Assert.hasText(sn, "the simple name should be non-empty!");
+		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
+	}
+
+	@Override
+	public Collection<RankedSearchResult> search(String query, Map<String, Object> metadata) {
+		var results = new LinkedHashSet<RankedSearchResult>();
+		var all = this.index.search(query, metadata);
+		all.sort(Comparator.comparing(IndexHit::score));
+		for (var hit : all) {
+			var documentChunk = hit.documentChunk();
+			var documentId = documentChunk.documentId();
+			var document = this.index.documentById(documentId);
+			var resultMetadata = document.metadata();
+			Assert.notNull(resultMetadata, () -> "no metadata found for document id " + documentId);
+			var clzz = (String) (resultMetadata.getOrDefault(CLASS, null));
+			var clzzObj = ReflectionUtils.classForName(clzz);
+			var searchableId = ((Number) (resultMetadata.getOrDefault(KEY, null))).longValue();
+			var repo = Objects.requireNonNull(this.repositoryFor(clzzObj), "there is no repository for " + clzz + ".");
+			var result = repo.result(searchableId);
+			var resultType = resultName(clzzObj);
+			var rankedResult = new RankedSearchResult(searchableId, result.aggregate().id(), result.title(),
+					result.text(), resultType, hit.score());
+			results.add(rankedResult);
+		}
+
+		return this.dedupeBySearchableAndType(results);
+	}
+
+	/* we want to return only the highest ranking of each unique result */
+	private ArrayList<RankedSearchResult> dedupeBySearchableAndType(LinkedHashSet<RankedSearchResult> results) {
+		var clean = new ArrayList<RankedSearchResult>();
+		var deduped = new HashMap<String, Set<RankedSearchResult>>();
+		for (var r : results) {
+			var key = r.type() + ":" + r.searchableId();
+			deduped.putIfAbsent(key, new HashSet<>());
+			deduped.get(key).add(r);
+		}
+		for (var candidates : deduped.values()) {
+			candidates.stream().max(Comparator.comparing(RankedSearchResult::rank)).ifPresent(clean::add);
+		}
+		clean.sort(Comparator.comparing(RankedSearchResult::rank));
+		return clean;
+	}
+
+	private String keyFor(Class<?> clzz) {
+		return clzz != null ? clzz.getName() : null;
+	}
+
+	@ApplicationModuleListener
+	void indexForSearchOnTranscriptCompletion(TranscriptRecordedEvent event) {
+		var aClazz = (Class<? extends Transcribable>) event.type();
+		var repo = this.repositoryFor(aClazz);
+		var transcribable = repo.find(event.transcribableId());
+		Assert.notNull(transcribable, "the transcribable id " + event.transcribableId() + " was null!");
+		this.log.info("indexing for search transcribable ID {}", event.transcribableId());
+		this.index(transcribable);
+	}
+
+}
