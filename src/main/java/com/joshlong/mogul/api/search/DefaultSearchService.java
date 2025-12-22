@@ -34,6 +34,12 @@ class DefaultSearchService implements SearchService {
 		this.repositories.putAll(repositories);
 	}
 
+	private static String resultName(Class<?> clzz) {
+		var sn = Objects.requireNonNull(clzz).getSimpleName();
+		Assert.hasText(sn, "the simple name should be non-empty!");
+		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
+	}
+
 	private SearchableRepository<?, ?> repositoryFor(Class<?> clzz) {
 		for (var sr : this.repositories.values())
 			if (sr.supports(clzz))
@@ -56,12 +62,6 @@ class DefaultSearchService implements SearchService {
 		else {
 			this.log.debug("we've got nothing to index " + "for searchable {} with class {}!", searchableId, clzz);
 		}
-	}
-
-	private static String resultName(Class<?> clzz) {
-		var sn = Objects.requireNonNull(clzz).getSimpleName();
-		Assert.hasText(sn, "the simple name should be non-empty!");
-		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
 	}
 
 	@Override

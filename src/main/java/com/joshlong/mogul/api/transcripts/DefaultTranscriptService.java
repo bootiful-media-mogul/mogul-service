@@ -176,7 +176,7 @@ class DefaultTranscriptService implements TranscriptService {
 		this.notifyClient(event);
 	}
 
-	private void recordTranscript(TranscriptCompletedEvent event) {
+	void recordTranscript(TranscriptCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.repositoryFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());

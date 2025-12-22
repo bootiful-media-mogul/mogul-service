@@ -197,7 +197,6 @@ class DefaultPodcastService implements PodcastService {
 		this.db.sql("update podcast_episode set complete = ? where id = ? ").params(complete, episode.id()).update();
 		this.invalidatePodcastEpisodeCache(episodeId);
 		var episodeById = this.getPodcastEpisodeById(episode.id());
-
 		var detailsOnSegments = new StringBuilder();
 		if (!allSegmentsHaveWrittenAndProducedAudio) {
 			for (var s : segments) {
@@ -244,7 +243,6 @@ class DefaultPodcastService implements PodcastService {
 	 * @param deep whether to return the full graph of objects or just the results
 	 * sufficient to display the search results
 	 */
-
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
 		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);

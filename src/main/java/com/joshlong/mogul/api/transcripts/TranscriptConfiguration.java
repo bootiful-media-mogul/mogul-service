@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.TranscribableRepository;
 import com.joshlong.mogul.api.transcripts.audio.Transcriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.task.SimpleAsyncTaskSchedulerBuilder;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +15,6 @@ import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.PublishSubscribeChannelSpec;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Map;
@@ -66,8 +66,12 @@ class TranscriptConfiguration {
 
 	@Bean
 	@TranscriptMessageChannel
-	PublishSubscribeChannelSpec<?> transcriptMessageChannel(SimpleAsyncTaskScheduler taskScheduler) {
-		return MessageChannels.publishSubscribe(taskScheduler);
+	PublishSubscribeChannelSpec<?> transcriptMessageChannel() {
+		var transcriptionTaskExecutor = new SimpleAsyncTaskSchedulerBuilder()//
+			.virtualThreads(true) //
+			.concurrencyLimit(10)//
+			.build();
+		return MessageChannels.publishSubscribe(transcriptionTaskExecutor);
 	}
 
 	@Bean

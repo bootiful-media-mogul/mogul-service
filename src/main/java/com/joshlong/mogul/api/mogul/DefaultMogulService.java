@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,7 +58,8 @@ class DefaultMogulService implements MogulService {
 		this.transactionTemplate = transactionTemplate;
 		this.db = jdbcClient;
 		this.publisher = publisher;
-		Duration tenMins = Duration.ofMinutes(10);
+
+		var tenMins = Duration.ofMinutes(10);
 		this.mogulsById = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
 		this.mogulsByName = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
 		Assert.notNull(this.db, "the db is null");
@@ -114,12 +116,14 @@ class DefaultMogulService implements MogulService {
 						"could NOT find a recent mogul by name [{}] in the database, so we'll have to hit the /userinfo endpoint.",
 						username);
 				var accessToken = principal.getToken().getTokenValue();
-				var userinfo = this.userinfoHttpRestClient.get()//
+				var userinfo = this.userinfoHttpRestClient //
+					.get()//
 					.uri(this.auth0Userinfo)//
 					.headers(httpHeaders -> httpHeaders.setBearerAuth(accessToken))//
 					.retrieve()//
 					.body(UserInfo.class);
-				mogul = this.login(userinfo.sub(), aud, userinfo.email(), userinfo.givenName(), userinfo.familyName());
+				mogul = this.login(Objects.requireNonNull(userinfo).sub(), aud, userinfo.email(), userinfo.givenName(),
+						userinfo.familyName());
 			}
 		}
 		this.nonNullMogul(mogul, username);
@@ -130,7 +134,11 @@ class DefaultMogulService implements MogulService {
 	public Mogul getMogulById(Long id) {
 		var resolved = new AtomicBoolean(false);
 		var res = this.mogulsById.computeIfAbsent(id, mogulId -> {
-			var mogul = this.db.sql("select * from mogul where id =? ").param(id).query(this.mogulRowMapper).single();
+			var mogul = this.db //
+				.sql("select * from mogul where id =? ") //
+				.param(mogulId) //
+				.query(this.mogulRowMapper) //
+				.single();
 			resolved.set(true);
 			return mogul;
 		});
@@ -171,7 +179,7 @@ class DefaultMogulService implements MogulService {
 	@EventListener
 	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
 		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
-		this.transactionTemplate.execute(status -> {
+		this.transactionTemplate.execute(_ -> {
 			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
 			this.doLoginByPrincipal(authentication);
 			return null;
