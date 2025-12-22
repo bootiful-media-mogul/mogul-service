@@ -69,7 +69,7 @@ class TranscriptConfiguration {
 	PublishSubscribeChannelSpec<?> transcriptMessageChannel() {
 		var transcriptionTaskExecutor = new SimpleAsyncTaskSchedulerBuilder()//
 			.virtualThreads(true) //
-			.concurrencyLimit(10)//
+			.concurrencyLimit(2)//
 			.build();
 		return MessageChannels.publishSubscribe(transcriptionTaskExecutor);
 	}
