@@ -88,6 +88,10 @@ class RetroactiveIndexerConfiguration {
 					log.info("there are {} episode segments for podcast episode {} for podcast {} for mogulId # {}",
 							segments.size(), episode.id(), podcast.id(), mogulId);
 					for (var segment : segments) {
+						if (segment.audio() == null || segment.producedAudio() == null) {
+							log.info("producedAudio is null, skipping.");
+							continue;
+						}
 						var transcript = transcriptService.readTranscript(mogulId, segment);
 						if (!StringUtils.hasText(transcript)) {
 							log.info("transcribing segment {}", segment.id());
