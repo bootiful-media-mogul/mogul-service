@@ -20,7 +20,8 @@ import java.util.concurrent.Executors;
 /**
  * todo delete this. this is only meant to be run as a one-time job
  */
-@Component
+@Deprecated
+// @Component
 @Transactional
 class RetroactiveIndexerConfiguration {
 
