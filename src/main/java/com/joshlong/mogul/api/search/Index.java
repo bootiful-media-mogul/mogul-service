@@ -6,6 +6,7 @@ import com.pgvector.PGvector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.cache.Cache;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -32,25 +33,35 @@ class Index {
 
 	private final SearchHitRowMapper searchHitRowMapper;
 
+	// new support for caching
+	private final Cache documentsCache, documentChunksCache;
+
 	Index(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
-			DocumentRowMapper documentRowMapper, SearchHitRowMapper searchHitRowMapper) {
+			DocumentRowMapper documentRowMapper, SearchHitRowMapper searchHitRowMapper, Cache documentsCache,
+			Cache documentChunksCache) {
 		this.embeddingModel = embeddingModel;
 		this.jdbcClient = jdbc;
 		this.documentChunkRowMapper = documentChunkRowMapper;
 		this.documentRowMapper = documentRowMapper;
 		this.searchHitRowMapper = searchHitRowMapper;
+
+		// new
+		this.documentsCache = documentsCache;
+		this.documentChunksCache = documentChunksCache;
 	}
 
 	/**
 	 * package private so we can use it in the {@link IndexServiceConfiguration} class for
 	 * wiring purposes.
+	 * <p>
+	 * TODO could we cache this?
 	 */
 	protected List<DocumentChunk> documentChunks(Long documentId) {
-		return jdbcClient //
+		return this.documentChunksCache.get(documentId, () -> jdbcClient //
 			.sql("select dc.* from document_chunk dc where dc.document_id = ? ") //
 			.params(documentId) //
 			.query(this.documentChunkRowMapper) //
-			.list();
+			.list());
 	}
 
 	Document ingest(String title, String fullText) {
@@ -110,18 +121,18 @@ class Index {
 				.update();
 		}
 
+		this.documentsCache.evictIfPresent(documentId);
 		return this.documentById(documentId);
 	}
 
 	Document documentById(Long documentId) {
-		var documentList = this.jdbcClient //
+		return this.documentsCache.get(documentId, () -> CollectionUtils.firstOrNull(this.jdbcClient //
 			.sql("""
 					     select * from document d join document_chunk dc on d.id = dc.document_id where d.id = ?
 					""") //
 			.params(documentId) //
 			.query(this.documentRowMapper) //
-			.list();
-		return CollectionUtils.firstOrNull(documentList);
+			.list()));
 	}
 
 	List<IndexHit> search(String query) {

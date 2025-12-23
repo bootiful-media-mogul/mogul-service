@@ -2,6 +2,7 @@ package com.joshlong.mogul.api.search;
 
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,9 +13,13 @@ import java.sql.SQLException;
 class IndexServiceConfiguration {
 
 	@Bean
-	Index defaultIndexService(EmbeddingModel embeddingModel, JdbcClient jdbcClient, DocumentRowMapper documentRowMapper,
-			DocumentChunkRowMapper documentChunkRowMapper, SearchHitRowMapper searchHitRowMapper) {
-		return new Index(jdbcClient, embeddingModel, documentChunkRowMapper, documentRowMapper, searchHitRowMapper);
+	Index defaultIndexService(CacheManager cacheManager, EmbeddingModel embeddingModel, JdbcClient jdbcClient,
+			DocumentRowMapper documentRowMapper, DocumentChunkRowMapper documentChunkRowMapper,
+			SearchHitRowMapper searchHitRowMapper) {
+		var documentsCache = cacheManager.getCache("documents");
+		var documentChunksCache = cacheManager.getCache("documentChunks");
+		return new Index(jdbcClient, embeddingModel, documentChunkRowMapper, documentRowMapper, searchHitRowMapper,
+				documentsCache, documentChunksCache);
 	}
 
 	@Bean
