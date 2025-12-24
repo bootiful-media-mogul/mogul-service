@@ -15,7 +15,6 @@
     <properties>
         <java.version>24</java.version>
         <spring-ai.version>2.0.0-M1</spring-ai.version>
-<!--        <spring-ai.version>1.0.2</spring-ai.version>-->
         <spring-cloud.version>2025.1.0</spring-cloud.version>
         <spring-modulith.version>2.0.1</spring-modulith.version>
     </properties>
@@ -24,7 +23,6 @@
             <groupId>io.ably</groupId>
             <artifactId>ably-java</artifactId>
             <version>1.5.0</version>
-<!--            <version>1.2.33</version>-->
         </dependency>
         <dependency>
             <groupId>com.graphql-java</groupId>
@@ -187,6 +185,10 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
     </dependencies>
     <dependencyManagement>
