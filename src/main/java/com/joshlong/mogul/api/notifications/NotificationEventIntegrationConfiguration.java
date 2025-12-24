@@ -12,8 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.event.inbound.ApplicationEventListeningMessageProducer;
-import org.springframework.integration.transformer.AbstractTransformer;
-import org.springframework.messaging.Message;
+import org.springframework.integration.transformer.Transformer;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
@@ -46,19 +45,16 @@ class NotificationEventIntegrationConfiguration {
 		return IntegrationFlow //
 			.from(aemp) //
 			.filter(source -> source instanceof NotificationEvent)
-			.transform(new AbstractTransformer() {
-				@Override
-				protected Object doTransform(Message<?> message) {
-					var notificationEvent = (NotificationEvent) message.getPayload();
-					var json = JsonUtils.write(notificationEvent);
-					var topic = AblyNotificationsUtils.ablyNoticationsChannelFor(notificationEvent.mogulId());
-					return MessageBuilder //
-						.withPayload(json) //
-						.setHeader(AblyHeaders.ABLY_NAME, notificationEvent.category())//
-						.setHeader(AblyHeaders.ABLY_CHANNEL_NAME, topic)//
-						.build();
-				}
-			})//
+			.transform((Transformer) message -> {
+				var notificationEvent = (NotificationEvent) message.getPayload();
+				var json = JsonUtils.write(notificationEvent);
+				var topic = AblyNotificationsUtils.ablyNoticationsChannelFor(notificationEvent.mogulId());
+				return MessageBuilder //
+					.withPayload(json) //
+					.setHeader(AblyHeaders.ABLY_NAME, notificationEvent.category())//
+					.setHeader(AblyHeaders.ABLY_CHANNEL_NAME, topic)//
+					.build();
+			})
 			.handle(messageHandler)//
 			.get();
 	}

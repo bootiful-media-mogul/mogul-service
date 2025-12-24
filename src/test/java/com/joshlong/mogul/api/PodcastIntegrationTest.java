@@ -48,6 +48,7 @@ class TestSecurityConfiguration {
 
 }
 
+@SuppressWarnings("unchecked")
 @Disabled
 @SpringBootTest(classes = { ApiApplication.class, TestSecurityConfiguration.class },
 		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

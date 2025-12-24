@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api;
 
-import org.springframework.lang.NonNull;
+import org.jspecify.annotations.NonNull;
 
 import java.net.URI;
 import java.util.*;
