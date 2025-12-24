@@ -97,6 +97,8 @@ class Storage {
 					Thread.currentThread());
 			this.ensureBucketExists(bucket);
 			this.doWriteForLargeFiles(bucket, objectName, resource, largeFile, mediaType);
+			this.log.info("finished executing an S3 PUT for [{}/{}] on thread [{}]", bucket, objectName,
+					Thread.currentThread());
 		} //
 		catch (Throwable throwable) {
 			throw new RuntimeException(throwable);

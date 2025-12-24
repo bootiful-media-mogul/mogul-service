@@ -15,13 +15,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.graphql.execution.RuntimeWiringConfigurer;
 import org.springframework.integration.annotation.IntegrationComponentScan;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @IntegrationComponentScan
 @ImportRuntimeHints({ ApiApplication.FlywayHints.class })
@@ -45,18 +43,13 @@ public class ApiApplication {
 	}
 
 	@Bean
-	SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
-		return http //
-			.authorizeHttpRequests((authorize) -> authorize //
-				.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.permitAll() //
-				.requestMatchers("/public/**")
-				.permitAll()
-				.anyRequest()
-				.authenticated()//
-			)//
-			.oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults()))//
-			.build();
+	Customizer<HttpSecurity> httpSecurityCustomizer() {
+		return http -> http.authorizeHttpRequests((authorize) -> authorize //
+			.requestMatchers(EndpointRequest.toAnyEndpoint())
+			.permitAll() //
+			.requestMatchers("/public/**")
+			.permitAll()//
+		);
 	}
 
 	@Bean
