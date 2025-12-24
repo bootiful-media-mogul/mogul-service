@@ -81,6 +81,7 @@ class DefaultSearchService implements SearchService {
 			var repo = Objects.requireNonNull(this.repositoryFor(clzzObj), "there is no repository for " + clzz + ".");
 			var result = repo.result(searchableId);
 			var resultType = resultName(clzzObj);
+			log.info("the title is " + result.title());
 			var rankedResult = new RankedSearchResult(searchableId, result.aggregate().id(), result.title(),
 					result.text(), resultType, hit.score());
 			results.add(rankedResult);
@@ -90,30 +91,39 @@ class DefaultSearchService implements SearchService {
 	}
 
 	/* we want to return only the highest ranking of each unique result */
-	private ArrayList<RankedSearchResult> dedupeBySearchableAndType(LinkedHashSet<RankedSearchResult> results) {
-		var clean = new ArrayList<RankedSearchResult>();
-		var deduped = new HashMap<String, Set<RankedSearchResult>>();
-		for (var r : results) {
-			var key = r.type() + ":" + r.searchableId();
-			deduped.putIfAbsent(key, new HashSet<>());
-			deduped.get(key).add(r);
+	private List<RankedSearchResult> dedupeBySearchableAndType(LinkedHashSet<RankedSearchResult> results) {
+		var all = new ArrayList<RankedSearchResult>();
+		var map = new ConcurrentHashMap<Long, List<RankedSearchResult>>();
+		for (var rsr : results) {
+			map.computeIfAbsent(rsr.aggregateId(), _ -> new ArrayList<>()).add(rsr);
 		}
-		for (var candidates : deduped.values()) {
-			candidates.stream().max(Comparator.comparing(RankedSearchResult::rank)).ifPresent(clean::add);
+		for (var k : map.keySet()) {
+			map.get(k).stream().max(Comparator.comparingDouble(RankedSearchResult::rank)).ifPresent(all::add);
 		}
-		clean.sort(Comparator.comparing(RankedSearchResult::rank));
-		return clean;
+		return all.stream().sorted((o1, o2) -> Double.compare(o1.rank(), o2.rank())).toList();
+
+		/*
+		 * var clean = new ArrayList<RankedSearchResult>(); var deduped = new
+		 * HashMap<String, Set<RankedSearchResult>>(); for (var r : results) { var key =
+		 * r.type() + ":" + r.searchableId(); deduped.putIfAbsent(key, new HashSet<>());
+		 * deduped.get(key).add(r); } for (var candidates : deduped.values()) {
+		 * candidates.stream().max(Comparator.comparing(RankedSearchResult::rank)).
+		 * ifPresent(clean::add); }
+		 * clean.sort(Comparator.comparing(RankedSearchResult::rank)); return clean;
+		 *
+		 */
 	}
 
 	private String keyFor(Class<?> clzz) {
 		return clzz != null ? clzz.getName() : null;
 	}
 
+	@SuppressWarnings("unchecked")
 	@ApplicationModuleListener
 	void indexForSearchOnTranscriptCompletion(TranscriptRecordedEvent event) {
 		var aClazz = (Class<? extends Transcribable>) event.type();
 		var repo = this.repositoryFor(aClazz);
-		var transcribable = repo.find(event.transcribableId());
+		var transcribable = Objects.requireNonNull(repo).find(event.transcribableId());
 		Assert.notNull(transcribable, "the transcribable id " + event.transcribableId() + " was null!");
 		this.log.info("indexing for search transcribable ID {}", event.transcribableId());
 		this.index(transcribable);

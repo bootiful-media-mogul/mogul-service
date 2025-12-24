@@ -11,6 +11,7 @@ import com.joshlong.mogul.api.transcripts.TranscriptService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Map;
 import java.util.function.BiFunction;
 
 @Configuration
@@ -52,9 +53,9 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
 		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
 		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
-		return new SearchableResult<>(searchable.searchableId(), searchable,
-				episode.title() + ", (segment " + searchable.searchableId() + ")",
-				this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult);
+		return new SearchableResult<>(searchable.searchableId(), searchable, episode.title(),
+				this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult,
+				Map.of("episodeId", episode.id()));
 	}
 
 }
