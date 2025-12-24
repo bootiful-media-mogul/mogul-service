@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.5</version>
+        <version>4.0.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.joshlong.mogul</groupId>
@@ -14,22 +14,21 @@
     <name>mogul-service</name>
     <properties>
         <java.version>24</java.version>
-        <spring-ai.version>1.0.2</spring-ai.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <spring-modulith.version>1.4.1</spring-modulith.version>
-        <graphql-java.version>24.0</graphql-java.version>
+        <spring-ai.version>2.0.0-M1</spring-ai.version>
+        <spring-cloud.version>2025.1.0</spring-cloud.version>
+        <spring-modulith.version>2.0.1</spring-modulith.version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>io.ably</groupId>
             <artifactId>ably-java</artifactId>
-            <version>1.2.33</version>
+            <version>1.5.0</version>
         </dependency>
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java-extended-scalars</artifactId>
             <version>
-                ${graphql-java.version}
+              24.0
             </version>
         </dependency>
         <dependency>
@@ -41,11 +40,6 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>cloudfront</artifactId>
         </dependency>
-        <!--    <dependency>
-                <groupId>com.maciejwalkowiak.spring</groupId>
-                <artifactId>spring-boot-startup-report</artifactId>
-                <version>0.2.0</version>
-            </dependency>-->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -72,7 +66,11 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.integration</groupId>
@@ -124,7 +122,7 @@
         <dependency>
             <groupId>com.joshlong</groupId>
             <artifactId>podbean-client</artifactId>
-            <version>0.0.14</version>
+            <version>0.0.19</version>
         </dependency>
         <dependency>
             <groupId>com.joshlong</groupId>
@@ -187,6 +185,10 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
     </dependencies>
     <dependencyManagement>

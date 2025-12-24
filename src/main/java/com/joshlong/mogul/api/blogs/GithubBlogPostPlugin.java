@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.blogs;
 
 import com.joshlong.mogul.api.PublisherPlugin;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanNameAware;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
