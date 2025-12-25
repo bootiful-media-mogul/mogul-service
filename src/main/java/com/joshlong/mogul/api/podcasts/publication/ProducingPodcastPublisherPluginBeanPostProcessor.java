@@ -8,6 +8,7 @@ import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.production.PodcastProducer;
 import org.aopalliance.intercept.MethodInterceptor;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.ProxyFactoryBean;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -32,14 +34,14 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+	public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
 		this.beanFactoryAtomicReference.set(beanFactory);
 		log.debug("obtained reference to BeanFactory in {}", getClass().getName());
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+	public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {
 		if (bean instanceof PodcastEpisodePublisherPlugin plugin) {
 			this.log.debug("bean {} is an instance of {}", beanName, PodcastEpisodePublisherPlugin.class.getName());
 			var proxyFactoryBean = new ProxyFactoryBean();
@@ -56,12 +58,15 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 
 					this.log.debug("found the publish method on the plugin bean named {}", beanName);
 					var context = (PublisherPlugin.PublishContext<Episode>) invocation.getArguments()[0];
-					var episode = context.payload();
+					var episode = Objects.requireNonNull(context).payload();
 
 					var shouldProduceAudio = episode.producedAudioUpdated() == null
 							|| episode.producedAudioUpdated().before(episode.producedAudioAssetsUpdated());
-					this.log.debug("should produce the audio for episode [{}] from scratch? [{}]",
-							"#" + episode.id() + " / " + episode.title(), shouldProduceAudio);
+					this.log.debug(
+							"should produce the audio for episode [{}] from scratch? the producedAudioUpdated is "
+									+ "{} and producedAudioAssetsUpdated is {} [{}]",
+							"#" + episode.id() + " / " + episode.title(), episode.producedAudioUpdated() + "",
+							episode.producedAudioAssetsUpdated() + "", shouldProduceAudio);
 					var mogulId = podcastService.getPodcastById(episode.podcastId()).mogulId();
 					return transactionTemplate.execute(_ -> {
 

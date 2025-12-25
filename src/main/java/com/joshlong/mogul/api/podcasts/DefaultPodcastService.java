@@ -318,7 +318,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Episode getPodcastEpisodeById(Long episodeId) {
-		var all = getAllPodcastEpisodesByIds(List.of(episodeId));
+		var all = this.getAllPodcastEpisodesByIds(List.of(episodeId));
 		Assert.notNull(all, "the collection should not be null");
 		if (all.isEmpty())
 			return null;
@@ -330,6 +330,7 @@ class DefaultPodcastService implements PodcastService {
 			.sql("update podcast_episode_segment set sequence_number = ? where id = ?")
 			.params(order, episodeSegmentId)
 			.update();
+
 	}
 
 	private void moveEpisodeSegment(Long episodeId, Long segmentId, int position) {
@@ -345,6 +346,7 @@ class DefaultPodcastService implements PodcastService {
 		segments.add(newPositionOfSegment, segment);
 		this.reorderSegments(segments);
 		var epId = this.getPodcastEpisodeSegmentById(segmentId).episodeId();
+		this.markAssetsDirty(episodeId);
 		this.invalidatePodcastEpisodeCache(epId);
 		var ep = this.getPodcastEpisodeById(epId);
 		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(ep));
@@ -373,10 +375,12 @@ class DefaultPodcastService implements PodcastService {
 		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
 		Assert.state(segment != null, "you must specify a valid " + Segment.class.getName());
 		var managedFilesToDelete = Set.of(segment.audio().id(), segment.producedAudio().id());
+		this.markPodcastEpisodeBySegmentAssetsDirty(episodeSegmentId);
 		this.db.sql("delete from podcast_episode_segment where id =?").params(episodeSegmentId).update();
 		for (var managedFileId : managedFilesToDelete)
 			this.managedFileService.deleteManagedFile(managedFileId);
 		this.reorderSegments(this.getPodcastEpisodeSegmentsByEpisode(segment.episodeId()));
+
 		this.refreshPodcastEpisodeCompleteness(segment.episodeId());
 	}
 
@@ -386,7 +390,7 @@ class DefaultPodcastService implements PodcastService {
 		for (var episode : this.getPodcastEpisodesByPodcast(podcastId, true)) {
 			this.deletePodcastEpisode(episode.id());
 		}
-		this.db.sql(" delete from podcast where id = ?").param(podcastId).update();
+		this.db.sql(" delete from podcast where id = ? ").param(podcastId).update();
 		this.invalidatePodcastCache(podcastId);
 		this.publisher.publishEvent(new PodcastDeletedEvent(podcast));
 	}
@@ -396,7 +400,7 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private void invalidatePodcastCache(Long podcastId) {
-		this.podcastCache.evict(podcastId);
+		this.podcastCache.evictIfPresent(podcastId);
 	}
 
 	@Override
@@ -463,7 +467,6 @@ class DefaultPodcastService implements PodcastService {
 			.orElse(0)
 			.longValue()) + 1;
 		var uid = UUID.randomUUID().toString();
-		// var bucket = PodcastService.PODCAST_EPISODES_BUCKET;
 		var sql = """
 				insert into podcast_episode_segment (
 				podcast_episode_id,
@@ -497,8 +500,28 @@ class DefaultPodcastService implements PodcastService {
 		var episodeSegmentsByEpisode = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
 		this.reorderSegments(episodeSegmentsByEpisode);
 		this.refreshPodcastEpisodeCompleteness(episodeId);
+		this.markAssetsDirty(episodeId);
 		this.invalidatePodcastEpisodeCache(episodeId);
 		return this.getPodcastEpisodeSegmentById(id.longValue());
+	}
+
+	private void markPodcastEpisodeBySegmentAssetsDirty(Long podcastEpisodeSegmentId) {
+		var pes = this.db.sql("select pes.podcast_episode_id pid from podcast_episode_segment pes  where pes.id = ?")
+			.params(podcastEpisodeSegmentId)
+			.query((rs, _) -> rs.getLong("pid"))
+			.single();
+		this.markAssetsDirty(pes);
+	}
+
+	/**
+	 * any deletion, update, or re-ordering should result in a dirty
+	 * produced_audio_assets_updated field
+	 */
+	private void markAssetsDirty(Long episodeId) {
+		log.info("marking the produced_audio_assets_updated = now() for episode_id = {}", episodeId);
+		this.db.sql("update podcast_episode set produced_audio_assets_updated  = now() where id   = ?")
+			.params(episodeId)
+			.update();
 	}
 
 	@Override
