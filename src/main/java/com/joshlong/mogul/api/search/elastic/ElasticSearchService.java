@@ -169,7 +169,7 @@ class ElasticSearchService implements SearchService {
 		for (var k : map.keySet()) {
 			map.get(k).stream().max(comparator).ifPresent(all::add);
 		}
-		return all.stream().sorted(comparator).toList();
+		return all.stream().toList();
 	}
 
 }
