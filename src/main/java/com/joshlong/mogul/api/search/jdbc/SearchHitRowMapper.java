@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.function.Function;
 
+@Deprecated
 class SearchHitRowMapper implements RowMapper<IndexHit> {
 
 	private final Function<ResultSet, DocumentChunk> documentChunkFunction;

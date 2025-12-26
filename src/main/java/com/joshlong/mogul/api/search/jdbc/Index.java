@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.search.jdbc;
 
-import com.joshlong.mogul.api.search.*;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.pgvector.PGvector;
@@ -19,6 +18,7 @@ import java.util.*;
  * this maintains the low level aggregation of documents and their respective chunks.
  * provides the low-level atoms for indexing documents, searching for documents, etc.
  */
+@Deprecated
 @Transactional
 class Index {
 

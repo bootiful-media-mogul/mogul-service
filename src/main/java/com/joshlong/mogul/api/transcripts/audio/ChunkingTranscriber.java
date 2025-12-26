@@ -112,7 +112,7 @@ class ChunkingTranscriber implements Transcriber {
 							});
 						} //
 						catch (Throwable e) { // this will capture RetryException as
-												// thrown by RetryTemplate
+							// thrown by RetryTemplate
 							var formatted = "oops! an error when trying to process a %s # %s"
 								.formatted(TranscriptionSegment.class.getName(), audioResource.getFilename());
 							this.log.error(formatted, e);

@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.RowMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+@Deprecated
 class DocumentChunkRowMapper implements RowMapper<DocumentChunk> {
 
 	@Override

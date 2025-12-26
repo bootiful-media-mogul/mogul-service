@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+@Deprecated
 class DocumentRowMapper implements RowMapper<Document> {
 
 	private final ParameterizedTypeReference<Map<String, Object>> mapParameterizedTypeReference = new ParameterizedTypeReference<>() {

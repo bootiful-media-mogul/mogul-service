@@ -17,7 +17,7 @@ public abstract class IntegrationUtils {
 			message.append(System.lineSeparator());
 			message.append("---------------");
 			message.append(System.lineSeparator());
-			message.append(payload.toString());
+			message.append(payload);
 			message.append(System.lineSeparator());
 			headers
 				.forEach((k, v) -> message.append("\t").append(k).append('=').append(v).append(System.lineSeparator()));

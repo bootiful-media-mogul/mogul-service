@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Deprecated
 @Transactional
 class JdbcSearchService implements SearchService {
 

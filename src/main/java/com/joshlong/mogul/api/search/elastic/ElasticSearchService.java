@@ -11,8 +11,6 @@ import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -21,7 +19,6 @@ import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -29,6 +26,10 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+interface DocumentRepository extends ElasticsearchRepository<Document, String> {
+
+}
 
 /**
  * {@link SearchService} backed by Elasticsearch.
@@ -44,32 +45,21 @@ class ElasticSearchService implements SearchService {
 
 	private final ElasticsearchOperations ops;
 
-	private final ElasticsearchClient client;
-
-	private final boolean resetOnStart = false;
-
-	ElasticSearchService(ElasticsearchClient elasticsearchClient, Map<String, SearchableRepository<?, ?>> repositories,
-			DocumentRepository documentRepository, ElasticsearchOperations ops, ElasticsearchClient client) {
+	ElasticSearchService(Map<String, SearchableRepository<?, ?>> repositories, DocumentRepository documentRepository,
+			ElasticsearchOperations ops, ElasticsearchClient client) {
 		this.documentRepository = documentRepository;
 		this.ops = ops;
-		this.client = client;
 		this.repositories.putAll(repositories);
 	}
 
-	@Async
-	@EventListener
-	void resetOnStart(ApplicationReadyEvent are) throws Exception {
-		if (this.resetOnStart) {
-			var indices = client.cat().indices();
-			for (var idx : indices.indices()) {
-				var name = idx.index();
-				if (!Objects.requireNonNull(name).startsWith(".")) { // skip system
-																		// indices
-					client.indices().delete(d -> d.index(name));
-					log.info("deleted: {}", name);
-				}
-			}
-		}
+	private static String resultName(Class<?> clzz) {
+		var sn = Objects.requireNonNull(clzz).getSimpleName();
+		Assert.hasText(sn, "the simple name should be non-empty!");
+		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
+	}
+
+	private static String keyFor(@Nullable Class<?> clzz) {
+		return clzz != null ? clzz.getName() : null;
 	}
 
 	@Override
@@ -120,16 +110,6 @@ class ElasticSearchService implements SearchService {
 			.reversed();
 	}
 
-	private static String resultName(Class<?> clzz) {
-		var sn = Objects.requireNonNull(clzz).getSimpleName();
-		Assert.hasText(sn, "the simple name should be non-empty!");
-		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
-	}
-
-	private static String keyFor(@Nullable Class<?> clzz) {
-		return clzz != null ? clzz.getName() : null;
-	}
-
 	private RankedSearchResult mapDocumentToRankedSearchResult(Document document, double rank) {
 		var clzz = document.className();
 		var clzzObj = ReflectionUtils.classForName(clzz);
@@ -171,10 +151,6 @@ class ElasticSearchService implements SearchService {
 		}
 		return all.stream().toList();
 	}
-
-}
-
-interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 
 }
 
