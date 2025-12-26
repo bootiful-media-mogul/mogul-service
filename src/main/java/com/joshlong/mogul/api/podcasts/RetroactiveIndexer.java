@@ -8,16 +8,16 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Component
-@Transactional
+//@Component
 class RetroactiveIndexer {
 
 	private final Map<String, Context> contextMap = new ConcurrentHashMap<>();
@@ -60,12 +60,18 @@ class RetroactiveIndexer {
 
 		private final Long mogulId;
 
-		private final ExecutorService fixedThreadPoolExecutor = Executors.newFixedThreadPool(3);
+		private final ExecutorService fixedThreadPoolExecutor = Executors.newFixedThreadPool(this.concurrency());
+
+		private int concurrency() {
+			var concurrencyLevel = Math.max(Runtime.getRuntime().availableProcessors(), 6);
+			log.info("the concurrency level is {}", concurrencyLevel);
+			return concurrencyLevel;
+		}
 
 		RetroactiveIndexerRunnable(String name) {
 			this.mogulName = name;
-			log.info("{} created for mogulId # {}", getClass().getName(), this.mogulName);
 			this.mogulId = mogulService.getMogulByName(this.mogulName).id();
+			log.info("{} created for mogulId # {}", getClass().getName(), this.mogulName);
 		}
 
 		@Override
@@ -74,24 +80,30 @@ class RetroactiveIndexer {
 			var allPodcastsByMogul = podcastService.getAllPodcastsByMogul(mogulId);
 			log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
 			for (var podcast : allPodcastsByMogul) {
-				var episodes = podcastService.getPodcastEpisodesByPodcast(podcast.id(), false);
-				log.info("there are {} episodes for podcast {} for mogulId # {}", episodes.size(), podcast.id(),
+				var episodes = podcastService.getPodcastEpisodesByPodcast(podcast.id(), false)
+					.stream()
+					.sorted(Comparator.comparingLong(Episode::id))
+					.toList();
+				log.info("episodes: found {} episodes for podcast {} for mogulId # {}", episodes.size(), podcast.id(),
 						mogulId);
+				var counter = new AtomicInteger(0);
 				for (var episode : episodes) {
-					this.fixedThreadPoolExecutor.submit(() -> this.ingestEpisode(podcast, episode, mogulId));
+					this.fixedThreadPoolExecutor
+						.submit(() -> this.ingestEpisode(counter, episodes.size(), podcast, episode, mogulId));
 				}
-			}
 
-			// looks like we made it
-			this.markTranscribed();
+			}
 		}
 
-		private void ingestEpisode(Podcast podcast, Episode episode, Long mogulId) {
+		private void ingestEpisode(AtomicInteger count, int total, Podcast podcast, Episode episode, Long mogulId) {
+
+			var current = count.incrementAndGet();
+
 			if (!episode.complete()) {
 				log.info("skipping episode # {} because it is not 'complete'", episode.id());
 				return;
 			}
-			log.info("attempting to index the segments for the episode # {}", episode.id());
+
 			var segments = podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
 			log.info("there are {} episode segments for podcast episode {} for podcast {} for mogulId # {}",
 					segments.size(), episode.id(), podcast.id(), mogulId);
@@ -100,13 +112,9 @@ class RetroactiveIndexer {
 					log.info("producedAudio is null, skipping.");
 					continue;
 				}
+				log.info("indexing {}/{}: {}", current, total, segment.id());
 				searchService.index(segment);
 			}
-		}
-
-		private void markTranscribed() {
-			contextMap.computeIfPresent(this.mogulName, (k, c) -> new Context(mogulName, true, c.instant()));
-			log.info("finished transcription for mogul {}", this.mogulName);
 		}
 
 	}
