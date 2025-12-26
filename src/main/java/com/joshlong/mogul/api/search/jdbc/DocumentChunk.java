@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 record DocumentChunk(long id, String text, Long documentId) {
 

@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 import org.springframework.jdbc.core.RowMapper;
 

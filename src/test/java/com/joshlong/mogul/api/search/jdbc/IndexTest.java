@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 import com.joshlong.mogul.api.ApiApplication;
 import org.junit.jupiter.api.Assertions;
