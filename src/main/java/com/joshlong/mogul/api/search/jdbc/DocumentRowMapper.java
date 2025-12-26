@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.UriUtils;

@@ -1,13 +1,15 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.Transcribable;
+import com.joshlong.mogul.api.search.RankedSearchResult;
+import com.joshlong.mogul.api.search.SearchService;
+import com.joshlong.mogul.api.search.SearchableRepository;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -15,21 +17,20 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Service
 @Transactional
-class DefaultSearchService implements SearchService {
+class JdbcSearchService implements SearchService {
 
 	private static final String KEY = "key";
 
 	private static final String CLASS = "class";
 
-	private final Logger log = LoggerFactory.getLogger(DefaultSearchService.class);
+	private final Logger log = LoggerFactory.getLogger(JdbcSearchService.class);
 
 	private final Map<String, SearchableRepository<?, ?>> repositories = new ConcurrentHashMap<>();
 
 	private final Index index;
 
-	DefaultSearchService(Map<String, SearchableRepository<?, ?>> repositories, Index index) {
+	JdbcSearchService(Map<String, SearchableRepository<?, ?>> repositories, Index index) {
 		this.index = index;
 		this.repositories.putAll(repositories);
 	}
@@ -90,28 +91,17 @@ class DefaultSearchService implements SearchService {
 		return this.dedupeBySearchableAndType(results);
 	}
 
-	/* we want to return only the highest ranking of each unique result */
 	private List<RankedSearchResult> dedupeBySearchableAndType(LinkedHashSet<RankedSearchResult> results) {
 		var all = new ArrayList<RankedSearchResult>();
 		var map = new ConcurrentHashMap<Long, List<RankedSearchResult>>();
 		for (var rsr : results) {
 			map.computeIfAbsent(rsr.aggregateId(), _ -> new ArrayList<>()).add(rsr);
 		}
+		var comparator = Comparator.comparingDouble(RankedSearchResult::rank);
 		for (var k : map.keySet()) {
-			map.get(k).stream().max(Comparator.comparingDouble(RankedSearchResult::rank)).ifPresent(all::add);
+			map.get(k).stream().max(comparator).ifPresent(all::add);
 		}
-		return all.stream().sorted((o1, o2) -> Double.compare(o1.rank(), o2.rank())).toList();
-
-		/*
-		 * var clean = new ArrayList<RankedSearchResult>(); var deduped = new
-		 * HashMap<String, Set<RankedSearchResult>>(); for (var r : results) { var key =
-		 * r.type() + ":" + r.searchableId(); deduped.putIfAbsent(key, new HashSet<>());
-		 * deduped.get(key).add(r); } for (var candidates : deduped.values()) {
-		 * candidates.stream().max(Comparator.comparing(RankedSearchResult::rank)).
-		 * ifPresent(clean::add); }
-		 * clean.sort(Comparator.comparing(RankedSearchResult::rank)); return clean;
-		 *
-		 */
+		return all.stream().sorted(comparator).toList();
 	}
 
 	private String keyFor(Class<?> clzz) {

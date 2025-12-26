@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
 import java.net.URI;
 import java.util.Date;

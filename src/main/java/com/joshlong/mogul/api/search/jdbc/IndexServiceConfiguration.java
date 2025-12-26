@@ -1,16 +1,25 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api.search.jdbc;
 
+import com.joshlong.mogul.api.search.SearchableRepository;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.sql.SQLException;
+import java.util.Map;
 
+@Profile("jdbc")
 @Configuration
 class IndexServiceConfiguration {
+
+	@Bean
+	JdbcSearchService defaultSearchService(Map<String, SearchableRepository<?, ?>> repositories, Index index) {
+		return new JdbcSearchService(repositories, index);
+	}
 
 	@Bean
 	Index defaultIndexService(CacheManager cacheManager, EmbeddingModel embeddingModel, JdbcClient jdbcClient,
