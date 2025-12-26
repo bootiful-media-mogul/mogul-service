@@ -49,6 +49,7 @@ class SegmentSearchableRepository implements SearchableRepository<Segment, Episo
 
 	@Override
 	public SearchableResult<Segment, Episode> result(Segment searchable) {
+
 		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
 		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
 		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();

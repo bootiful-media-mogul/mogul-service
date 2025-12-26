@@ -42,11 +42,11 @@ class RetroactiveIndexer {
 	void onAuthSuccessDoIndexing(AuthenticationSuccessEvent ase) {
 		var authentication = ase.getAuthentication();
 		if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
-			var context = this.contextMap.computeIfAbsent(authentication.getName(),
-					s -> new Context(jwtAuthenticationToken.getName(), false, Instant.now()));
-			if (!context.transcribed()) {
+			this.contextMap.computeIfAbsent(authentication.getName(), s -> {
 				executor.submit(new RetroactiveIndexerRunnable(jwtAuthenticationToken.getName()));
-			}
+				return new Context(jwtAuthenticationToken.getName(), true, Instant.now());
+			});
+
 		}
 
 	}
@@ -58,14 +58,18 @@ class RetroactiveIndexer {
 
 		private final String mogulName;
 
+		private final Long mogulId;
+
+		private final ExecutorService fixedThreadPoolExecutor = Executors.newFixedThreadPool(3);
+
 		RetroactiveIndexerRunnable(String name) {
 			this.mogulName = name;
 			log.info("{} created for mogulId # {}", getClass().getName(), this.mogulName);
+			this.mogulId = mogulService.getMogulByName(this.mogulName).id();
 		}
 
 		@Override
 		public void run() {
-			var mogulId = mogulService.getMogulByName(this.mogulName).id();
 			log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
 			var allPodcastsByMogul = podcastService.getAllPodcastsByMogul(mogulId);
 			log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
@@ -74,26 +78,30 @@ class RetroactiveIndexer {
 				log.info("there are {} episodes for podcast {} for mogulId # {}", episodes.size(), podcast.id(),
 						mogulId);
 				for (var episode : episodes) {
-					if (!episode.complete()) {
-						log.info("skipping episode # {} because it is not 'complete'", episode.id());
-						continue;
-					}
-					log.info("attempting to transcribe the segments for the episode # {}", episode.id());
-					var segments = podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
-					log.info("there are {} episode segments for podcast episode {} for podcast {} for mogulId # {}",
-							segments.size(), episode.id(), podcast.id(), mogulId);
-					for (var segment : segments) {
-						if (segment.audio() == null || segment.producedAudio() == null) {
-							log.info("producedAudio is null, skipping.");
-							continue;
-						}
-						searchService.index(segment);
-					}
+					this.fixedThreadPoolExecutor.submit(() -> this.ingestEpisode(podcast, episode, mogulId));
 				}
 			}
 
 			// looks like we made it
 			this.markTranscribed();
+		}
+
+		private void ingestEpisode(Podcast podcast, Episode episode, Long mogulId) {
+			if (!episode.complete()) {
+				log.info("skipping episode # {} because it is not 'complete'", episode.id());
+				return;
+			}
+			log.info("attempting to index the segments for the episode # {}", episode.id());
+			var segments = podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
+			log.info("there are {} episode segments for podcast episode {} for podcast {} for mogulId # {}",
+					segments.size(), episode.id(), podcast.id(), mogulId);
+			for (var segment : segments) {
+				if (segment.audio() == null || segment.producedAudio() == null) {
+					log.info("producedAudio is null, skipping.");
+					continue;
+				}
+				searchService.index(segment);
+			}
 		}
 
 		private void markTranscribed() {

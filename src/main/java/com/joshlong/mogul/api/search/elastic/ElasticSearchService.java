@@ -103,6 +103,7 @@ class ElasticSearchService implements SearchService {
 		var clzzObj = ReflectionUtils.classForName(clzz);
 		var searchableId = document.searchableId();
 		var repo = Objects.requireNonNull(this.repositoryFor(clzzObj), "there is no repository for " + clzz + ".");
+		Assert.notNull(searchableId, "the searchableId must not be null");
 		var result = repo.result(searchableId);
 		var resultType = resultName(clzzObj);
 		return new RankedSearchResult(searchableId, result.aggregate().id(), result.title(), result.text(), resultType,
