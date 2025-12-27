@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.publications;
 
-import com.joshlong.mogul.api.PublishableRepository;
+import com.joshlong.mogul.api.PublishableResolver;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -19,7 +19,7 @@ class DefaultPublicationServiceConfiguration {
 	DefaultPublicationService defaultPublicationService(JdbcClient client, MogulService mogulService,
 			ApplicationEventPublisher applicationEventPublisher, TransactionTemplate transactionTemplate,
 			TextEncryptor textEncryptor, Settings settings,
-			Collection<PublishableRepository<?>> publishableRepositories) {
+			Collection<PublishableResolver<?>> publishableRepositories) {
 		var lookup = new SettingsLookupClient(settings);
 		return new DefaultPublicationService(client, mogulService, textEncryptor, transactionTemplate, lookup,
 				applicationEventPublisher, publishableRepositories);

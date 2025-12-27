@@ -1,12 +1,12 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.AbstractNotableRepository;
+import com.joshlong.mogul.api.AbstractNotableResolver;
 import org.springframework.stereotype.Component;
 
 @Component
-class PodcastNotableRepository extends AbstractNotableRepository<Podcast> {
+class PodcastNotableResolver extends AbstractNotableResolver<Podcast> {
 
-	PodcastNotableRepository() {
+	PodcastNotableResolver() {
 		super(Podcast.class);
 	}
 

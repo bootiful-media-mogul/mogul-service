@@ -3,11 +3,10 @@ package com.joshlong.mogul.api;
 import java.util.Collection;
 
 /**
- * Abstract base class for domain services providing common repository resolution.
+ * Abstract base class for domain services providing common resolution.
  *
  * Services manage the lifecycle of domain entities (publications, transcriptions, etc.)
- * and use repositories to load the underlying entity instances (episodes, posts,
- * segments).
+ * and use resolvers to load the underlying entity instances (episodes, posts, segments).
  *
  * This class provides utility methods for finding the appropriate repository at runtime
  * based on the entity class type.
@@ -16,7 +15,7 @@ import java.util.Collection;
  * @param <R> The repository interface type (e.g., PublishableRepository,
  * TranscribableRepository)
  */
-public abstract class AbstractDomainService<M, R extends DomainRepository<M, ?>> {
+public abstract class AbstractDomainService<M, R extends DomainResolver<M, ?>> {
 
 	protected final Collection<R> repositories;
 
@@ -24,12 +23,6 @@ public abstract class AbstractDomainService<M, R extends DomainRepository<M, ?>>
 		this.repositories = repositories;
 	}
 
-	/**
-	 * Finds the repository that handles the given entity class.
-	 * @param entityClass The class to find a repository for
-	 * @return The repository
-	 * @throws IllegalArgumentException if no repository is found
-	 */
 	protected R findRepository(Class<? extends M> entityClass) {
 		return repositories.stream()
 			.filter(repo -> repo.supports(entityClass))
@@ -37,12 +30,6 @@ public abstract class AbstractDomainService<M, R extends DomainRepository<M, ?>>
 			.orElseThrow(() -> new IllegalArgumentException("No repository found for " + entityClass.getName()));
 	}
 
-	/**
-	 * Finds and loads an entity instance using the appropriate repository.
-	 * @param entityClass The class of the entity to load
-	 * @param key The unique identifier of the entity
-	 * @return The entity instance
-	 */
 	protected <T extends M> T findEntity(Class<T> entityClass, Long key) {
 		R repository = findRepository(entityClass);
 		return entityClass.cast(repository.find(key));

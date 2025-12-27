@@ -1,9 +1,9 @@
 package com.joshlong.mogul.api;
 
-public abstract class AbstractNotableRepository<T extends Notable> extends AbstractDomainRepository<Notable, T>
-		implements NotableRepository<T> {
+public abstract class AbstractNotableResolver<T extends Notable> extends AbstractDomainResolver<Notable, T>
+		implements NotableResolver<T> {
 
-	protected AbstractNotableRepository(Class<T> entityClass) {
+	protected AbstractNotableResolver(Class<T> entityClass) {
 		super(entityClass);
 	}
 

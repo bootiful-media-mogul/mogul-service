@@ -3,7 +3,7 @@ package com.joshlong.mogul.api.publications;
 import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Publishable;
-import com.joshlong.mogul.api.PublishableRepository;
+import com.joshlong.mogul.api.PublishableResolver;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
 		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
-class DefaultPublicationService extends AbstractDomainService<Publishable, PublishableRepository<?>>
+class DefaultPublicationService extends AbstractDomainService<Publishable, PublishableResolver<?>>
 		implements PublicationService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -48,7 +48,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
 			TransactionTemplate tt, Function<SettingsLookup, Map<String, String>> settingsLookup,
-			ApplicationEventPublisher publisher, Collection<PublishableRepository<?>> publishableRepositories) {
+			ApplicationEventPublisher publisher, Collection<PublishableResolver<?>> publishableRepositories) {
 		super(publishableRepositories);
 		this.db = db;
 		this.transactionTemplate = tt;
@@ -58,7 +58,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		this.publisher = publisher;
 	}
 
-	/**
+	/*
 	 * do <EM>NOT</EM> make this a shared class variable! there's <EM>state</EM> in the
 	 * {@link PublicationRowMapper} and you'll see duplicate records if this is used
 	 * across more than one request

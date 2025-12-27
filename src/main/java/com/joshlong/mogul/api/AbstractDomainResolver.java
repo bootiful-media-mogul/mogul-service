@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api;
 
 /**
- * Abstract base class for domain repositories providing common functionality.
+ * Abstract base class for domain resolvers providing common functionality.
  *
  * Implements the supports() and entityType() methods based on the entity class provided
  * in the constructor, reducing boilerplate in concrete implementations.
@@ -9,11 +9,11 @@ package com.joshlong.mogul.api;
  * @param <M> The marker interface type (e.g., Publishable, Transcribable, Composable)
  * @param <T> The concrete entity type that implements the marker interface
  */
-public abstract class AbstractDomainRepository<M, T extends M> implements DomainRepository<M, T> {
+public abstract class AbstractDomainResolver<M, T extends M> implements DomainResolver<M, T> {
 
 	private final Class<T> entityClass;
 
-	protected AbstractDomainRepository(Class<T> entityClass) {
+	protected AbstractDomainResolver(Class<T> entityClass) {
 		this.entityClass = entityClass;
 	}
 

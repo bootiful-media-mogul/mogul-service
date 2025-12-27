@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api;
 
 /**
- * Abstract base class for publishable repositories providing common functionality.
+ * Abstract base class for publishable resolvers providing common functionality.
  *
  * Reduces boilerplate by implementing the supports() and entityType() methods based on
  * the entity class provided in the constructor.
@@ -10,10 +10,10 @@ package com.joshlong.mogul.api;
  *
  * @param <T> The concrete entity type that implements Publishable
  */
-public abstract class AbstractPublishableRepository<T extends Publishable>
-		extends AbstractDomainRepository<Publishable, T> implements PublishableRepository<T> {
+public abstract class AbstractPublishableResolver<T extends Publishable> extends AbstractDomainResolver<Publishable, T>
+		implements PublishableResolver<T> {
 
-	protected AbstractPublishableRepository(Class<T> entityClass) {
+	protected AbstractPublishableResolver(Class<T> entityClass) {
 		super(entityClass);
 	}
 

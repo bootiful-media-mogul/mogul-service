@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.notes;
 
 import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Notable;
-import com.joshlong.mogul.api.NotableRepository;
+import com.joshlong.mogul.api.NotableResolver;
 import com.joshlong.mogul.api.Note;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
@@ -34,13 +34,13 @@ public interface NoteService {
 
 @Service
 @Transactional
-class DefaultNoteService extends AbstractDomainService<Notable, NotableRepository<?>> implements NoteService {
+class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<?>> implements NoteService {
 
 	private final NoteRowMapper noteRowMapper = new NoteRowMapper();
 
 	private final JdbcClient db;
 
-	DefaultNoteService(Collection<NotableRepository<?>> repositories, JdbcClient db) {
+	DefaultNoteService(Collection<NotableResolver<?>> repositories, JdbcClient db) {
 		super(repositories);
 		this.db = db;
 	}
@@ -52,12 +52,12 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableRepositor
 			.params(id)//
 			.query(this.noteRowMapper) //
 			.single();
-
 	}
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, T payload) {
-		return db.sql("select * from note where payload = ? and payload_class = ? order by created ")//
+		return this.db //
+			.sql("select * from note where payload = ? and payload_class = ? order by created ")//
 			.params(JsonUtils.write(payload.notableKey()), payload.getClass().getName()) //
 			.query(this.noteRowMapper)//
 			.list();
@@ -65,8 +65,8 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableRepositor
 
 	@Override
 	public <T extends Notable> Note update(Long noteId, URI url, String note) {
-		this.db.sql("update note set  url = ?, note = ? where id = ?")
-			.params(url == null ? null : url.toString(), note, noteId)
+		this.db.sql("update note set  url = ?, note = ? where id = ?") //
+			.params(url == null ? null : url.toString(), note, noteId) //
 			.update();
 		return this.getNoteById(noteId);
 	}

@@ -8,7 +8,6 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.Serializable;
 import java.util.HashSet;
 
 /**
@@ -21,11 +20,11 @@ import java.util.HashSet;
  * {@link com.joshlong.mogul.api.podcasts.PodcastService podcastService} can resolve
  * {@link com.joshlong.mogul.api.podcasts.Episode episodes}.
  *
- * Extends {@link DomainRepository} to follow the common domain pattern convention.
+ * Extends {@link DomainResolver} to follow the common domain pattern convention.
  *
  * @param <T> The concrete entity type that implements Publishable
  */
-public interface PublishableRepository<T extends Publishable> extends DomainRepository<Publishable, T> {
+public interface PublishableResolver<T extends Publishable> extends DomainResolver<Publishable, T> {
 
 }
 
@@ -58,7 +57,7 @@ class PublishableConfiguration {
 					if (PublisherPlugin.class.isAssignableFrom(type)) {
 						classes.add(type);
 					}
-					if (PublishableRepository.class.isAssignableFrom(type)) {
+					if (PublishableResolver.class.isAssignableFrom(type)) {
 						classes.add(type);
 					}
 				}

@@ -88,7 +88,7 @@ class DefaultAyrshareService implements AyrshareService {
 	@Transactional
 	public Collection<AyrsharePublicationComposition> getDraftAyrsharePublicationCompositionsFor(Long mogulId) {
 		var accountedForPlatforms = new HashMap<String, Boolean>();
-		var list = getDrafts(mogulId);
+		var list = this.getDrafts(mogulId);
 		for (var p : platforms()) {
 			accountedForPlatforms.put(p.platformCode(), false);
 		}
@@ -169,26 +169,6 @@ class DefaultAyrshareService implements AyrshareService {
 				NotificationEvents.notify(event);
 			}
 		}
-	}
-
-	@EventListener
-	void onAyrsharePublicationStartedEvent(PublicationStartedEvent pse) throws Exception {
-		/*
-		 * if (isNotAyrshare(pse.publication().plugin())) return; var mogul =
-		 * pse.publication().mogulId(); var ctx = pse.publication().context(); for (var
-		 * platform : this.platforms()) { var platformCode = platform.platformCode(); if
-		 * (ctx.containsKey(platformCode)) { var compositionIdKey = platformCode +
-		 * "CompositionId"; Assert.state(ctx.containsKey(compositionIdKey),
-		 * "the context must " + "contain a valid composition id for " + platformCode +
-		 * " and mogul " + mogul); var compositionId =
-		 * Long.parseLong(ctx.get(compositionIdKey)); this.db.sql(
-		 * "update ayrshare_publication_composition set draft = false, publication_id = ? where composition_id =  ? and mogul_id = ? and platform = ?"
-		 * ) .params(pse.publication().id(), compositionId, mogul, platformCode)
-		 * .update();
-		 *
-		 * } }
-		 */
-
 	}
 
 }

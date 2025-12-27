@@ -44,7 +44,7 @@ class PublicationController<T extends Publishable> {
 	private final Map<String, PublisherPlugin<T>> plugins = new ConcurrentHashMap<>();
 
 	PublicationController(Settings settings, PublicationService publicationService, MogulService mogulService,
-			Map<String, PublisherPlugin<?>> plugins, Map<String, PublishableRepository<?>> resolvers) {
+			Map<String, PublisherPlugin<?>> plugins, Map<String, PublishableResolver<?>> resolvers) {
 		this.publicationService = publicationService;
 		this.mogulService = mogulService;
 		this.settings = settings;

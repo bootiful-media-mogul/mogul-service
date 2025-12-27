@@ -1,14 +1,14 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.AbstractPublishableRepository;
+import com.joshlong.mogul.api.AbstractPublishableResolver;
 import org.springframework.stereotype.Component;
 
 @Component
-class PodcastPublishableRepository extends AbstractPublishableRepository<Episode> {
+class PodcastPublishableResolver extends AbstractPublishableResolver<Episode> {
 
 	private final PodcastService podcastService;
 
-	PodcastPublishableRepository(PodcastService podcastService) {
+	PodcastPublishableResolver(PodcastService podcastService) {
 		super(Episode.class);
 		this.podcastService = podcastService;
 	}
