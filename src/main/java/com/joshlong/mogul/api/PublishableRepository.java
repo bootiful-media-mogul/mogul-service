@@ -12,24 +12,25 @@ import java.io.Serializable;
 import java.util.HashSet;
 
 /**
- * we need a way to, given a {@link Serializable id} and a {@link Class class}, find the
- * given instance of the {@link Publishable publishable}. The logic for that will differ
- * based on the subsystem; e.g.: the {@link com.joshlong.mogul.api.blogs.BlogService
- * blogService} can resolve {@link com.joshlong.mogul.api.blogs.Post posts}, and the
- * {@link com.joshlong.mogul.api.podcasts.PodcastService podcastService} can resolve
- * {@link com.joshlong.mogul.api.podcasts.Episode episodes}. So this class helps provide a
- * uniform strategy for loading a {@link Publishable publishable}.
+ * Repository interface for entities that can be published.
  *
- * @param <T>
+ * Provides a uniform strategy for loading {@link Publishable} instances across different
+ * subsystems. The logic differs based on the subsystem; e.g.: the
+ * {@link com.joshlong.mogul.api.blogs.BlogService blogService} can resolve
+ * {@link com.joshlong.mogul.api.blogs.Post posts}, and the
+ * {@link com.joshlong.mogul.api.podcasts.PodcastService podcastService} can resolve
+ * {@link com.joshlong.mogul.api.podcasts.Episode episodes}.
+ *
+ * Extends {@link DomainRepository} to follow the common domain pattern convention.
+ *
+ * @param <T> The concrete entity type that implements Publishable
  */
-public interface PublishableRepository<T extends Publishable> {
-
-	boolean supports(Class<?> clazz);
-
-	T find(Long serializable);
+public interface PublishableRepository<T extends Publishable> extends DomainRepository<Publishable, T> {
 
 }
 
+// todo not sure if theres now not a better way to provide graalvm hints for all
+// implementations of the new pattern
 @Configuration
 class PublishableConfiguration {
 

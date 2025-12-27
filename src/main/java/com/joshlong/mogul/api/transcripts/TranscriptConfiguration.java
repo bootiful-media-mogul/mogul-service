@@ -28,7 +28,7 @@ class TranscriptConfiguration {
 	DefaultTranscriptService defaultTranscriptService(JdbcClient db, TranscriptRowMapper transcriptRowMapper,
 			ApplicationEventPublisher publisher, Map<String, TranscribableRepository<?>> repositories,
 			@TranscriptMessageChannel MessageChannel in) {
-		return new DefaultTranscriptService(transcriptRowMapper, db, repositories, publisher, in);
+		return new DefaultTranscriptService(transcriptRowMapper, db, repositories.values(), publisher, in);
 	}
 
 	@Bean

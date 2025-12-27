@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.publications;
 
+import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.Publishable;
 import com.joshlong.mogul.api.PublishableRepository;
@@ -28,7 +29,8 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
 		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
-class DefaultPublicationService implements PublicationService {
+class DefaultPublicationService extends AbstractDomainService<Publishable, PublishableRepository<?>>
+		implements PublicationService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -44,18 +46,16 @@ class DefaultPublicationService implements PublicationService {
 
 	private final ApplicationEventPublisher publisher;
 
-	private final Collection<PublishableRepository<?>> publishableRepositories;
-
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
 			TransactionTemplate tt, Function<SettingsLookup, Map<String, String>> settingsLookup,
 			ApplicationEventPublisher publisher, Collection<PublishableRepository<?>> publishableRepositories) {
+		super(publishableRepositories);
 		this.db = db;
 		this.transactionTemplate = tt;
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
 		this.publisher = publisher;
-		this.publishableRepositories = publishableRepositories;
 	}
 
 	/**
@@ -68,16 +68,9 @@ class DefaultPublicationService implements PublicationService {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public <T extends Publishable> T resolvePublishable(Long mogulId, Long id, Class<T> clazz) {
 		this.mogulService.assertAuthorizedMogul(mogulId);
-		for (var pr : this.publishableRepositories) {
-			if (pr.supports(clazz)) {
-				return (T) pr.find(id);
-			}
-		}
-		throw new IllegalStateException(
-				"we couldn't resolve a Publishable with id [" + id + "] and class [" + clazz + "]");
+		return findEntity(clazz, id);
 	}
 
 	@Override

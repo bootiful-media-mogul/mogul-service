@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.TranscribableRepository;
+import com.joshlong.mogul.api.AbstractTranscribableRepository;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Service
 @Transactional
-class SegmentTranscribableRepository implements TranscribableRepository<Segment> {
+class SegmentTranscribableRepository extends AbstractTranscribableRepository<Segment> {
 
 	private static final String PODCAST_EPISODE_CONTEXT_KEY = DefaultPodcastService.PODCAST_EPISODE_CONTEXT_KEY;
 
@@ -21,13 +21,9 @@ class SegmentTranscribableRepository implements TranscribableRepository<Segment>
 	private final ManagedFileService managedFileService;
 
 	SegmentTranscribableRepository(PodcastService podcastService, ManagedFileService managedFileService) {
+		super(Segment.class);
 		this.podcastService = podcastService;
 		this.managedFileService = managedFileService;
-	}
-
-	@Override
-	public boolean supports(Class<?> clazz) {
-		return Segment.class.isAssignableFrom(clazz);
 	}
 
 	@Override

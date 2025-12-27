@@ -1,20 +1,16 @@
 package com.joshlong.mogul.api.blogs;
 
-import com.joshlong.mogul.api.PublishableRepository;
+import com.joshlong.mogul.api.AbstractPublishableRepository;
 import org.springframework.stereotype.Component;
 
 @Component
-class PostPublishableRepository implements PublishableRepository<Post> {
+class PostPublishableRepository extends AbstractPublishableRepository<Post> {
 
 	private final BlogService blogService;
 
 	PostPublishableRepository(BlogService blogService) {
+		super(Post.class);
 		this.blogService = blogService;
-	}
-
-	@Override
-	public boolean supports(Class<?> clazz) {
-		return Post.class.isAssignableFrom(clazz);
 	}
 
 	@Override
