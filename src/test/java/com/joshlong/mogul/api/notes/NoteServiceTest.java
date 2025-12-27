@@ -12,8 +12,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class NoteServiceTest {
 
 	@Test
-	void create(@Autowired JdbcClient db, @Autowired MogulService mogulService,
-			@Autowired PodcastService podcastService, @Autowired NoteService noteService) {
+	void notes(@Autowired JdbcClient db, @Autowired MogulService mogulService, @Autowired PodcastService podcastService,
+			@Autowired NoteService noteService) {
 
 		db.sql("delete from note").update();
 
@@ -26,15 +26,20 @@ class NoteServiceTest {
 
 		var first = podcasts.iterator().next();
 		var noteText = "this is a test note";
-		var thisIsATestNote = noteService.note(mogul.id(), first, null, noteText);
+		var thisIsATestNote = noteService.create(mogul.id(), first, null, noteText);
 		Assertions.assertNotNull(thisIsATestNote, "the note is not null");
 		Assertions.assertEquals(noteText, thisIsATestNote.note());
 
 		Assertions.assertEquals(1, noteService.notes(mogul.id(), first).size());
 
-		noteService.note(mogul.id(), first, null, "this is another test note");
+		var secondNote = noteService.create(mogul.id(), first, null, "this is another test note");
 
 		Assertions.assertEquals(2, noteService.notes(mogul.id(), first).size());
+
+		var anotherOne = "another one!";
+		var updated = noteService.update(secondNote.id(), null, anotherOne);
+		Assertions.assertEquals(anotherOne, updated.note(), "the note was updated");
+
 	}
 
 }

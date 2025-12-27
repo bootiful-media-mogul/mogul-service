@@ -26,7 +26,9 @@ public interface NoteService {
 
 	<T extends Notable> Collection<Note> notes(Long mogulId, T payload);
 
-	<T extends Notable> Note note(Long mogulId, T payload, URI url, String note);
+	<T extends Notable> Note create(Long mogulId, T payload, URI url, String note);
+
+	<T extends Notable> Note update(Long noteId, URI url, String note);
 
 }
 
@@ -45,7 +47,7 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableRepositor
 
 	@Override
 	public Note getNoteById(Long id) {
-		return db //
+		return this.db //
 			.sql("select * from note where id = ? ") //
 			.params(id)//
 			.query(this.noteRowMapper) //
@@ -55,14 +57,22 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableRepositor
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, T payload) {
-		return db.sql("select * from note where payload = ? and payload_class = ? ")//
+		return db.sql("select * from note where payload = ? and payload_class = ? order by created ")//
 			.params(JsonUtils.write(payload.notableKey()), payload.getClass().getName()) //
 			.query(this.noteRowMapper)//
 			.list();
 	}
 
 	@Override
-	public <T extends Notable> Note note(Long mogulId, T payload, URI url, String note) {
+	public <T extends Notable> Note update(Long noteId, URI url, String note) {
+		this.db.sql("update note set  url = ?, note = ? where id = ?")
+			.params(url == null ? null : url.toString(), note, noteId)
+			.update();
+		return this.getNoteById(noteId);
+	}
+
+	@Override
+	public <T extends Notable> Note create(Long mogulId, T payload, URI url, String note) {
 		var payloadKeyAsJson = JsonUtils.write(payload.notableKey());
 		var newNote = new Note(mogulId, null, payloadKeyAsJson, payload.getClass(), new Date(), url, note);
 		var kg = new GeneratedKeyHolder();
