@@ -30,11 +30,11 @@ class NoteServiceTest {
 		Assertions.assertNotNull(thisIsATestNote, "the note is not null");
 		Assertions.assertEquals(noteText, thisIsATestNote.note());
 
-		Assertions.assertEquals(noteService.notes(mogul.id(), first).size(), 1);
+		Assertions.assertEquals(1, noteService.notes(mogul.id(), first).size());
 
 		noteService.note(mogul.id(), first, null, "this is another test note");
 
-		Assertions.assertEquals(noteService.notes(mogul.id(), first).size(), 2);
+		Assertions.assertEquals(2, noteService.notes(mogul.id(), first).size());
 	}
 
 }
