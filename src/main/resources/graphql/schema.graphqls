@@ -4,6 +4,11 @@ scalar DateTime
 scalar JSON
 
 
+type Job {
+    name :String
+    requiredContextAttributes : [String]
+}
+
 type Setting {
     name: String
     value: String
@@ -105,7 +110,6 @@ type Segment {
     order : Int
     crossFadeDuration : Int
     transcript: Transcript
-
 }
 
 type Podcast {
@@ -184,7 +188,15 @@ type RankedSearchResult {
     rank: Float
 }
 
+type JobEntry {
+    key: String
+    value: Job
+}
 type Query {
+
+    # jobs
+    jobs : [JobEntry]
+
     # search
     search(query: String, metadata: JSON): [RankedSearchResult]
 
