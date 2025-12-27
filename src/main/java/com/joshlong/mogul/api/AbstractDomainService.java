@@ -4,10 +4,10 @@ import java.util.Collection;
 
 /**
  * Abstract base class for domain services providing common resolution.
- *
+ * <p>
  * Services manage the lifecycle of domain entities (publications, transcriptions, etc.)
  * and use resolvers to load the underlying entity instances (episodes, posts, segments).
- *
+ * <p>
  * This class provides utility methods for finding the appropriate repository at runtime
  * based on the entity class type.
  *

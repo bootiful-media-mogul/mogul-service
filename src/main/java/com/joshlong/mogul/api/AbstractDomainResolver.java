@@ -2,7 +2,7 @@ package com.joshlong.mogul.api;
 
 /**
  * Abstract base class for domain resolvers providing common functionality.
- *
+ * <p>
  * Implements the supports() and entityType() methods based on the entity class provided
  * in the constructor, reducing boilerplate in concrete implementations.
  *

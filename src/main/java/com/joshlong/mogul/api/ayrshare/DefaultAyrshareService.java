@@ -7,7 +7,6 @@ import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.publications.PublicationCompletedEvent;
 import com.joshlong.mogul.api.publications.PublicationService;
-import com.joshlong.mogul.api.publications.PublicationStartedEvent;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.context.event.EventListener;

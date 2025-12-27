@@ -1,10 +1,6 @@
 package com.joshlong.mogul.api.publications;
 
-import com.joshlong.mogul.api.AbstractDomainService;
-import com.joshlong.mogul.api.Publication;
-import com.joshlong.mogul.api.Publishable;
-import com.joshlong.mogul.api.PublishableResolver;
-import com.joshlong.mogul.api.PublisherPlugin;
+import com.joshlong.mogul.api.*;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -26,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("unused")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
 		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
 class DefaultPublicationService extends AbstractDomainService<Publishable, PublishableResolver<?>>
