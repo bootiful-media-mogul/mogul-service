@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.podcasts.jobs;
 
-import com.joshlong.mogul.api.jobs.MogulJob;
+import com.joshlong.mogul.api.jobs.Job;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.Podcast;
 import com.joshlong.mogul.api.podcasts.PodcastService;
@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Component
-class RetroactiveIndexer implements MogulJob {
+class PodcastIndexerJob implements Job {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -28,14 +28,14 @@ class RetroactiveIndexer implements MogulJob {
 
 	private final SearchService searchService;
 
-	RetroactiveIndexer(PodcastService podcastService, SearchService searchService) {
+	PodcastIndexerJob(PodcastService podcastService, SearchService searchService) {
 		this.podcastService = podcastService;
 		this.searchService = searchService;
 	}
 
 	@Override
 	public Result run(Map<String, Object> context) throws Exception {
-		var mogulId = (Long) context.get(MogulJob.MOGUL_ID_KEY);
+		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		this.run(mogulId);
 		return Result.ok(context);
 	}
