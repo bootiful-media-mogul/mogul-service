@@ -190,7 +190,9 @@ class DefaultPublicationService implements PublicationService {
 		var map = new HashMap<Long, Publication>();
 		var collectedIds = CollectionUtils.join(ids, ",");
 		var pubs = this.db //
-			.sql("select * from publication p where p.id in (" + collectedIds + ") ") //
+			.sql("select * from publication p where p.id in (" + collectedIds + ") ")
+			// todo fix this there's a way to do an Array
+			//
 			.query(this.getPublicationRowMapper()) //
 			.list();
 		for (var p : pubs)
