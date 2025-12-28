@@ -1,5 +1,11 @@
 package com.joshlong.mogul.api.jobs;
 
+import com.joshlong.mogul.api.mogul.MogulService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -7,9 +13,48 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+@Component
+class IndexingJobRunner {
+
+	private final AtomicBoolean running = new AtomicBoolean(true);
+
+	private final Jobs jobs;
+
+	private final MogulService mogulService;
+
+	private final String jobName = "podcastIndexerJob";
+
+	private final Job job;
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	IndexingJobRunner(Jobs jobs, Map<String, Job> jobMap, MogulService mogulService) {
+		this.jobs = jobs;
+		this.job = jobMap.get(this.jobName);
+		this.mogulService = mogulService;
+	}
+
+	@EventListener
+	void runJobOnAuthentication(AuthenticationSuccessEvent event) throws Exception {
+		if (this.running.compareAndSet(false, true)) {
+			log.info("running the indexing job!");
+			var name = event.getAuthentication().getName();
+			var mogul = mogulService.getMogulByName(name);
+			var ctx = Map.of(Job.MOGUL_ID_KEY, (Object) mogul.id());
+			for (var key : this.job.requiredContextAttributes())
+				Assert.state(ctx.containsKey(key), "the context must contain a value for the key [" + key + "]");
+			this.jobs.launch(this.jobName, ctx);
+		}
+	}
+
+}
 
 @Service
 class InMemoryJobs implements Jobs {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Map<String, Job> jobs;
 
@@ -33,42 +78,23 @@ class InMemoryJobs implements Jobs {
 		Assert.hasText(jobName, "there must be a valid jobName");
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		var jobsMap = this.jobsInFlight.computeIfAbsent(mogulId, _ -> new ConcurrentHashMap<>());
-		this.executor.submit(() -> {
-			try {
-				var result = jobsMap.computeIfAbsent(jobName, jobs::get).run(context);
-				if (!result.success())
-					throw new JobLaunchException(result.toString());
-			} //
-			catch (Throwable e) {
-				throw new RuntimeException(e);
-			}
-		});
-
-	}
-
-	private Job.Result run(String jn, Map<String, Object> map) {
-		var job = jobs.get(jn);
 		try {
-			return job.run(map);
+			var result = this.executor.submit(() -> {
+				try {
+					return jobsMap.computeIfAbsent(jobName, jobs::get).run(context);
+				} //
+				catch (Throwable e) {
+					return Job.Result.error(context, e);
+				}
+			}).get();
+			this.log.info("Job {} launched {} for mogulId {}", jobName,
+					result.success() ? "successfully" : "unsuccessfully", mogulId);
+
 		} //
 		catch (Exception e) {
-			return Job.Result.error(map, e);
+			throw new JobLaunchException(e.getMessage(), e);
 		}
-	}
 
-}
-
-class JobLaunchException extends Exception {
-
-	private final String message;
-
-	JobLaunchException(String message) {
-		super(message);
-		this.message = message;
-	}
-
-	public String getMessage() {
-		return this.message;
 	}
 
 }

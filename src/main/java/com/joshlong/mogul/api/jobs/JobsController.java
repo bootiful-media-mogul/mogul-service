@@ -2,6 +2,7 @@ package com.joshlong.mogul.api.jobs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
@@ -21,7 +22,7 @@ class JobsController {
 	}
 
 	@MutationMapping
-	boolean launch(String jobName, Map<String, Object> context) {
+	boolean launch(@Argument String jobName, @Argument Map<String, Object> context) throws Exception {
 		try {
 			this.jobs.launch(jobName, context);
 			this.log.info("launched {} with {}", jobName, context);

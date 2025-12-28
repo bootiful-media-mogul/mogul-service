@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.jobs;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 /**
  * the client should list all the jobs in the system. on the server-side we should inspect
@@ -26,6 +27,7 @@ interface Jobs {
 
 	Map<String, Job> jobs();
 
-	void launch(String jobName, Map<String, Object> context) throws JobLaunchException;
+	void launch(String jobName, Map<String, Object> context)
+			throws JobLaunchException, ExecutionException, InterruptedException;
 
 }

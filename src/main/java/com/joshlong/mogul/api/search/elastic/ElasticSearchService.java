@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +38,9 @@ interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 @Service
 class ElasticSearchService implements SearchService {
 
+	/* well-known index name. */
+	static final String INDEX_NAME = "searchables";
+
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Map<String, SearchableRepository<?, ?>> repositories = new ConcurrentHashMap<>();
@@ -46,10 +50,12 @@ class ElasticSearchService implements SearchService {
 	private final ElasticsearchOperations ops;
 
 	ElasticSearchService(Map<String, SearchableRepository<?, ?>> repositories, DocumentRepository documentRepository,
-			ElasticsearchOperations ops, ElasticsearchClient client) {
+			ElasticsearchOperations ops, ElasticsearchClient client) throws IOException {
 		this.documentRepository = documentRepository;
 		this.ops = ops;
 		this.repositories.putAll(repositories);
+
+		client.indices().delete(index -> index.index(INDEX_NAME));
 	}
 
 	private static String resultName(Class<?> clzz) {
@@ -154,7 +160,8 @@ class ElasticSearchService implements SearchService {
 
 }
 
-@org.springframework.data.elasticsearch.annotations.Document(createIndex = false, indexName = "searchables")
+@org.springframework.data.elasticsearch.annotations.Document(createIndex = false,
+		indexName = ElasticSearchService.INDEX_NAME)
 record Document(@Id String id, @Field(type = FieldType.Long) Long searchableId,
 		@Field(type = FieldType.Text, analyzer = "english") String title,
 		@Field(type = FieldType.Date, format = DateFormat.epoch_millis) Instant when,

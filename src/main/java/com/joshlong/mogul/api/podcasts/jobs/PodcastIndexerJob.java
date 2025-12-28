@@ -40,10 +40,6 @@ class PodcastIndexerJob implements Job {
 		return Result.ok(context);
 	}
 
-	private int concurrency() {
-		return Math.max(Runtime.getRuntime().availableProcessors(), 6);
-	}
-
 	private void run(Long mogulId) {
 		log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
 		var allPodcastsByMogul = podcastService.getAllPodcastsByMogul(mogulId);
@@ -65,6 +61,10 @@ class PodcastIndexerJob implements Job {
 			}
 			CompletableFuture.allOf(workQueuesCompletableFutures.toArray(new CompletableFuture[0])).join();
 		}
+	}
+
+	private int concurrency() {
+		return Math.max(Runtime.getRuntime().availableProcessors(), 6);
 	}
 
 	private Map<Integer, Collection<Episode>> divide(Collection<Episode> episodes) {

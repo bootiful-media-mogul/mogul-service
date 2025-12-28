@@ -44,12 +44,13 @@ public class ApiApplication {
 
 	@Bean
 	Customizer<HttpSecurity> httpSecurityCustomizer() {
-		return http -> http.authorizeHttpRequests((authorize) -> authorize //
-			.requestMatchers(EndpointRequest.toAnyEndpoint())
-			.permitAll() //
-			.requestMatchers("/public/**")
-			.permitAll()//
+		// @formatter:off
+		return http -> http
+			.authorizeHttpRequests((authorize) -> authorize //
+			.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll() //
+			.requestMatchers("/public/**").permitAll()//
 		);
+		// @formatter:on
 	}
 
 	@Bean
