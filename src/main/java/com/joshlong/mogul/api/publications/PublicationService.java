@@ -13,6 +13,8 @@ import java.util.Map;
  */
 public interface PublicationService {
 
+	<T extends Publishable> T resolvePublishable(Long mogulId, Long id, String clazz);
+
 	<T extends Publishable> T resolvePublishable(Long mogulId, Long id, Class<T> clazz);
 
 	Publication getPublicationById(Long id);
@@ -20,6 +22,8 @@ public interface PublicationService {
 	Map<Long, Publication> getPublicationsByIds(Collection<Long> ids);
 
 	Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, Class<?> clazz);
+
+	Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, String clazz);
 
 	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin);

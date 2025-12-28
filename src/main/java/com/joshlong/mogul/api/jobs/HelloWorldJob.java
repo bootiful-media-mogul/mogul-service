@@ -13,9 +13,9 @@ import java.util.Map;
  * <li><b>podcastId</b> - the client should show a list of all the users podcasts</li>
  * <li><b>episodeId</b> - the client should show a list of all the users episodes (once a
  * podcast has been specified)</li>
- *
+ * <p>
  * in addition to the well-known context parameters, if there's a parameter we don't
- * recognize then we should show a textbox.
+ * recognize, then we should show a textbox.
  */
 @Component
 class HelloWorldJob implements Job {

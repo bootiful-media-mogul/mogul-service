@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
-import com.joshlong.mogul.api.TranscribableRepository;
+import com.joshlong.mogul.api.TranscribableResolver;
 import com.joshlong.mogul.api.transcripts.audio.Transcriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +26,9 @@ class TranscriptConfiguration {
 
 	@Bean
 	DefaultTranscriptService defaultTranscriptService(JdbcClient db, TranscriptRowMapper transcriptRowMapper,
-			ApplicationEventPublisher publisher, Map<String, TranscribableRepository<?>> repositories,
+			ApplicationEventPublisher publisher, Map<String, TranscribableResolver<?>> repositories,
 			@TranscriptMessageChannel MessageChannel in) {
-		return new DefaultTranscriptService(transcriptRowMapper, db, repositories, publisher, in);
+		return new DefaultTranscriptService(transcriptRowMapper, db, repositories.values(), publisher, in);
 	}
 
 	@Bean

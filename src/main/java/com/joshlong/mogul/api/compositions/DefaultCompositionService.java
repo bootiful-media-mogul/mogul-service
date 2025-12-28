@@ -4,21 +4,28 @@ import com.joshlong.mogul.api.compositions.attachments.previews.MarkdownPreview;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
+//todo the attachments pointing to a ManagedFile thats been cached with the wrong content-type.
+// the content-type is determined asynchronously, but the CompositionService should be able to invalidate it.
 
 /**
  * helps to manage the lifecycle and entities associated with a given composition, which
@@ -31,6 +38,8 @@ import java.util.Map;
  */
 @Transactional
 class DefaultCompositionService implements CompositionService {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final JdbcClient db;
 
@@ -55,6 +64,46 @@ class DefaultCompositionService implements CompositionService {
 		this.attachmentRowMapper = attachmentRowMapper;
 		this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
 		this.markdownPreviews = markdownPreviews;
+	}
+
+	public record AttachmentManagedFileUpdatedEvent(long managedFileId) {
+	}
+
+	@ApplicationModuleListener
+	void onManagedFileEvent(ManagedFileUpdatedEvent event) {
+
+		record CompositionAndAttachment(Long compositionId, Attachment attachment) {
+		}
+
+		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", getClass().getSimpleName(),
+				event.managedFile());
+		var managedFileEventId = event.managedFile().id();
+		var metaRowMapper = new RowMapper<CompositionAndAttachment>() {
+
+			@Override
+			public CompositionAndAttachment mapRow(ResultSet rs, int rowNum) throws SQLException {
+				return new CompositionAndAttachment(rs.getLong("composition_id"),
+						attachmentRowMapper.mapRow(rs, rowNum));
+			}
+		};
+		var attachments = db //
+			.sql("select * from composition_attachment where managed_file_id = ?")//
+			.param(managedFileEventId) //
+			.query(metaRowMapper) //
+			.list();
+		var compositions = new HashSet<Long>();
+		for (var meta : attachments) {
+			this.invalidateAttachmentCache(meta.attachment().id());
+			compositions.add(meta.compositionId());
+		}
+		Assert.state(compositions.size() == 1, "there should be only one composition associated "
+				+ "with the given attachment, but there were " + compositions.size() + " instead");
+
+		this.invalidateCompositionCacheById(compositions.iterator().next());
+
+		NotificationEvents.notifyAsync(NotificationEvent.systemNotificationEventFor(event.managedFile().mogulId(),
+				new AttachmentManagedFileUpdatedEvent(managedFileEventId), Long.toString(event.managedFile().id()),
+				null));
 	}
 
 	@Override
@@ -106,6 +155,8 @@ class DefaultCompositionService implements CompositionService {
 
 	@Override
 	public String createMarkdownPreviewForAttachment(Attachment attachment) {
+		this.log.debug("creating a markdown preview for attachment {} with content-type {}", attachment,
+				attachment.managedFile().contentType());
 		for (var candidate : this.markdownPreviews) {
 			if (candidate.supports(attachment)) {
 				return candidate.preview(attachment);

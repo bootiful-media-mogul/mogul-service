@@ -6,7 +6,7 @@ import org.springframework.util.Assert;
 
 abstract class MediaTypeMarkdownPreview implements MarkdownPreview {
 
-	private final MediaType[] mediaTypes;
+	protected final MediaType[] mediaTypes;
 
 	MediaTypeMarkdownPreview(MediaType... mediaTypes) {
 		this.mediaTypes = mediaTypes;

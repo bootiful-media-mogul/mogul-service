@@ -1,10 +1,12 @@
 package com.joshlong.mogul.api.publications;
 
-import com.joshlong.mogul.api.*;
+import com.joshlong.mogul.api.Publication;
+import com.joshlong.mogul.api.Publishable;
+import com.joshlong.mogul.api.PublisherPlugin;
+import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.DateUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -25,15 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-@SuppressWarnings("unchecked")
 @Controller
 class PublicationController<T extends Publishable> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Settings settings;
-
-	private final Map<String, Class<?>> publishableClasses = new ConcurrentHashMap<>();
 
 	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -44,26 +43,19 @@ class PublicationController<T extends Publishable> {
 	private final Map<String, PublisherPlugin<T>> plugins = new ConcurrentHashMap<>();
 
 	PublicationController(Settings settings, PublicationService publicationService, MogulService mogulService,
-			Map<String, PublisherPlugin<?>> plugins, Map<String, PublishableRepository<?>> resolvers) {
+			Map<String, PublisherPlugin<?>> plugins) {
 		this.publicationService = publicationService;
 		this.mogulService = mogulService;
 		this.settings = settings;
-
 		plugins.forEach((k, v) -> this.plugins.put(k, (PublisherPlugin<T>) v));
-
-		for (var r : resolvers.entrySet()) {
-			var resolver = r.getValue();
-			for (var cl : ReflectionUtils.genericsFor(resolver.getClass())) {
-				this.publishableClasses.put(cl.getSimpleName().toLowerCase(), cl);
-			}
-		}
 	}
 
 	@QueryMapping
 	boolean canPublish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
 		var context = this.contextFromClient(contextJson);
-		var publishable = (T) this.findPublishable(publishableId, publishableType);
+		var publishable = (T) this.publicationService.resolvePublishable(mogulService.getCurrentMogul().id(),
+				publishableId, publishableType);
 		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
 		var resolvedPlugin = this.plugins.get(plugin);
 		var configuration = this.settings.getAllValuesByCategory(mogulService.getCurrentMogul().id(), plugin);
@@ -91,7 +83,8 @@ class PublicationController<T extends Publishable> {
 
 		Assert.hasText(plugin, "the plugin named [" + plugin + "] does not exist!");
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var episode = (T) this.findPublishable(publishableId, publishableType);
+		var episode = (T) publicationService.resolvePublishable(mogulService.getCurrentMogul().id(), publishableId,
+				publishableType);
 		var publisherPlugin = this.plugins.get(plugin);
 		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
 		var auth = SecurityContextHolder.getContextHolderStrategy().getContext().getAuthentication();
@@ -107,14 +100,13 @@ class PublicationController<T extends Publishable> {
 
 	@QueryMapping
 	Collection<Publication> publicationsForPublishable(@Argument String type, @Argument Long id) {
-		var publishableClass = this.publishableClassForTypeName(type);
-		return this.publicationService.getPublicationsByPublicationKeyAndClass(id, publishableClass);
+		return this.publicationService.getPublicationsByPublicationKeyAndClass(id, type);
 	}
 
 	@SchemaMapping
 	String url(Publication publication) {
 		if (publication.outcomes() != null && !publication.outcomes().isEmpty()) {
-			var uri = publication.outcomes().iterator().next().url();
+			var uri = publication.outcomes().getFirst().url();
 			if (null == uri)
 				return null;
 			return uri.toString();
@@ -146,16 +138,6 @@ class PublicationController<T extends Publishable> {
 		Assert.notNull(resolvedPlugin, "you must specify an active plugin");
 		this.publicationService.unpublish(publicationById.mogulId(), publicationById, resolvedPlugin);
 		return true;
-
-	}
-
-	private <T extends Publishable> T findPublishable(Long id, String type) {
-		if (id instanceof Number idAsNumber) {
-			var aClass = publishableClassForTypeName(type);
-			var mogulId = this.mogulService.getCurrentMogul().id();
-			return (T) this.publicationService.resolvePublishable(mogulId, idAsNumber.longValue(), aClass);
-		}
-		throw new IllegalStateException("could not load Publishable with id [" + id + "] and type [" + type + "]");
 	}
 
 	private Map<String, String> contextFromClient(String json) {
@@ -165,12 +147,6 @@ class PublicationController<T extends Publishable> {
 			// @formatter:on
 		}
 		return new HashMap<>();
-	}
-
-	private <T extends Publishable> Class<T> publishableClassForTypeName(String type) {
-		var match = (Class<T>) this.publishableClasses.getOrDefault(type.toLowerCase(), null);
-		Assert.notNull(match, "couldn't find a matching class for type [" + type + "]");
-		return match;
 	}
 
 }

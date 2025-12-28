@@ -1,7 +1,8 @@
 package com.joshlong.mogul.api.transcripts;
 
+import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Transcribable;
-import com.joshlong.mogul.api.TranscribableRepository;
+import com.joshlong.mogul.api.TranscribableResolver;
 import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -14,13 +15,14 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Transactional
 @SuppressWarnings("unchecked")
-class DefaultTranscriptService implements TranscriptService {
+class DefaultTranscriptService extends AbstractDomainService<Transcribable, TranscribableResolver<?>>
+		implements TranscriptService {
 
 	private final JdbcClient db;
 
@@ -28,18 +30,16 @@ class DefaultTranscriptService implements TranscriptService {
 
 	private final ApplicationEventPublisher publisher;
 
-	private final Map<String, TranscribableRepository<?>> repositories = new ConcurrentHashMap<>();
-
 	private final MessageChannel requests;
 
 	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
-			Map<String, TranscribableRepository<?>> repositories, ApplicationEventPublisher publisher,
+			Collection<TranscribableResolver<?>> resolvers, ApplicationEventPublisher publisher,
 			MessageChannel requests) {
+		super(resolvers);
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
 		this.publisher = publisher;
 		this.requests = requests;
-		this.repositories.putAll(repositories);
 	}
 
 	private static String classNameFor(Transcribable transcribable) {
@@ -66,7 +66,7 @@ class DefaultTranscriptService implements TranscriptService {
 		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
 		var transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
 		if (null == transcript) {
-			db //
+			this.db //
 				.sql("insert into transcript(mogul_id,payload, payload_class) values (?,?,?)") //
 				.params(mogulId, payloadKeyAsJson, clazz) //
 				.update();
@@ -151,14 +151,8 @@ class DefaultTranscriptService implements TranscriptService {
 	}
 
 	@Override
-	public <T extends Transcribable> TranscribableRepository<T> repositoryFor(Class<T> clazz) {
-		for (var repository : this.repositories.values()) {
-			if (repository.supports(clazz)) {
-				return (TranscribableRepository<T>) repository;
-			}
-		}
-		throw new IllegalStateException(
-				"there's no " + TranscribableRepository.class.getName() + " for " + clazz.getName());
+	public <T extends Transcribable> TranscribableResolver<T> repositoryFor(Class<T> clazz) {
+		return (TranscribableResolver<T>) this.findRepository(clazz);
 	}
 
 	@ApplicationModuleListener

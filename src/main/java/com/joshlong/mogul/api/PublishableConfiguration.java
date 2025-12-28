@@ -8,27 +8,7 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.Serializable;
 import java.util.HashSet;
-
-/**
- * we need a way to, given a {@link Serializable id} and a {@link Class class}, find the
- * given instance of the {@link Publishable publishable}. The logic for that will differ
- * based on the subsystem; e.g.: the {@link com.joshlong.mogul.api.blogs.BlogService
- * blogService} can resolve {@link com.joshlong.mogul.api.blogs.Post posts}, and the
- * {@link com.joshlong.mogul.api.podcasts.PodcastService podcastService} can resolve
- * {@link com.joshlong.mogul.api.podcasts.Episode episodes}. So this class helps provide a
- * uniform strategy for loading a {@link Publishable publishable}.
- *
- * @param <T>
- */
-public interface PublishableRepository<T extends Publishable> {
-
-	boolean supports(Class<?> clazz);
-
-	T find(Long serializable);
-
-}
 
 @Configuration
 class PublishableConfiguration {
@@ -57,9 +37,7 @@ class PublishableConfiguration {
 					if (PublisherPlugin.class.isAssignableFrom(type)) {
 						classes.add(type);
 					}
-					if (PublishableRepository.class.isAssignableFrom(type)) {
-						classes.add(type);
-					}
+
 				}
 			}
 			for (var clzz : classes) {

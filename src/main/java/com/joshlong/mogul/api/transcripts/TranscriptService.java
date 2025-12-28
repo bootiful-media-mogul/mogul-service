@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
-import com.joshlong.mogul.api.TranscribableRepository;
+import com.joshlong.mogul.api.TranscribableResolver;
 import com.joshlong.mogul.api.Transcript;
 
 import java.util.Map;
@@ -22,7 +22,7 @@ public interface TranscriptService {
 
 	void transcribe(Long mogulId, Long transcriptId);
 
-	<T extends Transcribable> TranscribableRepository<T> repositoryFor(Class<T> clazz);
+	<T extends Transcribable> TranscribableResolver<T> repositoryFor(Class<T> clazz);
 
 	void writeTranscript(Transcribable transcribable, String transcript);
 

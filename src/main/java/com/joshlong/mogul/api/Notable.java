@@ -5,6 +5,6 @@ package com.joshlong.mogul.api;
  */
 public interface Notable {
 
-	Long notableId();
+	Long notableKey();
 
 }

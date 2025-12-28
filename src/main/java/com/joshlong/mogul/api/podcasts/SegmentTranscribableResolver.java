@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.podcasts;
 
-import com.joshlong.mogul.api.TranscribableRepository;
+import com.joshlong.mogul.api.AbstractTranscribableResolver;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Service
 @Transactional
-class SegmentTranscribableRepository implements TranscribableRepository<Segment> {
+class SegmentTranscribableResolver extends AbstractTranscribableResolver<Segment> {
 
 	private static final String PODCAST_EPISODE_CONTEXT_KEY = DefaultPodcastService.PODCAST_EPISODE_CONTEXT_KEY;
 
@@ -20,30 +20,26 @@ class SegmentTranscribableRepository implements TranscribableRepository<Segment>
 
 	private final ManagedFileService managedFileService;
 
-	SegmentTranscribableRepository(PodcastService podcastService, ManagedFileService managedFileService) {
+	SegmentTranscribableResolver(PodcastService podcastService, ManagedFileService managedFileService) {
+		super(Segment.class);
 		this.podcastService = podcastService;
 		this.managedFileService = managedFileService;
 	}
 
 	@Override
-	public boolean supports(Class<?> clazz) {
-		return Segment.class.isAssignableFrom(clazz);
+	public Segment find(Long transcribableKey) {
+		return this.podcastService.getPodcastEpisodeSegmentById(transcribableKey);
 	}
 
 	@Override
-	public Segment find(Long key) {
-		return this.podcastService.getPodcastEpisodeSegmentById(key);
-	}
-
-	@Override
-	public Resource audio(Long key) {
-		var segment = this.find(key);
+	public Resource audio(Long transcribableKey) {
+		var segment = this.find(transcribableKey);
 		return this.managedFileService.read(segment.producedAudio().id());
 	}
 
 	@Override
-	public Map<String, Object> defaultContext(Long transcribableId) {
-		var segment = this.find(transcribableId);
+	public Map<String, Object> defaultContext(Long transcribableKey) {
+		var segment = this.find(transcribableKey);
 		return Map.of(PODCAST_EPISODE_CONTEXT_KEY, segment.episodeId(), PODCAST_EPISODE_SEGMENT_CONTEXT_KEY,
 				segment.id());
 	}
