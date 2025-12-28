@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.jobs;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -14,15 +13,12 @@ class InMemoryJobs implements Jobs {
 
 	private final Map<String, Job> jobs;
 
-	private final ApplicationEventPublisher publisher;
-
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	private final Map<Long, Map<String, Job>> jobsInFlight = new ConcurrentHashMap<>();
 
-	InMemoryJobs(Map<String, Job> jobs, ApplicationEventPublisher publisher) {
+	InMemoryJobs(Map<String, Job> jobs) {
 		this.jobs = jobs;
-		this.publisher = publisher;
 	}
 
 	@Override
@@ -37,13 +33,14 @@ class InMemoryJobs implements Jobs {
 		Assert.hasText(jobName, "there must be a valid jobName");
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		var jobsMap = this.jobsInFlight.computeIfAbsent(mogulId, _ -> new ConcurrentHashMap<>());
-		if (jobsMap.containsKey(jobName)) {
-			throw new JobLaunchException("job-already-running");
-		}
-		executor.submit(new Runnable() {
-			@Override
-			public void run() {
-
+		this.executor.submit(() -> {
+			try {
+				var result = jobsMap.computeIfAbsent(jobName, jobs::get).run(context);
+				if (!result.success())
+					throw new JobLaunchException(result.toString());
+			} //
+			catch (Throwable e) {
+				throw new RuntimeException(e);
 			}
 		});
 

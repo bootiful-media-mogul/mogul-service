@@ -39,226 +39,224 @@ import java.util.*;
 @Transactional
 class DefaultCompositionService implements CompositionService {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final JdbcClient db;
+	private final JdbcClient db;
 
-    private final ManagedFileService managedFileService;
+	private final ManagedFileService managedFileService;
 
-    private final RowMapper<Attachment> attachmentRowMapper;
+	private final RowMapper<Attachment> attachmentRowMapper;
 
-    private final Cache compositionsByKeyCache, attachmentsCache, compositionsByIdCache;
+	private final Cache compositionsByKeyCache, attachmentsCache, compositionsByIdCache;
 
-    private final ResultSetExtractor<Collection<Composition>> compositionResultSetExtractor;
+	private final ResultSetExtractor<Collection<Composition>> compositionResultSetExtractor;
 
-    private final MarkdownPreview[] markdownPreviews;
+	private final MarkdownPreview[] markdownPreviews;
 
+	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db, Cache compositionsByKeyCache,
+			Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService,
+			MarkdownPreview[] markdownPreviews) {
+		this.db = db;
+		this.compositionsByIdCache = compositionsByIdCache;
+		this.attachmentsCache = attachmentsCache;
+		this.compositionsByKeyCache = compositionsByKeyCache;
+		this.managedFileService = managedFileService;
+		this.attachmentRowMapper = attachmentRowMapper;
+		this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
+		this.markdownPreviews = markdownPreviews;
+	}
 
-    DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db, Cache compositionsByKeyCache,
-                              Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService,
-                              MarkdownPreview[] markdownPreviews) {
-        this.db = db;
-        this.compositionsByIdCache = compositionsByIdCache;
-        this.attachmentsCache = attachmentsCache;
-        this.compositionsByKeyCache = compositionsByKeyCache;
-        this.managedFileService = managedFileService;
-        this.attachmentRowMapper = attachmentRowMapper;
-        this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
-        this.markdownPreviews = markdownPreviews;
-    }
+	public record AttachmentManagedFileUpdatedEvent(long managedFileId) {
+	}
 
-    public record AttachmentManagedFileUpdatedEvent(long managedFileId) {
-    }
+	@ApplicationModuleListener
+	void onManagedFileEvent(ManagedFileUpdatedEvent event) {
 
-    @ApplicationModuleListener
-    void onManagedFileEvent(ManagedFileUpdatedEvent event) {
+		record CompositionAndAttachment(Long compositionId, Attachment attachment) {
+		}
 
-        record CompositionAndAttachment(Long compisitionId, Attachment attachment) {
-        }
+		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", getClass().getSimpleName(),
+				event.managedFile());
+		var managedFileEventId = event.managedFile().id();
+		var metaRowMapper = new RowMapper<CompositionAndAttachment>() {
 
-        this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}",
-                getClass().getSimpleName(),
-                event.managedFile());
-        var managedFileEventId = event.managedFile().id();
-        var metaRowMapper = new RowMapper<CompositionAndAttachment>() {
+			@Override
+			public CompositionAndAttachment mapRow(ResultSet rs, int rowNum) throws SQLException {
+				return new CompositionAndAttachment(rs.getLong("composition_id"),
+						attachmentRowMapper.mapRow(rs, rowNum));
+			}
+		};
+		var attachments = db //
+			.sql("select * from composition_attachment where managed_file_id = ?")//
+			.param(managedFileEventId) //
+			.query(metaRowMapper) //
+			.list();
+		var compositions = new HashSet<Long>();
+		for (var meta : attachments) {
+			this.invalidateAttachmentCache(meta.attachment().id());
+			compositions.add(meta.compositionId());
+		}
+		Assert.state(compositions.size() == 1, "there should be only one composition associated "
+				+ "with the given attachment, but there were " + compositions.size() + " instead");
 
-            @Override
-            public CompositionAndAttachment mapRow(ResultSet rs, int rowNum) throws SQLException {
-                return new CompositionAndAttachment(
-                        rs.getLong("composition_id"), attachmentRowMapper.mapRow(rs, rowNum));
-            }
-        };
-        var attachments = db //
-                .sql("select * from composition_attachment where managed_file_id = ?")//
-                .param(managedFileEventId) //
-                .query(metaRowMapper) //
-                .list();
-        var compositions = new HashSet<Long>();
-        for (var meta : attachments) {
-            this.invalidateAttachmentCache(meta.attachment().id());
-            compositions.add(meta.compisitionId());
-        }
-        Assert.state(compositions.size() == 1, "there should be only one composition associated " +
-                "with the given attachment, but there were " + compositions.size() + " instead");
+		this.invalidateCompositionCacheById(compositions.iterator().next());
 
-        this.invalidateCompositionCacheById(compositions.iterator().next());
+		NotificationEvents.notifyAsync(NotificationEvent.systemNotificationEventFor(event.managedFile().mogulId(),
+				new AttachmentManagedFileUpdatedEvent(managedFileEventId), Long.toString(event.managedFile().id()),
+				null));
+	}
 
-        NotificationEvents.notifyAsync(NotificationEvent.systemNotificationEventFor(event.managedFile().mogulId(),
-                new AttachmentManagedFileUpdatedEvent(managedFileEventId), Long.toString(event.managedFile().id()),
-                null));
-    }
+	@Override
+	public Composition getCompositionById(Long id) {
+		return this.getCompositionsByIds(Collections.singleton(id)).get(id);
+	}
 
-    @Override
-    public Composition getCompositionById(Long id) {
-        return this.getCompositionsByIds(Collections.singleton(id)).get(id);
-    }
+	private Composition readThroughCompositionById(Long id) {
+		if (this.compositionsByIdCache.get(id) == null) {
+			var comps = this.db //
+				.sql("select * from composition where id = ?")//
+				.param(id)//
+				.query(this.compositionResultSetExtractor);
+			var c = CollectionUtils.firstOrNull(comps);
+			this.compositionsByIdCache.put(id, c);
+			this.compositionsByKeyCache.put(compositionKey(c), c);
+		}
+		return this.compositionsByIdCache.get(id, Composition.class);
+	}
 
-    private Composition readThroughCompositionById(Long id) {
-        if (this.compositionsByIdCache.get(id) == null) {
-            var comps = this.db //
-                    .sql("select * from composition where id = ?")//
-                    .param(id)//
-                    .query(this.compositionResultSetExtractor);
-            var c = CollectionUtils.firstOrNull(comps);
-            this.compositionsByIdCache.put(id, c);
-            this.compositionsByKeyCache.put(compositionKey(c), c);
-        }
-        return this.compositionsByIdCache.get(id, Composition.class);
-    }
+	@Override
+	public Map<Long, Composition> getCompositionsByIds(Collection<Long> ids) {
+		if (ids == null || ids.isEmpty()) {
+			return new HashMap<>();
+		}
+		var map = new HashMap<Long, Composition>();
+		for (var id : ids) {
+			map.put(id, this.readThroughCompositionById(id));
+		}
+		return map;
+	}
 
-    @Override
-    public Map<Long, Composition> getCompositionsByIds(Collection<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return new HashMap<>();
-        }
-        var map = new HashMap<Long, Composition>();
-        for (var id : ids) {
-            map.put(id, this.readThroughCompositionById(id));
-        }
-        return map;
-    }
+	@Override
+	public void deleteCompositionAttachment(Long id) {
+		// this is gross, but i need the composition_id for the caches
+		var compositionId = this.db.sql("select composition_id from composition_attachment where id = ?")
+			.param(id)
+			.query((rs, _) -> rs.getLong("composition_id"))
+			.single();
+		var composition = this.readThroughCompositionById(compositionId);
+		var attachmentById = this.readThroughAttachmentById(id);
+		var mf = attachmentById.managedFile();
+		this.db.sql("delete from composition_attachment where id = ?").params(id).update();
+		this.invalidateAttachmentCache(id);
+		this.managedFileService.deleteManagedFile(mf.id());
+		this.invalidateCompositionCacheById(composition.id());
+		this.invalidateCompositionCacheByKey(composition);
+	}
 
-    @Override
-    public void deleteCompositionAttachment(Long id) {
-        // this is gross, but i need the composition_id for the caches
-        var compositionId = this.db.sql("select composition_id from composition_attachment where id = ?")
-                .param(id)
-                .query((rs, _) -> rs.getLong("composition_id"))
-                .single();
-        var composition = this.readThroughCompositionById(compositionId);
-        var attachmentById = this.readThroughAttachmentById(id);
-        var mf = attachmentById.managedFile();
-        this.db.sql("delete from composition_attachment where id = ?").params(id).update();
-        this.invalidateAttachmentCache(id);
-        this.managedFileService.deleteManagedFile(mf.id());
-        this.invalidateCompositionCacheById(composition.id());
-        this.invalidateCompositionCacheByKey(composition);
-    }
+	@Override
+	public String createMarkdownPreviewForAttachment(Attachment attachment) {
+		this.log.debug("creating a markdown preview for attachment {} with content-type {}", attachment,
+				attachment.managedFile().contentType());
+		for (var candidate : this.markdownPreviews) {
+			if (candidate.supports(attachment)) {
+				return candidate.preview(attachment);
+			}
+		}
+		return null;
+	}
 
-    @Override
-    public String createMarkdownPreviewForAttachment(Attachment attachment) {
-        this.log.debug("creating a markdown preview for attachment {} with content-type {}",
-                attachment, attachment.managedFile().contentType());
-        for (var candidate : this.markdownPreviews) {
-            if (candidate.supports(attachment)) {
-                return candidate.preview(attachment);
-            }
-        }
-        return null;
-    }
+	private Attachment readThroughAttachmentById(Long id) {
+		var attachment = this.attachmentsCache.get(id, Attachment.class);
+		if (attachment == null) {
+			var attachments = this.db //
+				.sql("select * from composition_attachment where id = ?") //
+				.param(id) //
+				.query(this.attachmentRowMapper)//
+				.list();
+			Assert.state(attachments.size() == 1, "there should be exactly one attachment for the given id " + id
+					+ " but there were " + attachments.size() + " instead");
+			for (var a : attachments) {
+				this.attachmentsCache.put(id, a);
+				attachment = a;
+			}
+		}
+		return attachment;
+	}
 
-    private Attachment readThroughAttachmentById(Long id) {
-        var attachment = this.attachmentsCache.get(id, Attachment.class);
-        if (attachment == null) {
-            var attachments = this.db //
-                    .sql("select * from composition_attachment where id = ?") //
-                    .param(id) //
-                    .query(this.attachmentRowMapper)//
-                    .list();
-            Assert.state(attachments.size() == 1, "there should be exactly one attachment for the given id " + id
-                    + " but there were " + attachments.size() + " instead");
-            for (var a : attachments) {
-                this.attachmentsCache.put(id, a);
-                attachment = a;
-            }
-        }
-        return attachment;
-    }
+	private void invalidateCompositionCacheByKey(Composition composition) {
+		var key = compositionKey(composition);
+		this.compositionsByKeyCache.evictIfPresent(key);
+	}
 
-    private void invalidateCompositionCacheByKey(Composition composition) {
-        var key = compositionKey(composition);
-        this.compositionsByKeyCache.evictIfPresent(key);
-    }
+	private Composition readThroughCompositionByKey(Class<?> clzz, String key, String field) {
+		var compositionCacheKey = this.compositionKey(clzz, key, field);
+		var clazzName = clzz.getName();
+		return this.compositionsByKeyCache.get(compositionCacheKey, () -> {
+			this.db //
+				.sql("""
+						    insert into composition( payload_class,payload, field) values (?,?,?)
+						    on conflict on constraint composition_payload_class_payload_field_key
+						    do nothing
+						""")//
+				.params(clazzName, key, field) //
+				.update();
+			return CollectionUtils.firstOrNull(this.db //
+				.sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
+				.params(clazzName, key, field)//
+				.query(this.compositionResultSetExtractor));
+		});
+	}
 
-    private Composition readThroughCompositionByKey(Class<?> clzz, String key, String field) {
-        var compositionCacheKey = this.compositionKey(clzz, key, field);
-        var clazzName = clzz.getName();
-        return this.compositionsByKeyCache.get(compositionCacheKey, () -> {
-            this.db //
-                    .sql("""
-                                insert into composition( payload_class,payload, field) values (?,?,?)
-                                on conflict on constraint composition_payload_class_payload_field_key
-                                do nothing
-                            """)//
-                    .params(clazzName, key, field) //
-                    .update();
-            return CollectionUtils.firstOrNull(this.db //
-                    .sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
-                    .params(clazzName, key, field)//
-                    .query(this.compositionResultSetExtractor));
-        });
-    }
+	private void invalidateCompositionCacheById(Long compositionId) {
+		this.compositionsByIdCache.evictIfPresent(compositionId);
+	}
 
-    private void invalidateCompositionCacheById(Long compositionId) {
-        this.compositionsByIdCache.evictIfPresent(compositionId);
-    }
+	private void invalidateAttachmentCache(Long attachmentId) {
+		this.attachmentsCache.evictIfPresent(attachmentId);
+	}
 
-    private void invalidateAttachmentCache(Long attachmentId) {
-        this.attachmentsCache.evictIfPresent(attachmentId);
-    }
+	private String compositionKey(Class<?> payloadClass, String compositionKeyAsJson, String field) {
+		return payloadClass.getName() + ":" + compositionKeyAsJson + ":" + field;
+	}
 
-    private String compositionKey(Class<?> payloadClass, String compositionKeyAsJson, String field) {
-        return payloadClass.getName() + ":" + compositionKeyAsJson + ":" + field;
-    }
+	private String compositionKey(Composition composition) {
+		return this.compositionKey(composition.payloadClass(), composition.payload(), composition.field());
+	}
 
-    private String compositionKey(Composition composition) {
-        return this.compositionKey(composition.payloadClass(), composition.payload(), composition.field());
-    }
+	@Override
+	public <T extends Composable> Composition compose(T payload, String field) {
+		var clazz = payload.getClass().getName();
+		var payloadKeyAsJson = JsonUtils.write(payload.compositionKey());
+		var composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
+		if (composition == null) {
+			this.db //
+				.sql("""
+						  insert into composition(payload, payload_class, field) values (?,?,?)
+						  on conflict on constraint composition_payload_class_payload_field_key
+						  do nothing
+						""")//
+				.params(payloadKeyAsJson, clazz, field) //
+				.update();
+			composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
+		}
+		return composition;
+	}
 
-    @Override
-    public <T extends Composable> Composition compose(T payload, String field) {
-        var clazz = payload.getClass().getName();
-        var payloadKeyAsJson = JsonUtils.write(payload.compositionKey());
-        var composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
-        if (composition == null) {
-            this.db //
-                    .sql("""
-                              insert into composition(payload, payload_class, field) values (?,?,?)
-                              on conflict on constraint composition_payload_class_payload_field_key
-                              do nothing
-                            """)//
-                    .params(payloadKeyAsJson, clazz, field) //
-                    .update();
-            composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
-        }
-        return composition;
-    }
-
-    @Override
-    public Attachment createCompositionAttachment(Long mogul, Long compositionId, String key) {
-        var managedFile = this.managedFileService.createManagedFile(mogul, "compositions", "", 0,
-                CommonMediaTypes.BINARY, true);
-        var gkh = new GeneratedKeyHolder();
-        this.db.sql("""
-                        insert into composition_attachment( caption, composition_id, managed_file_id )
-                        values (?,?,?)
-                        """)//
-                .params(key, compositionId, managedFile.id())//
-                .update(gkh);
-        var newAttachmentId = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
-        this.invalidateCompositionCacheById(compositionId);
-        this.invalidateCompositionCacheByKey(this.readThroughCompositionById(compositionId));
-        return this.readThroughAttachmentById(newAttachmentId);
-    }
+	@Override
+	public Attachment createCompositionAttachment(Long mogul, Long compositionId, String key) {
+		var managedFile = this.managedFileService.createManagedFile(mogul, "compositions", "", 0,
+				CommonMediaTypes.BINARY, true);
+		var gkh = new GeneratedKeyHolder();
+		this.db.sql("""
+				insert into composition_attachment( caption, composition_id, managed_file_id )
+				values (?,?,?)
+				""")//
+			.params(key, compositionId, managedFile.id())//
+			.update(gkh);
+		var newAttachmentId = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
+		this.invalidateCompositionCacheById(compositionId);
+		this.invalidateCompositionCacheByKey(this.readThroughCompositionById(compositionId));
+		return this.readThroughAttachmentById(newAttachmentId);
+	}
 
 }

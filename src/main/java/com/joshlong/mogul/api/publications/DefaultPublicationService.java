@@ -218,7 +218,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 			.query(this.getPublicationRowMapper()) //
 			.list();
 		for (var p : publications)
-			log.info("found publication {} with created {} and published {}", p, p.created(), p.published());
+			this.log.debug("found publication {} with created {} and published {}", p, p.created(), p.published());
 		return publications;
 	}
 
