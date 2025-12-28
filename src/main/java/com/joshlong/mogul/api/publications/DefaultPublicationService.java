@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
@@ -22,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unchecked")
 @RegisterReflectionForBinding({ Publishable.class, PublisherPlugin.class, PublisherPlugin.PublishContext.class,
 		PublisherPlugin.UnpublishContext.class, PublisherPlugin.Context.class })
 class DefaultPublicationService extends AbstractDomainService<Publishable, PublishableResolver<?>>
@@ -41,16 +43,27 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 	private final ApplicationEventPublisher publisher;
 
+	private final Map<String, Class<?>> publishableClasses = new ConcurrentHashMap<>();
+
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
 			TransactionTemplate tt, Function<SettingsLookup, Map<String, String>> settingsLookup,
-			ApplicationEventPublisher publisher, Collection<PublishableResolver<?>> publishableRepositories) {
-		super(publishableRepositories);
+			Map<String, PublishableResolver<?>> resolvers, ApplicationEventPublisher publisher
+
+	) {
+		super(resolvers.values());
 		this.db = db;
 		this.transactionTemplate = tt;
 		this.settingsLookup = settingsLookup;
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
 		this.publisher = publisher;
+		for (var r : resolvers.entrySet()) {
+			var resolver = r.getValue();
+			for (var cl : ReflectionUtils.genericsFor(resolver.getClass())) {
+				this.publishableClasses.put(cl.getSimpleName().toLowerCase(), cl);
+			}
+		}
+
 	}
 
 	/*
@@ -59,7 +72,19 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	 * across more than one request
 	 */
 	private PublicationRowMapper getPublicationRowMapper() {
-		return new PublicationRowMapper(db, textEncryptor);
+		return new PublicationRowMapper(this.db, this.textEncryptor);
+	}
+
+	private <T extends Publishable> Class<T> publishableClassForTypeName(String type) {
+		var match = (Class<T>) this.publishableClasses.getOrDefault(type.toLowerCase(), null);
+		Assert.notNull(match, "couldn't find a matching class for type [" + type + "]");
+		return match;
+	}
+
+	@Override
+	public <T extends Publishable> T resolvePublishable(Long mogulId, Long id, String clazz) {
+		var type = this.publishableClassForTypeName(clazz);
+		return (T) this.resolvePublishable(mogulId, id, type);
 	}
 
 	@Override
@@ -75,10 +100,8 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(publication, "the publication must not be null");
 		Assert.notNull(mogul, "the mogul should not be null");
-
 		var context = publication.context();
 		var newContext = new HashMap<>(context);
-
 		try {
 			var uc = new PublisherPlugin.UnpublishContext<T>(newContext, publication);
 			if (plugin.unpublish(uc)) {
@@ -87,9 +110,8 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 					.params(Publication.State.UNPUBLISHED.name(), contextJson, publication.id())
 					.update();
 				this.publisher.publishEvent(new PublicationUpdatedEvent(publication));
-
 			}
-		}
+		} //
 		catch (Exception throwable) {
 			this.log.warn("couldn't unpublish {} ", publication.id(), throwable);
 		}
@@ -106,7 +128,6 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		var context = new ConcurrentHashMap<String, String>();
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
-
 		var publicationId = (long) Objects.requireNonNull(this.transactionTemplate.execute(transactionStatus -> {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
@@ -199,6 +220,11 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		for (var p : publications)
 			log.info("found publication {} with created {} and published {}", p, p.created(), p.published());
 		return publications;
+	}
+
+	@Override
+	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, String clazz) {
+		return this.getPublicationsByPublicationKeyAndClass(publicationKey, this.publishableClassForTypeName(clazz));
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {
