@@ -42,7 +42,7 @@ class PodcastIndexerJob implements Job {
 
 	private void run(Long mogulId) {
 		log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
-		var allPodcastsByMogul = podcastService.getAllPodcastsByMogul(mogulId);
+		var allPodcastsByMogul = this.podcastService.getAllPodcastsByMogul(mogulId);
 		log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
 		for (var podcast : allPodcastsByMogul) {
 			var episodes = podcastService.getPodcastEpisodesByPodcast(podcast.id(), false)
@@ -64,7 +64,9 @@ class PodcastIndexerJob implements Job {
 	}
 
 	private int concurrency() {
-		return Math.max(Runtime.getRuntime().availableProcessors(), 6);
+		var c = Math.max(Runtime.getRuntime().availableProcessors(), 6);
+		log.info("concurrency is {}", c);
+		return c;
 	}
 
 	private Map<Integer, Collection<Episode>> divide(Collection<Episode> episodes) {

@@ -49,13 +49,29 @@ class ElasticSearchService implements SearchService {
 
 	private final ElasticsearchOperations ops;
 
+	private final ElasticsearchClient client;
+
 	ElasticSearchService(Map<String, SearchableRepository<?, ?>> repositories, DocumentRepository documentRepository,
 			ElasticsearchOperations ops, ElasticsearchClient client) throws IOException {
 		this.documentRepository = documentRepository;
+		this.client = client;
 		this.ops = ops;
 		this.repositories.putAll(repositories);
+	}
 
-		client.indices().delete(index -> index.index(INDEX_NAME));
+	@Override
+	public void reset() {
+		this.log.warn("resetting the search index!");
+		var indices = client.indices();
+		try {
+			if (indices.exists(index -> index.index(INDEX_NAME)).value()) {
+				indices.delete(index -> index.index(INDEX_NAME));
+			}
+			indices.create(index -> index.index(INDEX_NAME));
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private static String resultName(Class<?> clzz) {

@@ -67,6 +67,11 @@ class JdbcSearchService implements SearchService {
 	}
 
 	@Override
+	public void reset() {
+		this.index.reset();
+	}
+
+	@Override
 	public Collection<RankedSearchResult> search(String query, Map<String, Object> metadata) {
 		var results = new LinkedHashSet<RankedSearchResult>();
 		var all = this.index.search(query, metadata);

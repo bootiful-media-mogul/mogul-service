@@ -35,6 +35,7 @@ class Index {
 	private final SearchHitRowMapper searchHitRowMapper;
 
 	// new support for caching
+
 	private final Cache documentsCache, documentChunksCache;
 
 	Index(JdbcClient jdbc, EmbeddingModel embeddingModel, DocumentChunkRowMapper documentChunkRowMapper,
@@ -138,6 +139,10 @@ class Index {
 
 	List<IndexHit> search(String query) {
 		return this.search(query, null);
+	}
+
+	void reset() {
+		this.jdbcClient.sql("truncate table document_chunk cascade; truncate table document cascade;").update();
 	}
 
 	List<IndexHit> search(String query, Map<String, Object> metadata) {
