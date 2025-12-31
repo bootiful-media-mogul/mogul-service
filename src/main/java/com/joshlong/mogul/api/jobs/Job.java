@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.jobs;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,9 @@ public interface Job {
 
 	String MOGUL_ID_KEY = "mogulId";
 
+	String PODCAST_ID_KEY = "podcastId";
+
+	@NonNull
 	default Set<String> requiredContextAttributes() {
 		return new HashSet<>(Set.of(MOGUL_ID_KEY));
 	}

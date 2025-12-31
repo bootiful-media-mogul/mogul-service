@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.Podcast;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.search.SearchService;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -36,13 +37,22 @@ class PodcastIndexerJob implements Job {
 	@Override
 	public Result run(Map<String, Object> context) throws Exception {
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
-		this.run(mogulId);
+		var podcastId = (Long) context.get(Job.PODCAST_ID_KEY);
+		this.doRun(mogulId, podcastId);
 		return Result.ok(context);
 	}
 
-	private void run(Long mogulId) {
+	@Override
+	public @NonNull Set<String> requiredContextAttributes() {
+		var attrs = Job.super.requiredContextAttributes();
+		var all = new HashSet<>(attrs);
+		all.add(Job.PODCAST_ID_KEY);
+		return all;
+	}
+
+	private void doRun(Long mogulId, Long podcastId) {
 		log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
-		var allPodcastsByMogul = this.podcastService.getAllPodcastsByMogul(mogulId);
+		var allPodcastsByMogul = Set.of(this.podcastService.getPodcastById(podcastId));
 		log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
 		for (var podcast : allPodcastsByMogul) {
 			var episodes = podcastService.getPodcastEpisodesByPodcast(podcast.id(), false)

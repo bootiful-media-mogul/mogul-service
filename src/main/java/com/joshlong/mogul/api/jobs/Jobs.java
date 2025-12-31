@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.jobs;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -27,7 +28,6 @@ interface Jobs {
 
 	Map<String, Job> jobs();
 
-	void launch(String jobName, Map<String, Object> context)
-			throws JobLaunchException, ExecutionException, InterruptedException;
+	CompletableFuture<Job.Result> launch(String jobName, Map<String, Object> context) throws JobLaunchException;
 
 }
