@@ -38,7 +38,11 @@ class PodcastIndexerJob implements Job {
 	public Result run(Map<String, Object> context) throws Exception {
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		var podcastId = (Long) context.get(Job.PODCAST_ID_KEY);
-		this.doRun(mogulId, podcastId);
+		this.log.info("running for mogulId # {} and podcastId # {}", mogulId, podcastId);
+		this.log.warn("don't forget to uncomment me " +
+				"otherwise this job won't do anything!!");
+		// TODO
+//		this.doRun(mogulId, podcastId);
 		return Result.ok(context);
 	}
 
