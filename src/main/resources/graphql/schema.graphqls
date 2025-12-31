@@ -3,9 +3,8 @@
 scalar DateTime
 scalar JSON
 
-
 type Job {
-    name :String
+    name : String
     requiredContextAttributes : [String]
 }
 
@@ -18,7 +17,7 @@ type Setting {
 type Composition  {
     id: Int
     mogulId: Int
-    field:String
+    field: String
     attachments: [Attachment]
 }
 
@@ -131,6 +130,9 @@ type NotificationEvent {
 
 type Mutation {
 
+    # jobs
+    launchJob(jobName:String, contextAsJson: String ) : Boolean
+
     # transcriptions
     writeTranscript(transcriptId:Int, transcript:String) : Boolean
     refreshTranscript(transcriptId :Int) : Boolean
@@ -188,14 +190,11 @@ type RankedSearchResult {
     rank: Float
 }
 
-type JobEntry {
-    key: String
-    value: Job
-}
+
 type Query {
 
     # jobs
-    jobs : [JobEntry]
+    jobs : [Job]
 
     # search
     search(query: String, metadata: JSON): [RankedSearchResult]
