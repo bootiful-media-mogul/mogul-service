@@ -95,8 +95,7 @@ class EventPublicationBackedJobs implements Jobs {
 
 	@Override
 	public CompletableFuture<Job.Result> launch(String jobName, Map<String, Object> context) throws JobLaunchException {
-
-		if (!validate(jobName, context))
+		if (!this.validate(jobName, context))
 			return CompletableFuture.completedFuture(Job.Result.error(context, null));
 
 		// run

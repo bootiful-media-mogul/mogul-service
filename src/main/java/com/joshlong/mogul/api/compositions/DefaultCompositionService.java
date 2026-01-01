@@ -78,7 +78,7 @@ class DefaultCompositionService implements CompositionService {
 		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", getClass().getSimpleName(),
 				event.managedFile());
 		var managedFileEventId = event.managedFile().id();
-		var metaRowMapper = new RowMapper<CompositionAndAttachment>() {
+		var compositionAndAttachmentRowMapper = new RowMapper<CompositionAndAttachment>() {
 
 			@Override
 			public CompositionAndAttachment mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -89,16 +89,13 @@ class DefaultCompositionService implements CompositionService {
 		var attachments = db //
 			.sql("select * from composition_attachment where managed_file_id = ?")//
 			.param(managedFileEventId) //
-			.query(metaRowMapper) //
+			.query(compositionAndAttachmentRowMapper) //
 			.list();
 		var compositions = new HashSet<Long>();
 		for (var meta : attachments) {
 			this.invalidateAttachmentCache(meta.attachment().id());
 			compositions.add(meta.compositionId());
 		}
-		Assert.state(compositions.size() == 1, "there should be only one composition associated "
-				+ "with the given attachment, but there were " + compositions.size() + " instead");
-
 		this.invalidateCompositionCacheById(compositions.iterator().next());
 
 		NotificationEvents.notifyAsync(NotificationEvent.systemNotificationEventFor(event.managedFile().mogulId(),

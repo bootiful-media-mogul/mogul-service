@@ -180,7 +180,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	private void doNotify(Long mogulId, Long publicationId, Object event) {
 		this.publisher.publishEvent(event);
 		NotificationEvents.notifyAsync(
-				NotificationEvent.systemNotificationEventFor(mogulId, event, Long.toString(publicationId), null));
+				NotificationEvent.systemNotificationEventFor(mogulId, event, Long.toString(publicationId), "{}"));
 	}
 
 	@Override

@@ -143,8 +143,14 @@ class PublicationController<T extends Publishable> {
 	private Map<String, String> contextFromClient(String json) {
 		if (StringUtils.hasText(json)) {
 			// @formatter:off
-			return JsonUtils.read(json, new ParameterizedTypeReference<>() {});
-			// @formatter:on
+			var data = JsonUtils.read(json, new ParameterizedTypeReference<Map <String, Object>>() {});
+            // @formatter:on
+			var newMap = new HashMap<String, String>();
+			for (var k : data.keySet()) {
+				newMap.put(k, data.get(k).toString());
+			}
+			return newMap;
+
 		}
 		return new HashMap<>();
 	}

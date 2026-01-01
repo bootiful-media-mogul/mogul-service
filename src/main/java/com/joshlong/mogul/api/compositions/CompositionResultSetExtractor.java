@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.compositions;
 
 import com.joshlong.mogul.api.Publication;
+import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -56,15 +57,7 @@ class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Com
 	}
 
 	private Class<?> classFor(String name) {
-		try {
-			Assert.hasText(name, "you must provide a non-empty class name");
-			return Class.forName(name);
-		}
-		catch (ClassNotFoundException e) {
-			log.warn("classNotFoundException when trying to do Class.forName({}) to resolve the class for a {} ", name,
-					Publication.class.getName(), e);
-		}
-		return null;
+		return ReflectionUtils.classForName(name);
 	}
 
 	private Composition mapRow(ResultSet rs, int rowNum) throws SQLException {
