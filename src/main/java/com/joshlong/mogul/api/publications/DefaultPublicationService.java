@@ -146,7 +146,13 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(this.getPublicationById(publicationId)));
 
 		var pc = PublisherPlugin.PublishContext.of(payload, context);
-		plugin.publish(pc);
+		try {
+			plugin.publish(pc);
+		} //
+		catch (Throwable throwable) {
+			pc.failure(plugin.name(), throwable.getMessage());
+			this.log.warn("couldn't publish {} ", publicationId, throwable);
+		}
 
 		return this.transactionTemplate.execute((status) -> {
 

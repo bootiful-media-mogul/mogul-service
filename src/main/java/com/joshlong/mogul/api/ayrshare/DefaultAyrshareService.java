@@ -139,7 +139,7 @@ class DefaultAyrshareService implements AyrshareService {
 
 	@EventListener
 	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) {
-		if (isNotAyrshare(pce.publication().plugin()))
+		if (this.isNotAyrshare(pce.publication().plugin()))
 			return;
 
 		var mogul = pce.publication().mogulId();

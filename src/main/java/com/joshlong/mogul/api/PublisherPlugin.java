@@ -74,8 +74,6 @@ public interface PublisherPlugin<T extends Publishable> {
 
 		private final List<Outcome> outcomes = new ArrayList<>();
 
-		// private final Map<String, Outcome> outcomes = new ConcurrentHashMap<>();
-
 		PublishContext(T payload, Map<String, String> inputContext) {
 			super(inputContext);
 			this.payload = payload;

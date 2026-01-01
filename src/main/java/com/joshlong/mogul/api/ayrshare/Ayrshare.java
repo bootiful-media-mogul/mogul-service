@@ -1,16 +1,16 @@
 package com.joshlong.mogul.api.ayrshare;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jspecify.annotations.NonNull;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
 
 import java.net.URI;
 import java.time.Instant;
@@ -26,13 +26,16 @@ class Ayrshare {
 
 	private static final DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ISO_INSTANT;
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	private final RestClient http;
 
+	// todo this code relies heavily on Jackson 2's `JsonNode`. Need to reconfigure the
+	// HttpMessageConverter
+	// for the RestClient, i think.
 	Ayrshare(String apiKey) {
 		this.http = RestClient.builder() //
 			.baseUrl("https://api.ayrshare.com/api/") //
+			.configureMessageConverters(clientBuilder -> clientBuilder.registerDefaults()
+				.withJsonConverter(new JacksonJsonHttpMessageConverter()))
 			.defaultHeaders(h -> {
 				h.setBearerAuth(apiKey); //
 				h.setContentType(MediaType.APPLICATION_JSON); //
@@ -98,21 +101,21 @@ class Ayrshare {
 		}
 		var json = this.http.post().uri("/post").body(body).retrieve().body(JsonNode.class);
 		Assert.notNull(json, "the json response should not be null");
-		var status = nullOrNode(json, "status", JsonNode::asText);
-		var id = nullOrNode(json, "id", JsonNode::asText);
-		var refId = nullOrNode(json, "refId", JsonNode::asText);
+		var status = nullOrNode(json, "status", JsonNode::asString);
+		var id = nullOrNode(json, "id", JsonNode::asString);
+		var refId = nullOrNode(json, "refId", JsonNode::asString);
 		var validate = nullOrNode(json, "validate", JsonNode::asBoolean);
 		var scheduleDate = nullOrNode(json, "scheduleDate",
-				j -> Instant.from(ISO_INSTANT.parse(j.get("scheduleDate").asText())));
+				j -> Instant.from(ISO_INSTANT.parse(j.get("scheduleDate").asString())));
 		var postIdsResult = nullOrNode(json, "postIds", (Function<JsonNode, Map<Platform, Response.Post>>) jsonNode -> {
 			var postIds = new HashMap<Platform, Response.Post>();
 			jsonNode.iterator().forEachRemaining(n -> {
-				var status1 = from(nullOrNode(n, "status", JsonNode::asText));
-				var id1 = nullOrNode(n, "id", JsonNode::asText);
-				var postUrl = nullOrNode(n, "postUrl", jn -> URI.create(jn.asText()));
-				var platform = nullOrNode(n, "platform", jn -> Platform.of(jn.asText()));
-				var type = nullOrNode(n, "type", JsonNode::asText);
-				var cid = nullOrNode(n, "cid", JsonNode::asText);
+				var status1 = from(nullOrNode(n, "status", JsonNode::asString));
+				var id1 = nullOrNode(n, "id", JsonNode::asString);
+				var postUrl = nullOrNode(n, "postUrl", jn -> URI.create(jn.asString()));
+				var platform = nullOrNode(n, "platform", jn -> Platform.of(jn.asString()));
+				var type = nullOrNode(n, "type", JsonNode::asString);
+				var cid = nullOrNode(n, "cid", JsonNode::asString);
 				var value = new Response.Post(type, status1, id1, cid, postUrl, platform);
 				postIds.put(platform, value);
 			});
@@ -124,7 +127,7 @@ class Ayrshare {
 	static class Hints implements RuntimeHintsRegistrar {
 
 		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+		public void registerHints(@NonNull RuntimeHints hints, ClassLoader classLoader) {
 			var mcs = MemberCategory.values();
 			for (var c : new Class<?>[] { JsonNode.class, Response.class, PostContext.class, Response.class,
 					Response.Post.class, Response.Status.class, Platform.class })
