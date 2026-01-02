@@ -742,8 +742,6 @@ class DefaultPodcastService implements PodcastService {
 
 	}
 
-	// todo use a ResultSetExtractor to get the data for ManagedFiles
-	// todo create some sort of proxy around ResultSet to memorize the results
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
 		this.log.info("getting episodes for episode ids(length {}) {}", episodeIds.size(), episodeIds);
