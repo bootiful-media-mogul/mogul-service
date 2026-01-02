@@ -8,8 +8,11 @@ import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -56,23 +59,8 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	@Override
 	public <T extends Transcribable> T transcribable(Long transcribableId, Class<T> transcribableClass) {
-		var repo = this.repositoryFor(transcribableClass);
+		var repo = this.resolverFor(transcribableClass);
 		return repo.find(transcribableId);
-	}
-
-	@Override
-	public Transcript transcript(Long mogulId, Transcribable payload) {
-		var clazz = classNameFor(payload);
-		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
-		var transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-		if (null == transcript) {
-			this.db //
-				.sql("insert into transcript(mogul_id,payload, payload_class) values (?,?,?)") //
-				.params(mogulId, payloadKeyAsJson, clazz) //
-				.update();
-			transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
-		}
-		return transcript;
 	}
 
 	@Override
@@ -93,7 +81,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	@Override
 	public void transcribe(Long mogulId, Transcribable payload) {
-		var ctx = this.repositoryFor(payload.getClass()).defaultContext(payload.transcribableId());
+		var ctx = this.resolverFor(payload.getClass()).defaultContext(payload.transcribableId());
 		this.transcribe(mogulId, payload, ctx);
 	}
 
@@ -104,7 +92,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	@Override
 	public void transcribe(Long mogulId, Long transcriptId) {
 		var transcript = this.transcriptById(transcriptId);
-		var ctx = this.repositoryFor(transcript.payloadClass()).defaultContext(this.keyFor(transcript));
+		var ctx = this.resolverFor(transcript.payloadClass()).defaultContext(this.keyFor(transcript));
 		this.transcribe(mogulId, transcriptId, ctx);
 	}
 
@@ -112,7 +100,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
 		var transcript = this.transcript(mogulId, payload);
 		var transcribableKey = this.keyFor(transcript);
-		var defaultContext = this.repositoryFor(payload.getClass()).defaultContext(transcribableKey);
+		var defaultContext = this.resolverFor(payload.getClass()).defaultContext(transcribableKey);
 		var finalMap = new HashMap<String, Object>();
 		finalMap.putAll(defaultContext);
 		finalMap.putAll(context);
@@ -124,7 +112,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	private Transcribable transcribableFor(Long transcriptId) {
 		var transcript = this.transcriptById(transcriptId);
-		var repo = this.repositoryFor((transcript.payloadClass()));
+		var repo = this.resolverFor((transcript.payloadClass()));
 		return repo.find(JsonUtils.read(transcript.payload(), Long.class));
 	}
 
@@ -151,13 +139,57 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	}
 
 	@Override
-	public <T extends Transcribable> TranscribableResolver<T> repositoryFor(Class<T> clazz) {
+	public Transcript transcript(Long mogulId, Transcribable payload) {
+		var clazz = classNameFor(payload);
+		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
+		var transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		if (null == transcript) {
+			this.db //
+				.sql("insert into transcript(mogul_id,payload, payload_class) values (?,?,?)") //
+				.params(mogulId, payloadKeyAsJson, clazz) //
+				.update();
+			transcript = this.readThroughTranscriptionByKey(clazz, payloadKeyAsJson);
+		}
+		return transcript;
+	}
+
+	@Override
+	public <T extends Transcribable> Map<Transcribable, String> readTranscripts(Long mogulId, Collection<T> toRead) {
+		if (toRead.isEmpty())
+			return Map.of();
+
+		var mapOfIdToTranscribable = new HashMap<String, Transcribable>();
+		for (var tr : toRead) {
+			mapOfIdToTranscribable.put(JsonUtils.write(tr.transcribableId()), tr);
+		}
+
+		var transcriptIds = toRead.stream().map(x -> JsonUtils.write(x.transcribableId())).toList();
+
+		var sql = "select * from transcript where mogul_id = ? and payload = any(?)";
+
+		this.log.info("sql query: [{}]", sql);
+		var transcripts = db.sql(sql) //
+			.params(mogulId, new SqlArrayValue("text", transcriptIds.toArray(String[]::new)))//
+			.query(transcribableRowMapper) //
+			.list();
+		var map = new HashMap<Transcribable, String>();
+		for (var tr : transcripts) {
+			var transcribableId = tr.payload(); // map id to object by transcribableId
+			map.put(mapOfIdToTranscribable.get(transcribableId), tr.transcript());
+		}
+		return map;
+	}
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	@Override
+	public <T extends Transcribable> TranscribableResolver<T> resolverFor(Class<T> clazz) {
 		return (TranscribableResolver<T>) this.findRepository(clazz);
 	}
 
 	@ApplicationModuleListener
 	void transcriptInvalidatedEvent(TranscriptInvalidatedEvent event) {
-		var repository = this.repositoryFor(event.type());
+		var repository = this.resolverFor(event.type());
 		var payload = repository.find(event.key());
 		this.transcribe(event.mogulId(), payload, event.context());
 	}
@@ -172,7 +204,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	void recordTranscript(TranscriptCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
-		var transcribableRepository = this.repositoryFor(aClass);
+		var transcribableRepository = this.resolverFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());
 		this.writeTranscript(transcribable, event.text());
 		this.publisher

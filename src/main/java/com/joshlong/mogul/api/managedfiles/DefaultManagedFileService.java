@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -24,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * the {@link ManagedFile managedFile} abstraction is used all over the place in the
@@ -53,6 +55,8 @@ class DefaultManagedFileService implements ManagedFileService {
 	private final TransactionTemplate transactionTemplate;
 
 	private final URI cloudfrontDomain;
+
+	private final boolean trace = this.log.isTraceEnabled();
 
 	DefaultManagedFileService(String bucket, JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
 			Cache cache, TransactionTemplate transactionTemplate, URI cloudfrontDomain, ApiProperties properties) {
@@ -277,33 +281,45 @@ class DefaultManagedFileService implements ManagedFileService {
 		return mf;
 	}
 
+	private final AtomicInteger counter = new AtomicInteger(0);
+
 	@Override
 	public ManagedFile getManagedFileById(Long managedFileId) {
 		var all = this.getManagedFiles(List.of(managedFileId));
 		return CollectionUtils.firstOrNull(all.values());
 	}
 
-	private ManagedFile readThrough(Long mfId) {
-		return this.cache.get(mfId, () -> {
-			var all = this.db.sql("select * from managed_file where id = ?")
-				.param(mfId)
-				.query(this.managedFileRowMapper)
-				.list();
-			return CollectionUtils.firstOrNull(all);
-		});
-
+	private void debug() {
+		if (trace) {
+			var calls = new StringBuilder();
+			StackWalker.getInstance().forEach(stackFrame -> calls.append(stackFrame.toString()).append("\n"));
+			log.info("called getManagedFiles {} times. stack trace for readThrough: {}", counter.incrementAndGet(),
+					calls);
+		}
 	}
 
 	@Override
 	public Map<Long, ManagedFile> getManagedFiles(Collection<Long> managedFileIds) {
-		if (managedFileIds.isEmpty()) {
-			return Map.of();
-		}
-		var results = new HashMap<Long, ManagedFile>();
+		this.debug();
+		var outcome = new HashMap<Long, ManagedFile>();
 		for (var mfId : managedFileIds) {
-			results.put(mfId, this.readThrough(mfId));
+			var entry = this.cache.get(mfId, ManagedFile.class);
+			if (entry != null)
+				outcome.put(mfId, entry);
 		}
-		return results;
+		var everythingElse = new ArrayList<Long>();
+		for (var mfid : managedFileIds)
+			if (!outcome.containsKey(mfid))
+				everythingElse.add(mfid);
+		var results = db.sql("select * from managed_file where id = any(?)")
+			.params(new SqlArrayValue("bigint", everythingElse.toArray()))
+			.query(this.managedFileRowMapper)
+			.list();
+		for (var r : results) {
+			this.cache.put(r.id(), r);
+			outcome.put(r.id(), r);
+		}
+		return outcome;
 	}
 
 }

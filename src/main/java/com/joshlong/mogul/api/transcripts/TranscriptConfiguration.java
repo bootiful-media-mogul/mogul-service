@@ -47,7 +47,7 @@ class TranscriptConfiguration {
 				var transcribableId = transcribable.transcribableId();
 				this.publishInTransaction(publisher, tx,
 						new TranscriptionStartedEvent(mogulId, transcribableId, transcript.id(), clazz));
-				var repository = transcriptService.repositoryFor(clazz);
+				var repository = transcriptService.resolverFor(clazz);
 				var audio = repository.audio(transcribableId);
 				var content = transcriber.transcribe(audio);
 				this.publishInTransaction(publisher, tx,

@@ -21,15 +21,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -46,8 +53,6 @@ class DefaultPodcastService implements PodcastService {
 	private final PodcastRowMapper podcastRowMapper;
 
 	private final CompositionService compositionService;
-
-	private final SegmentRowMapper episodeSegmentRowMapper;
 
 	private final ManagedFileService managedFileService;
 
@@ -75,38 +80,95 @@ class DefaultPodcastService implements PodcastService {
 		this.publisher = publisher;
 		this.transactions = transactions;
 		this.podcastRowMapper = new PodcastRowMapper();
-		this.episodeSegmentRowMapper = new SegmentRowMapper(this.managedFileService::getManagedFileById);
+	}
+
+	static class SegmentResultSetExtractor implements ResultSetExtractor<List<Segment>> {
+
+		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction;
+
+		SegmentResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction) {
+			this.managedFileFunction = managedFileFunction;
+		}
+
+		@Override
+		public List<Segment> extractData(ResultSet rs) throws SQLException, DataAccessException {
+
+			var list = new ArrayList<Map<String, Object>>();
+			var managedFileIds = new HashSet<Long>();
+
+			while (rs.next()) {
+				var segmentAudioManagedFileId = rs.getLong("segment_audio_managed_file_id");
+				var segmentAudioManagedFileId1 = rs.getLong("produced_segment_audio_managed_file_id");
+				managedFileIds.add(segmentAudioManagedFileId);
+				managedFileIds.add(segmentAudioManagedFileId1);
+				list.add(Map.of("podcast_episode_id", rs.getLong("podcast_episode_id"), //
+						"id", rs.getLong("id"), "segment_audio_managed_file_id", segmentAudioManagedFileId,
+						"produced_segment_audio_managed_file_id", segmentAudioManagedFileId1, "cross_fade_duration",
+						rs.getLong("cross_fade_duration"), "name", rs.getString("name"), "sequence_number",
+						rs.getInt("sequence_number")));
+			}
+
+			var managedFileMap = managedFileFunction.apply(managedFileIds);
+			var result = new ArrayList<Segment>();
+			for (var m : list) {
+				result.add(new Segment((Long) m.get("podcast_episode_id"), (Long) m.get("id"),
+						managedFileMap.get((Long) m.get("segment_audio_managed_file_id")),
+						managedFileMap.get((Long) m.get("produced_segment_audio_managed_file_id")),
+						(Long) m.get("cross_fade_duration"), (String) m.get("name"),
+						(Integer) m.get("sequence_number")));
+			}
+			return result;
+		}
+
+	}
+
+	private static Long[] array(Collection<Long> longs) {
+		var a = new Long[longs.size()];
+		var i = 0;
+		for (var l : longs) {
+			a[i] = l;
+			i++;
+		}
+		return a;
 	}
 
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
 
-		if (episodes.isEmpty())
+		if (episodes.isEmpty()) {
 			return new HashMap<>();
+		}
 
-		var idsAsString = episodes.stream().map(e -> Long.toString(e)).collect(Collectors.joining(", "));
-		var segments = db.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id in (" //
-				+ idsAsString + ")")
-			.query(this.episodeSegmentRowMapper)
-			.list();
+		var segmentResultSetExtractor = new SegmentResultSetExtractor(managedFileService::getManagedFiles);
+		var segments = db.sql(
+				"select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?) order by sequence_number ASC ")
+			.params(new SqlArrayValue("bigint", (Object[]) array(episodes)))
+			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
+		var comparator = Comparator.comparingInt(Segment::order);
 		for (var s : segments) {
 			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
+		}
+		for (var entry : episodeToSegmentsMap.entrySet()) {
+			entry.getValue().sort(comparator);
 		}
 		return episodeToSegmentsMap;
 	}
 
 	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
-		var sql = " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC ";
-		var episodeSegmentsFromDb = this.db //
-			.sql(sql) //
-			.params(episodeId) //
-			.query(this.episodeSegmentRowMapper) //
-			.stream()//
-			.sorted(Comparator.comparingInt(Segment::order))//
-			.toList();
-		return new ArrayList<>(episodeSegmentsFromDb);
+
+		var all = getPodcastEpisodeSegmentsByIds(List.of(episodeId));
+		return new ArrayList<>(all);
+
+		/*
+		 * var sql =
+		 * " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC "
+		 * ; var episodeSegmentsFromDb = this.db // .sql(sql) // .params(episodeId) //
+		 * .query(this.episodeSegmentRowMapper) // .stream()//
+		 * .sorted(Comparator.comparingInt(Segment::order))// .toList(); return new
+		 * ArrayList<>(episodeSegmentsFromDb);
+		 */
 	}
 
 	private void triggerTranscription(Long mogulId, Long segmentId) {
@@ -526,12 +588,27 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Segment getPodcastEpisodeSegmentById(Long episodeSegmentId) {
-		return this.db//
+		var list = this.db//
 			.sql("select * from podcast_episode_segment where id =?")//
 			.params(episodeSegmentId)
-			.query(this.episodeSegmentRowMapper)//
-			.optional()//
-			.orElse(null);
+			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles));
+		if (list.isEmpty())
+			return null;
+		return list.getFirst();
+
+	}
+
+	@Override
+	public Collection<Segment> getPodcastEpisodeSegmentsByIds(List<Long> episodeSegmentIds) {
+		if (episodeSegmentIds.isEmpty())
+			return new ArrayList<>();
+		var arr = new Long[episodeSegmentIds.size()];
+		for (var i = 0; i < episodeSegmentIds.size(); i++) {
+			arr[i] = episodeSegmentIds.get(i);
+		}
+		return db.sql("select * from podcast_episode_segment where id = any(?) ") //
+			.params(new SqlArrayValue("bigint", (Object[]) arr))//
+			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles));
 	}
 
 	@Override
@@ -596,19 +673,93 @@ class DefaultPodcastService implements PodcastService {
 		}
 	}
 
+	static class EpisodeResultSetExtractor implements ResultSetExtractor<Collection<Episode>> {
+
+		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService;
+
+		EpisodeResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService) {
+			this.managedFileService = managedFileService;
+		}
+
+		@Override
+		public Collection<Episode> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+
+			var results = new ArrayList<Episode>();
+			var maps = new ArrayList<Map<String, Object>>();
+			var managedFiles = new HashSet<Long>();
+			while (resultSet.next()) {
+				var map = new HashMap<String, Object>();
+				map.put("id", resultSet.getLong("id"));
+				map.put("graphic_managed_file_id", resultSet.getLong("graphic_managed_file_id"));
+				map.put("produced_graphic_managed_file_id", resultSet.getLong("produced_graphic_managed_file_id"));
+				map.put("produced_audio_managed_file_id", resultSet.getLong("produced_audio_managed_file_id"));
+				map.put("podcast_id", resultSet.getLong("podcast_id"));
+				map.put("title", resultSet.getString("title"));
+				map.put("description", resultSet.getString("description"));
+				map.put("created", resultSet.getTimestamp("created"));
+				map.put("complete", resultSet.getBoolean("complete"));
+				map.put("produced_audio_assets_updated", resultSet.getTimestamp("produced_audio_assets_updated"));
+				map.put("produced_audio_updated", resultSet.getTimestamp("produced_audio_updated"));
+
+				maps.add(map);
+				for (var k : map.keySet()) {
+					if (k.contains("managed_file")) {
+						managedFiles.add((Long) map.get(k));
+					}
+				}
+			}
+
+			var allManagedFiles = this.managedFileService.apply(managedFiles);
+
+			for (var map : maps) {
+
+				var episodeId = (Long) map.get("id");
+				var graphicId = (Long) map.get("graphic_managed_file_id");
+				var producedGraphicId = (Long) map.get("produced_graphic_managed_file_id");
+				var producedAudioId = (Long) map.get("produced_audio_managed_file_id");
+				var graphic = allManagedFiles.get(graphicId);
+				var producedGraphic = allManagedFiles.get(producedGraphicId);
+				var producedAudio = allManagedFiles.get(producedAudioId);
+
+				var e = new Episode(//
+						episodeId, //
+						(Long) map.get("podcast_id"), //
+						(String) map.get("title"), //
+						(String) map.get("description"), //
+						(Date) map.get("created"), //
+						graphic, //
+						producedGraphic, //
+						producedAudio, //
+						(Boolean) map.get("complete"), //
+						(Timestamp) map.get("produced_audio_updated"), //
+						(Timestamp) map.get("produced_audio_assets_updated") // ,
+				);
+
+				results.add(e);
+			}
+
+			return results;
+		}
+
+	}
+
+	// todo use a ResultSetExtractor to get the data for ManagedFiles
+	// todo create some sort of proxy around ResultSet to memorize the results
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
+		this.log.info("getting episodes for episode ids(length {}) {}", episodeIds.size(), episodeIds);
 		if (episodeIds.isEmpty()) {
 			return Set.of();
 		}
 		var map = new HashMap<Long, Episode>();
 		var idsNotInCache = CacheUtils.notPresentInCache(this.podcastEpisodesCache, episodeIds);
 		if (!idsNotInCache.isEmpty()) {
-			var ids = idsNotInCache.stream().map(e -> Long.toString(e)).collect(Collectors.joining(","));
+			var idsArr = array(idsNotInCache);
 			var episodes = this.db //
-				.sql("select * from podcast_episode pe where pe.id in ( " + ids + " )") //
-				.query(new EpisodeRowMapper(true, managedFileService::getManagedFiles)) //
-				.list();
+				.sql("select * from podcast_episode pe where pe.id = any(? )") //
+				.params(new SqlArrayValue("bigint", (Object[]) idsArr))
+				.query(new EpisodeResultSetExtractor(managedFileService::getManagedFiles));
+
 			for (var episode : episodes) {
 				map.put(episode.id(), episode);
 			}
@@ -639,6 +790,20 @@ class DefaultPodcastService implements PodcastService {
 		return this.db //
 			.sql("select * from podcast p where p.mogul_id = ?")//
 			.param(mogulId)//
+			.query(this.podcastRowMapper)//
+			.list();
+	}
+
+	@Override
+	public Collection<Podcast> getAllPodcastsById(List<Long> mogulIds) {
+		if (null == mogulIds || mogulIds.isEmpty())
+			return Set.of();
+		var idsArray = new Long[mogulIds.size()];
+		for (var i = 0; i < mogulIds.size(); i++)
+			idsArray[i] = mogulIds.get(i);
+		return db//
+			.sql("select * from podcast p where p.id = any(?)")//
+			.params(new SqlArrayValue("bigint", (Object[]) idsArray))
 			.query(this.podcastRowMapper)//
 			.list();
 	}

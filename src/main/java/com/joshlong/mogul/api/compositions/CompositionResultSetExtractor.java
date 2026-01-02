@@ -56,14 +56,14 @@ class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Com
 		return compositions.values();
 	}
 
-	private Class<?> classFor(String name) {
-		return ReflectionUtils.classForName(name);
-	}
-
 	private Composition mapRow(ResultSet rs, int rowNum) throws SQLException {
 		var id = rs.getLong("id");
 		return new Composition(id, rs.getString("payload"), classFor(rs.getString("payload_class")),
 				rs.getString("field"), new ArrayList<>());
+	}
+
+	private Class<?> classFor(String name) {
+		return ReflectionUtils.classForName(name);
 	}
 
 }

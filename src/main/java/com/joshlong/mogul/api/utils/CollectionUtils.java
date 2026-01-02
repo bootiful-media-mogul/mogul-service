@@ -4,7 +4,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import org.jspecify.annotations.Nullable;
+import org.springframework.core.ParameterizedTypeReference;
 
+import java.lang.reflect.Array;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
@@ -14,6 +16,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public abstract class CollectionUtils {
+
+	@SuppressWarnings("unchecked")
+	public static <T> T[] arrayFrom(Class<T> tClass, Collection<T> tCollection) {
+		// @formatter:off
+		var ptr = new ParameterizedTypeReference <T>() {};
+		// @formatter:on
+		return (T[]) Array.newInstance(tClass, tCollection.size());
+	}
 
 	public static <K, V> Map<K, V> sortedMap(Map<K, V> in, Comparator<K> keyComparator) {
 		var keys = in.keySet();
