@@ -4,9 +4,9 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.SearchableResolver;
+import com.joshlong.mogul.api.SearchableResult;
 import com.joshlong.mogul.api.search.RankedSearchResult;
 import com.joshlong.mogul.api.search.SearchService;
-import com.joshlong.mogul.api.search.SearchableResult;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.jspecify.annotations.Nullable;
@@ -35,7 +35,8 @@ interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 }
 
 @Service
-class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?>> implements SearchService {
+class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?, ?>>
+		implements SearchService {
 
 	static final String INDEX_NAME = "searchables";
 
@@ -47,7 +48,7 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 
 	private final ElasticsearchClient client;
 
-	ElasticSearchService(Collection<SearchableResolver<?>> resolvers, DocumentRepository documentRepository,
+	ElasticSearchService(Collection<SearchableResolver<?, ?>> resolvers, DocumentRepository documentRepository,
 			ElasticsearchOperations ops, ElasticsearchClient client) {
 		super(resolvers);
 		this.documentRepository = documentRepository;
@@ -143,7 +144,7 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 		// step 1. bucket all the documents into collections based on their class
 		// step 2. keep another mapping of repository to class locally.
 		var resultsBucketedByClass = new HashMap<Class<?>, List<Document>>();
-		var classToResolvers = new HashMap<Class<?>, SearchableResolver<?>>();
+		var classToResolvers = new HashMap<Class<?>, SearchableResolver<?, ?>>();
 		for (var doc : search) {
 			var clzz = (Class<Searchable>) ReflectionUtils.classForName(doc.getContent().className());
 			resultsBucketedByClass.computeIfAbsent(clzz, _ -> new ArrayList<>()).add(doc.getContent());

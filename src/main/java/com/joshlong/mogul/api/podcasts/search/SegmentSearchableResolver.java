@@ -1,16 +1,14 @@
 package com.joshlong.mogul.api.podcasts.search;
 
 import com.joshlong.mogul.api.AbstractSearchableResolver;
+import com.joshlong.mogul.api.SearchableResult;
+import com.joshlong.mogul.api.SearchableResultAggregate;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
-import com.joshlong.mogul.api.search.SearchableResult;
-import com.joshlong.mogul.api.search.SearchableResultAggregate;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -43,7 +41,7 @@ class SegmentSearchConfiguration {
 
 }
 
-class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
+class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Episode> {
 
 	private final PodcastService podcastService;
 
@@ -72,8 +70,6 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 	@Override
 	public List<SearchableResult<Segment, Episode>> results(List<Long> searchableIds) {
 		var segments = podcastService.getPodcastEpisodeSegmentsByIds(searchableIds);
-
-		// todo managedFiles r vastly too slow.
 		var episodeIds = new HashSet<Long>();
 		for (var segment : segments) {
 			episodeIds.add(segment.episodeId());

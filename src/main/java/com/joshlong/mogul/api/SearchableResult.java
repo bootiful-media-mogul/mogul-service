@@ -1,6 +1,4 @@
-package com.joshlong.mogul.api.search;
-
-import com.joshlong.mogul.api.Searchable;
+package com.joshlong.mogul.api;
 
 import java.util.Date;
 import java.util.Map;

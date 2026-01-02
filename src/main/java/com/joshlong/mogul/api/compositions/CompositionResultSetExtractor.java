@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.compositions;
 
-import com.joshlong.mogul.api.Publication;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

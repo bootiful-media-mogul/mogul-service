@@ -32,7 +32,7 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
 
 class DefaultAyrshareService implements AyrshareService {
 
-	private final PublicationService publicationService;
+	// private final PublicationService publicationService;
 
 	private final CompositionService compositionService;
 
@@ -43,6 +43,8 @@ class DefaultAyrshareService implements AyrshareService {
 	private final Settings settings;
 
 	private final MogulService mogulService;
+
+	private final PublicationService publicationService;
 
 	private final Platform[] platforms;
 
@@ -118,9 +120,10 @@ class DefaultAyrshareService implements AyrshareService {
 			allIds.add(oid.id());
 		var drafts = this.getDrafts(mogulId);
 		Assert.state(allIds.size() == drafts.size(), "allIds.size() == drafts.size()");
-		Assert.state(
-				drafts.stream().map(AyrsharePublicationComposition::id).collect(Collectors.toSet()).containsAll(allIds),
-				"allIds == drafts");
+		Assert.state(drafts.stream() //
+			.map(AyrsharePublicationComposition::id) //
+			.collect(Collectors.toSet())
+			.containsAll(allIds), "allIds == drafts");
 		return drafts.stream() //
 			.sorted(Comparator.comparing(AyrsharePublicationComposition::platform))//
 			.collect(Collectors.toList());

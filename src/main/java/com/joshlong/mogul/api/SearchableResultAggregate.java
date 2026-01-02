@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.search;
+package com.joshlong.mogul.api;
 
 public record SearchableResultAggregate<T>(Long id, T result) {
 }

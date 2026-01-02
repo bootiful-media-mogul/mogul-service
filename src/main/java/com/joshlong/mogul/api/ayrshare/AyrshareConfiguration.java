@@ -14,8 +14,8 @@ class AyrshareConfiguration {
 
 	@Bean
 	DefaultAyrshareService defaultAyrshareService(Settings settings, ApiProperties properties, MogulService ms,
-			CompositionService cs, PublicationService ps, JdbcClient db) {
-		return new DefaultAyrshareService(ms, db, settings, properties.cache().maxEntries(), cs, ps);
+			CompositionService cs, PublicationService ps, JdbcClient db, PublicationService publicationService) {
+		return new DefaultAyrshareService(ms, db, settings, properties.cache().maxEntries(), cs, publicationService);
 	}
 
 }
