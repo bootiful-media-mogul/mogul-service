@@ -26,7 +26,7 @@ class HelloWorldJob implements Job {
 	public Result run(Map<String, Object> context) throws Exception {
 		var name = (String) context.getOrDefault("name", "world");
 		this.log.info("start: hello, {}", name);
-		Thread.sleep(5_000);
+		Thread.sleep(10_000);
 		this.log.info("stop: hello, {}", name);
 		return Result.ok(context);
 	}

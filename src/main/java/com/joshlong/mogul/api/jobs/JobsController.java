@@ -33,7 +33,6 @@ class JobsController {
 
 	@MutationMapping
 	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) {
-		this.log.info("launching {} with {}", jobName, contextAsJson);
 		// @formatter:off
         var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
         // @formatter:on
@@ -42,13 +41,14 @@ class JobsController {
 			context = context == null ? new HashMap<>() : new HashMap<>(context);
 			var mogulId = this.mogulService.getCurrentMogul().id();
 			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
-			this.jobs.launch(jobName, context).thenAccept(result -> {
-				var jobCompletionEvent = new JobCompletionEvent(mogulId, result.success(), jobName);
-				var json = JsonUtils.write(Map.of("jobName", jobName));
-				var notificationEvent = NotificationEvent //
-					.systemNotificationEventFor(mogulId, jobCompletionEvent, jobName, json);
-				NotificationEvents.notifyAsync(notificationEvent);
-			});
+			this.jobs.launch(jobName, context) //
+				.thenAccept(result -> {
+					var jobCompletionEvent = new JobCompletedEvent(mogulId, result.success(), jobName);
+					var json = JsonUtils.write(Map.of("jobName", jobName, "success", result.success()));
+					var notificationEvent = NotificationEvent //
+						.systemNotificationEventFor(mogulId, jobCompletionEvent, jobName, json);
+					NotificationEvents.notifyAsync(notificationEvent);
+				});
 			this.log.info("launched {} with {}", jobName, context);
 		} //
 		catch (JobLaunchException jobLaunchException) {
@@ -80,5 +80,5 @@ class JobsController {
 
 }
 
-record JobCompletionEvent(Long mogulId, boolean succeeded, String jobName) {
+record JobCompletedEvent(Long mogulId, boolean succeeded, String jobName) {
 }

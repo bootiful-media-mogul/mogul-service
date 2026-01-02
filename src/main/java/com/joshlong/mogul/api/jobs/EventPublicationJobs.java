@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.jobs;
 
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -21,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 @Transactional
-class EventPublicationBackedJobs implements Jobs {
+class EventPublicationJobs implements Jobs {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -31,13 +33,13 @@ class EventPublicationBackedJobs implements Jobs {
 
 	private final Map<String, Job> jobs = new ConcurrentHashMap<>();
 
-	EventPublicationBackedJobs(Map<String, Job> jobs, ApplicationEventPublisher publisher) {
+	EventPublicationJobs(Map<String, Job> jobs, ApplicationEventPublisher publisher) {
 		this.publisher = publisher;
 		this.jobs.putAll(jobs);
 	}
 
 	@ApplicationModuleListener
-	void handleJob(EventPublicationBackedJobsRunnerEvent jobs) {
+	void handleJob(JobRunEvent jobs) {
 		this.log.info("Received job launch request for job '{}' with context: {}", jobs.jobName(), jobs.context());
 		var job = this.jobs.get(jobs.jobName());
 		var context = jobs.context();
@@ -51,9 +53,12 @@ class EventPublicationBackedJobs implements Jobs {
 		} //
 		finally {
 			if (this.jobsInFlight.containsKey(jobs.key())) {
+
 				var completableFuture = this.jobsInFlight.get(jobs.key());
 				if (completableFuture != null) {
 					completableFuture.complete(result);
+					this.log.debug("Completing job launch request for job '{}' with context: {}", jobs.jobName(),
+							jobs.context());
 				}
 				this.jobsInFlight.remove(jobs.key());
 			}
@@ -62,7 +67,7 @@ class EventPublicationBackedJobs implements Jobs {
 
 	@Override
 	public Map<String, Job> jobs() {
-		return Map.copyOf(this.jobs);
+		return CollectionUtils.sortedMap(this.jobs, Comparator.naturalOrder());
 	}
 
 	private String keyFor(Long mogulId, String jobName, Map<String, Object> context) {
@@ -97,13 +102,11 @@ class EventPublicationBackedJobs implements Jobs {
 	public CompletableFuture<Job.Result> launch(String jobName, Map<String, Object> context) throws JobLaunchException {
 		if (!this.validate(jobName, context))
 			return CompletableFuture.completedFuture(Job.Result.error(context, null));
-
-		// run
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		var key = this.keyFor(mogulId, jobName, context);
 		return this.jobsInFlight.computeIfAbsent(key, _ -> {
 			var cf = new CompletableFuture<Job.Result>();
-			publisher.publishEvent(new EventPublicationBackedJobsRunnerEvent(key, jobName, context));
+			publisher.publishEvent(new JobRunEvent(key, jobName, context));
 			return cf;
 		});
 	}
