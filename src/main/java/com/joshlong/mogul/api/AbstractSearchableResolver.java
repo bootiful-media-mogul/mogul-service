@@ -8,4 +8,3 @@ public abstract class AbstractSearchableResolver<T extends Searchable> extends A
 	}
 
 }
-

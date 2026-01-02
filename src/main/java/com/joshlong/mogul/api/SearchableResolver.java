@@ -6,7 +6,8 @@ import com.joshlong.mogul.api.search.SearchableResult;
 
 public interface SearchableResolver<T extends Searchable> extends DomainResolver<Searchable, T> {
 
+	SearchableResult<Segment, Episode> result(T searchable);
 
-    SearchableResult<Segment, Episode> result(T searchable);
-    SearchableResult<Segment, Episode> result(Long searchableId);
+	SearchableResult<Segment, Episode> result(Long searchableId);
+
 }

@@ -25,60 +25,58 @@ import java.util.function.BiFunction;
 @ImportRuntimeHints(SegmentSearchConfiguration.Hints.class)
 class SegmentSearchConfiguration {
 
-    static class Hints implements RuntimeHintsRegistrar {
+	static class Hints implements RuntimeHintsRegistrar {
 
-        @Override
-        public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-            hints.reflection().registerType(Segment.class, MemberCategory.values());
-        }
-    }
+		@Override
+		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			hints.reflection().registerType(Segment.class, MemberCategory.values());
+		}
 
-    @Bean
-    SegmentSearchableResolver segmentSearchableResolver(
-            TranscriptService transcriptService,
-            PodcastService podcastService) {
-        return new SegmentSearchableResolver(Segment.class, podcastService, transcriptService::readTranscript);
-    }
+	}
+
+	@Bean
+	SegmentSearchableResolver segmentSearchableResolver(TranscriptService transcriptService,
+			PodcastService podcastService) {
+		return new SegmentSearchableResolver(Segment.class, podcastService, transcriptService::readTranscript);
+	}
 
 }
 
+class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 
-class SegmentSearchableResolver
-        extends AbstractSearchableResolver<Segment> {
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
-    private final PodcastService podcastService;
-    private final BiFunction<Long, Transcribable, String> transcriptLoader;
+	private final PodcastService podcastService;
 
-    SegmentSearchableResolver(
-            Class<Segment> entityClass,
-            PodcastService podcastService,
-            BiFunction<Long, Transcribable, String> transcriptLoader) {
-        super(entityClass);
-        this.podcastService = podcastService;
-        this.transcriptLoader = transcriptLoader;
-    }
+	private final BiFunction<Long, Transcribable, String> transcriptLoader;
 
-    @Override
-    public Segment find(Long searchableId) {
-        return this.podcastService
-                .getPodcastEpisodeSegmentById(searchableId);
-    }
+	SegmentSearchableResolver(Class<Segment> entityClass, PodcastService podcastService,
+			BiFunction<Long, Transcribable, String> transcriptLoader) {
+		super(entityClass);
+		this.podcastService = podcastService;
+		this.transcriptLoader = transcriptLoader;
+	}
 
-    @Override
-    public SearchableResult<Segment, Episode> result(Long searchableId) {
-        var it = this.find(searchableId);
-        return result(it);
-    }
+	@Override
+	public Segment find(Long searchableId) {
+		return this.podcastService.getPodcastEpisodeSegmentById(searchableId);
+	}
 
-    @Override
-    public SearchableResult<Segment, Episode> result(Segment searchable) {
-        var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
-        var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
-        var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
-        var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
-        return new SearchableResult<>(searchable.searchableId(), searchable, episode.title(),
-                this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult,
-                Map.of("episodeId", episode.id()), episode.created());
-    }
+	@Override
+	public SearchableResult<Segment, Episode> result(Long searchableId) {
+		var it = this.find(searchableId);
+		return result(it);
+	}
+
+	@Override
+	public SearchableResult<Segment, Episode> result(Segment searchable) {
+		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
+		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
+		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
+		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
+		return new SearchableResult<>(searchable.searchableId(), searchable, episode.title(),
+				this.transcriptLoader.apply(mogul, searchable), episodeSearchableResult,
+				Map.of("episodeId", episode.id()), episode.created());
+	}
+
 }

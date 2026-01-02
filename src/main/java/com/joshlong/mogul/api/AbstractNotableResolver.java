@@ -8,4 +8,3 @@ public abstract class AbstractNotableResolver<T extends Notable> extends Abstrac
 	}
 
 }
-

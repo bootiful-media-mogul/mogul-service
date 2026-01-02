@@ -18,4 +18,3 @@ public abstract class AbstractPublishableResolver<T extends Publishable> extends
 	}
 
 }
-
