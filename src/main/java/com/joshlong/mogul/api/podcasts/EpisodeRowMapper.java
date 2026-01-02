@@ -24,7 +24,6 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 	@Override
 	public Episode mapRow(ResultSet resultSet, int rowNum) throws SQLException {
 		var episodeId = resultSet.getLong("id");
-
 		var graphicId = resultSet.getLong("graphic_managed_file_id");
 		var producedGraphicId = resultSet.getLong("produced_graphic_managed_file_id");
 		var producedAudioId = resultSet.getLong("produced_audio_managed_file_id");

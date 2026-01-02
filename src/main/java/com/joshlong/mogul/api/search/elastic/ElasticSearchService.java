@@ -100,9 +100,6 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 		}
 	}
 
-	// todo were loading millions and zillions of ManagedFiles whenever
-	// we do this search. we need to do a constant time load.
-	// can we preload all ManagedFiles maybe?
 	@Override
 	public Collection<RankedSearchResult> search(String shouldContain, Map<String, Object> metadata) {
 		var start = System.currentTimeMillis();
@@ -123,6 +120,7 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 			.withMaxResults(1000) //
 			.build();
 		var search = this.ops.search(nativeQuery, Document.class);
+		var elasticStop = System.currentTimeMillis();
 		var results = new ArrayList<>(this.mapResultsIntoRankedSearchResults(search));
 		var all = this.dedupeBySearchableAndType(results)
 			.stream()
@@ -130,7 +128,8 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 			.toList()
 			.reversed();
 		var stop = System.currentTimeMillis();
-		this.log.info("search for {} took {} ms", shouldContain, stop - start);
+		this.log.info("the total search for {} took {} ms. the call to network hosted Elastic alone took {} ms",
+				shouldContain, stop - start, elasticStop - start);
 		return all;
 	}
 
