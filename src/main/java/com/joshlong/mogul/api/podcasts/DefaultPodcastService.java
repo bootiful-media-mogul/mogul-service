@@ -660,9 +660,12 @@ class DefaultPodcastService implements PodcastService {
 	public Collection<Podcast> getAllPodcastsById(List<Long> mogulIds) {
 		if (null == mogulIds || mogulIds.isEmpty())
 			return Set.of();
+		var idsArray = new Long[mogulIds.size()];
+		for (var i = 0; i < mogulIds.size(); i++)
+			idsArray[i] = mogulIds.get(i);
 		return db//
 			.sql("select * from podcast p where p.id = any(?)")//
-			.params(new SqlArrayValue("int4", CollectionUtils.arrayFrom(mogulIds)))
+			.params(new SqlArrayValue("bigint", (Object[]) idsArray))
 			.query(this.podcastRowMapper)//
 			.list();
 	}

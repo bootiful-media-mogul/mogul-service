@@ -91,12 +91,18 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 
 		var segmentsToEpisodes = new HashMap<Segment, Episode>();
 		var episodeToPodcast = new HashMap<Episode, Podcast>();
-		for (var s : segments)
-			segmentsToEpisodes.put(s,
-					episodes.stream().filter(e -> e.id().equals(s.episodeId())).findFirst().orElseThrow());
-		for (var e : episodes)
-			episodeToPodcast.put(e,
-					podcasts.stream().filter(p -> p.id().equals(e.podcastId())).findFirst().orElseThrow());
+		for (var s : segments) {
+			episodes.stream()
+				.filter(e -> e.id().equals(s.episodeId()))
+				.findFirst()
+				.ifPresent(it -> segmentsToEpisodes.put(s, it));
+		}
+		for (var e : episodes) {
+			podcasts.stream()
+				.filter(p -> p.id().equals(e.podcastId()))
+				.findFirst()
+				.ifPresent(podcast -> episodeToPodcast.put(e, podcast));
+		}
 		var results = new ArrayList<SearchableResult<Segment, Episode>>();
 
 		// todo build up map of transcripts and

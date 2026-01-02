@@ -18,14 +18,11 @@ import java.util.stream.Collectors;
 public abstract class CollectionUtils {
 
 	@SuppressWarnings("unchecked")
-	public static <T> T[] arrayFrom(Collection<T> tCollection) {
+	public static <T> T[] arrayFrom(Class<T> tClass, Collection<T> tCollection) {
 		// @formatter:off
 		var ptr = new ParameterizedTypeReference <T>() {};
 		// @formatter:on
-		if (ptr.getType() instanceof Class<?> clzz) {
-			return (T[]) Array.newInstance(clzz, tCollection.size());
-		}
-		throw new IllegalStateException("unsupported array type");
+		return (T[]) Array.newInstance(tClass, tCollection.size());
 	}
 
 	public static <K, V> Map<K, V> sortedMap(Map<K, V> in, Comparator<K> keyComparator) {
