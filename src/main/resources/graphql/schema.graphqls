@@ -188,6 +188,7 @@ type RankedSearchResult {
     description: String
     type: String
     rank: Float
+    created: DateTime
 }
 
 

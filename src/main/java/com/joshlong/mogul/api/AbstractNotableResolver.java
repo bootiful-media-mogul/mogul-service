@@ -8,11 +8,4 @@ public abstract class AbstractNotableResolver<T extends Notable> extends Abstrac
 	}
 
 }
-// public abstract class AbstractPublishableRepository<T extends Publishable>
-// extends AbstractDomainRepository<Publishable, T> implements PublishableRepository<T> {
-//
-// protected AbstractPublishableRepository(Class<T> entityClass) {
-// super(entityClass);
-// }
-//
-// }
+
