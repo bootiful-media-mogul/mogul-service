@@ -4,7 +4,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import org.jspecify.annotations.Nullable;
+import org.springframework.core.ParameterizedTypeReference;
 
+import java.lang.reflect.Array;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
@@ -14,6 +16,17 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public abstract class CollectionUtils {
+
+	@SuppressWarnings("unchecked")
+	public static <T> T[] arrayFrom(Collection<T> tCollection) {
+		// @formatter:off
+		var ptr = new ParameterizedTypeReference <T>() {};
+		// @formatter:on
+		if (ptr.getType() instanceof Class<?> clzz) {
+			return (T[]) Array.newInstance(clzz, tCollection.size());
+		}
+		throw new IllegalStateException("unsupported array type");
+	}
 
 	public static <K, V> Map<K, V> sortedMap(Map<K, V> in, Comparator<K> keyComparator) {
 		var keys = in.keySet();

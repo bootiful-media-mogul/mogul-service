@@ -4,6 +4,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,11 +24,15 @@ public interface PodcastService {
 
 	Segment getPodcastEpisodeSegmentById(Long episodeSegmentId);
 
+	Collection<Segment> getPodcastEpisodeSegmentsByIds(List<Long> episodeSegmentIds);
+
 	Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);
 
 	List<Segment> getPodcastEpisodeSegmentsByEpisode(Long id);
 
 	Collection<Podcast> getAllPodcastsByMogul(Long mogulId);
+
+	Collection<Podcast> getAllPodcastsById(List<Long> mogulIds);
 
 	Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep);
 

@@ -23,6 +23,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -535,6 +536,18 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
+	public Collection<Segment> getPodcastEpisodeSegmentsByIds(List<Long> episodeSegmentIds) {
+		if (episodeSegmentIds.isEmpty())
+			return new ArrayList<>();
+		// todo use JDBC Array and where id = ANY(?)
+		return db
+			.sql("select * from podcast_episode_segment where id in (" + CollectionUtils.join(episodeSegmentIds, ",")
+					+ ")")
+			.query(this.episodeSegmentRowMapper)
+			.list();
+	}
+
+	@Override
 	public Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description) {
 		this.ensurePodcastBelongsToMogul(currentMogulId, podcastId);
 		var uid = UUID.randomUUID().toString();
@@ -639,6 +652,17 @@ class DefaultPodcastService implements PodcastService {
 		return this.db //
 			.sql("select * from podcast p where p.mogul_id = ?")//
 			.param(mogulId)//
+			.query(this.podcastRowMapper)//
+			.list();
+	}
+
+	@Override
+	public Collection<Podcast> getAllPodcastsById(List<Long> mogulIds) {
+		if (null == mogulIds || mogulIds.isEmpty())
+			return Set.of();
+		return db//
+			.sql("select * from podcast p where p.id = any(?)")//
+			.params(new SqlArrayValue("int4", CollectionUtils.arrayFrom(mogulIds)))
 			.query(this.podcastRowMapper)//
 			.list();
 	}
