@@ -1,30 +1,28 @@
 package com.joshlong.mogul.api.compositions;
 
 import com.joshlong.mogul.api.utils.ReflectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Composition>> {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final RowMapper<Attachment> attachmentRowMapper;
 
 	private final JdbcClient db;
 
 	CompositionResultSetExtractor(AttachmentRowMapper arm, JdbcClient db) {
-		attachmentRowMapper = arm;
+		this.attachmentRowMapper = arm;
 		this.db = db;
+		Assert.notNull(this.db, "the db is null");
+		Assert.notNull(this.attachmentRowMapper, "the attachmentRowMapper is null");
 	}
 
 	@Override
@@ -37,14 +35,10 @@ class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Com
 			indx += 1;
 		}
 		if (!compositions.isEmpty()) {
-			var compositionIds = compositions.keySet().stream().map(Object::toString).collect(Collectors.joining(","));
-			var attachments = db
-				.sql("select * from composition_attachment where composition_id in (" + compositionIds + ")")
-				.query((rs1, rowNum) -> {
-					Assert.notNull(attachmentRowMapper, "the attachmentRowMapper is not null");
-					return Map.of(rs1.getLong("composition_id"),
-							Objects.requireNonNull(attachmentRowMapper.mapRow(rs1, rowNum)));
-				})
+			var attachments = db.sql("select * from composition_attachment where composition_id = any(?)")
+				.params(new SqlArrayValue("bigint", compositions.keySet().toArray()))
+				.query((rs1, rowNum) -> Map.of(rs1.getLong("composition_id"),
+						Objects.requireNonNull(this.attachmentRowMapper.mapRow(rs1, rowNum))))
 				.list();
 			for (var a : attachments) {
 				var compositionId = a.keySet().iterator().next();

@@ -16,6 +16,7 @@ import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
@@ -121,16 +122,6 @@ class DefaultPodcastService implements PodcastService {
 
 	}
 
-	private static Long[] array(Collection<Long> longs) {
-		var a = new Long[longs.size()];
-		var i = 0;
-		for (var l : longs) {
-			a[i] = l;
-			i++;
-		}
-		return a;
-	}
-
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
 
@@ -139,9 +130,8 @@ class DefaultPodcastService implements PodcastService {
 		}
 
 		var segmentResultSetExtractor = new SegmentResultSetExtractor(managedFileService::getManagedFiles);
-		var segments = db.sql(
-				"select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?) order by sequence_number ASC ")
-			.params(new SqlArrayValue("bigint", (Object[]) array(episodes)))
+		var segments = db.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ")
+			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
 		var comparator = Comparator.comparingInt(Segment::order);
@@ -156,18 +146,8 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
-
 		var all = getPodcastEpisodeSegmentsByIds(List.of(episodeId));
 		return new ArrayList<>(all);
-
-		/*
-		 * var sql =
-		 * " select * from podcast_episode_segment where podcast_episode_id = ? order by sequence_number ASC "
-		 * ; var episodeSegmentsFromDb = this.db // .sql(sql) // .params(episodeId) //
-		 * .query(this.episodeSegmentRowMapper) // .stream()//
-		 * .sorted(Comparator.comparingInt(Segment::order))// .toList(); return new
-		 * ArrayList<>(episodeSegmentsFromDb);
-		 */
 	}
 
 	private void triggerTranscription(Long mogulId, Long segmentId) {
@@ -681,7 +661,7 @@ class DefaultPodcastService implements PodcastService {
 		}
 
 		@Override
-		public Collection<Episode> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+		public Collection<Episode> extractData(@NonNull ResultSet resultSet) throws SQLException, DataAccessException {
 
 			var results = new ArrayList<Episode>();
 			var maps = new ArrayList<Map<String, Object>>();
@@ -751,7 +731,7 @@ class DefaultPodcastService implements PodcastService {
 		var map = new HashMap<Long, Episode>();
 		var idsNotInCache = CacheUtils.notPresentInCache(this.podcastEpisodesCache, episodeIds);
 		if (!idsNotInCache.isEmpty()) {
-			var idsArr = array(idsNotInCache);
+			var idsArr = idsNotInCache.toArray(Long[]::new);
 			var episodes = this.db //
 				.sql("select * from podcast_episode pe where pe.id = any(? )") //
 				.params(new SqlArrayValue("bigint", (Object[]) idsArr))
