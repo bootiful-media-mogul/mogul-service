@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.utils.jdbc;
 
+import com.joshlong.mogul.api.utils.RewindableResultSet;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,25 +8,24 @@ import org.springframework.aop.framework.ProxyFactoryBean;
 
 import java.lang.reflect.Method;
 import java.sql.ResultSet;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class ReplayableResultSets {
+/**
+ * <strong>WARNING</strong>: instances of this class are <em>not</em> thread safe!!
+ */
+public abstract class RewindableResultSets {
 
-	private static final Logger log = LoggerFactory.getLogger(ReplayableResultSets.class);
+	private static final Logger log = LoggerFactory.getLogger(RewindableResultSets.class);
 
-	public static ReplayableResultSet build(ResultSet resultSet) {
+	public static RewindableResultSet build(ResultSet resultSet) {
 		try {
 			var counter = new AtomicInteger();
 			var replay = new AtomicBoolean(false);
-			var map = new ConcurrentHashMap<Integer, Map<String, Object>>();
+			var map = new HashMap<Integer, Map<String, Object>>();
 			var pfb = new ProxyFactoryBean();
-			for (var c : Set.of(ReplayableResultSet.class, ResultSet.class, AutoCloseable.class)) {
+			for (var c : Set.of(RewindableResultSet.class)) {
 				pfb.addInterface(c);
 			}
 			pfb.setTarget(resultSet);
@@ -46,13 +46,13 @@ public abstract class ReplayableResultSets {
 					return invocation.getMethod().invoke(resultSet, arguments);
 				}
 
-				if (methodName.equals("replay")) {
+				if (methodName.equals("rewind")) {
 					replay.set(true);
 					counter.set(0);
 					return null;
 				}
 
-				var rowMap = map.computeIfAbsent(row, _ -> new ConcurrentHashMap<>());
+				var rowMap = map.computeIfAbsent(row, _ -> new HashMap<>());
 				log("Row: {}, Method: {}", row, methodName);
 				var getter = methodName.startsWith("get");
 
@@ -70,7 +70,7 @@ public abstract class ReplayableResultSets {
 				log("invoking {} with arguments {}", methodName, Arrays.toString(arguments));
 				return invocation.getMethod().invoke(resultSet, arguments);
 			});
-			return (ReplayableResultSet) pfb.getObject();
+			return (RewindableResultSet) pfb.getObject();
 		} //
 		catch (Exception e) {
 			throw new RuntimeException(e);

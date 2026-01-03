@@ -35,7 +35,6 @@ import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.function.Function;
 
@@ -662,61 +661,34 @@ class DefaultPodcastService implements PodcastService {
 
 		@Override
 		public Collection<Episode> extractData(@NonNull ResultSet resultSet) throws SQLException, DataAccessException {
+			var rewind = JdbcUtils.rewindableResultSet(resultSet);
 
-			var results = new ArrayList<Episode>();
-			var maps = new ArrayList<Map<String, Object>>();
-			var managedFiles = new HashSet<Long>();
-			while (resultSet.next()) {
-				var map = new HashMap<String, Object>();
-				map.put("id", resultSet.getLong("id"));
-				map.put("graphic_managed_file_id", resultSet.getLong("graphic_managed_file_id"));
-				map.put("produced_graphic_managed_file_id", resultSet.getLong("produced_graphic_managed_file_id"));
-				map.put("produced_audio_managed_file_id", resultSet.getLong("produced_audio_managed_file_id"));
-				map.put("podcast_id", resultSet.getLong("podcast_id"));
-				map.put("title", resultSet.getString("title"));
-				map.put("description", resultSet.getString("description"));
-				map.put("created", resultSet.getTimestamp("created"));
-				map.put("complete", resultSet.getBoolean("complete"));
-				map.put("produced_audio_assets_updated", resultSet.getTimestamp("produced_audio_assets_updated"));
-				map.put("produced_audio_updated", resultSet.getTimestamp("produced_audio_updated"));
+			// iterate through the resultset, noting all ManagedFile IDs
+			var managedFileIds = new HashSet<Long>();
+			var noOpEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
+				managedFileIds.addAll(longs);
+				// don't care it'll return null, but c'est la vie
+				return Map.of();
+			});
+			while (rewind.next()) {
+				// force memoization
+				noOpEpisodeRowMapper.mapRow(rewind, 0);
+			}
 
-				maps.add(map);
-				for (var k : map.keySet()) {
-					if (k.contains("managed_file")) {
-						managedFiles.add((Long) map.get(k));
-					}
+			// replay
+			rewind.rewind();
+			var allManagedFiles = this.managedFileService.apply(managedFileIds);
+			var resolvedEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
+				var map = new HashMap<Long, ManagedFile>();
+				for (var id : longs) {
+					map.put(id, allManagedFiles.getOrDefault(id, null));
 				}
+				return map;
+			});
+			var results = new ArrayList<Episode>();
+			while (rewind.next()) {
+				results.add(resolvedEpisodeRowMapper.mapRow(rewind, 0));
 			}
-
-			var allManagedFiles = this.managedFileService.apply(managedFiles);
-
-			for (var map : maps) {
-
-				var episodeId = (Long) map.get("id");
-				var graphicId = (Long) map.get("graphic_managed_file_id");
-				var producedGraphicId = (Long) map.get("produced_graphic_managed_file_id");
-				var producedAudioId = (Long) map.get("produced_audio_managed_file_id");
-				var graphic = allManagedFiles.get(graphicId);
-				var producedGraphic = allManagedFiles.get(producedGraphicId);
-				var producedAudio = allManagedFiles.get(producedAudioId);
-
-				var e = new Episode(//
-						episodeId, //
-						(Long) map.get("podcast_id"), //
-						(String) map.get("title"), //
-						(String) map.get("description"), //
-						(Date) map.get("created"), //
-						graphic, //
-						producedGraphic, //
-						producedAudio, //
-						(Boolean) map.get("complete"), //
-						(Timestamp) map.get("produced_audio_updated"), //
-						(Timestamp) map.get("produced_audio_assets_updated") // ,
-				);
-
-				results.add(e);
-			}
-
 			return results;
 		}
 

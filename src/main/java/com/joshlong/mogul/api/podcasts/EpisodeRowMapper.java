@@ -30,9 +30,9 @@ class EpisodeRowMapper implements RowMapper<Episode> {
 		var producedAudioId = resultSet.getLong("produced_audio_managed_file_id");
 		var list = Set.of(graphicId, producedAudioId, producedGraphicId);
 		var all = deep ? managedFileFunction.apply(list) : Map.<Long, ManagedFile>of();
-		var graphic = all.get(graphicId);
-		var producedGraphic = all.get(producedGraphicId);
-		var producedAudio = all.get(producedAudioId);
+		var graphic = all.getOrDefault(graphicId, null);
+		var producedGraphic = all.getOrDefault(producedGraphicId, null);
+		var producedAudio = all.getOrDefault(producedAudioId, null);
 
 		return new Episode(//
 				episodeId, //
