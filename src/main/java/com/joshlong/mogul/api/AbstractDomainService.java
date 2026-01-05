@@ -17,21 +17,21 @@ import java.util.Collection;
  */
 public abstract class AbstractDomainService<M, R extends DomainResolver<M, ?>> {
 
-	protected final Collection<R> repositories;
+	protected final Collection<R> resolvers;
 
-	protected AbstractDomainService(Collection<R> repositories) {
-		this.repositories = repositories;
+	protected AbstractDomainService(Collection<R> resolvers) {
+		this.resolvers = resolvers;
 	}
 
-	protected R findRepository(Class<? extends M> entityClass) {
-		return repositories.stream()
+	protected R findResolver(Class<? extends M> entityClass) {
+		return resolvers.stream()
 			.filter(repo -> repo.supports(entityClass))
 			.findFirst()
 			.orElseThrow(() -> new IllegalArgumentException("No repository found for " + entityClass.getName()));
 	}
 
 	protected <T extends M> T findEntity(Class<T> entityClass, Long key) {
-		R repository = findRepository(entityClass);
+		R repository = findResolver(entityClass);
 		return entityClass.cast(repository.find(key));
 	}
 

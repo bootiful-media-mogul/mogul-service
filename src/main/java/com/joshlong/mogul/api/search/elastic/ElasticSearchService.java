@@ -5,7 +5,6 @@ import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.SearchableResolver;
 import com.joshlong.mogul.api.SearchableResult;
-import com.joshlong.mogul.api.search.RankedSearchResult;
 import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
@@ -25,18 +24,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 
 }
 
 @Service
-class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?, ?>>
-		implements SearchService {
+class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?>> implements SearchService {
 
 	static final String INDEX_NAME = "searchables";
 
@@ -46,35 +43,11 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 
 	private final ElasticsearchOperations ops;
 
-	private final ElasticsearchClient client;
-
-	ElasticSearchService(Collection<SearchableResolver<?, ?>> resolvers, DocumentRepository documentRepository,
-			ElasticsearchOperations ops, ElasticsearchClient client) {
+	ElasticSearchService(Collection<SearchableResolver<?>> resolvers, DocumentRepository documentRepository,
+			ElasticsearchOperations ops) {
 		super(resolvers);
 		this.documentRepository = documentRepository;
-		this.client = client;
 		this.ops = ops;
-	}
-
-	@Override
-	public void reset() {
-		this.log.warn("resetting the search index!");
-		var indices = client.indices();
-		try {
-			if (indices.exists(index -> index.index(INDEX_NAME)).value()) {
-				indices.delete(index -> index.index(INDEX_NAME));
-			}
-			indices.create(index -> index.index(INDEX_NAME));
-		}
-		catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private static String resultName(Class<?> clzz) {
-		var sn = Objects.requireNonNull(clzz).getSimpleName();
-		Assert.hasText(sn, "the simple name should be non-empty!");
-		return Character.toString(sn.charAt(0)).toLowerCase() + sn.substring(1);
 	}
 
 	private static String keyFor(@Nullable Class<?> clzz) {
@@ -83,28 +56,31 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 
 	@Override
 	public <T extends Searchable> void index(T searchable) {
-		log.info("indexing for searchable {}", searchable);
+		this.log.info("indexing for searchable {}", searchable);
 		var searchableId = searchable.searchableId();
 		var clzz = keyFor(searchable.getClass());
-		var repo = findRepository(searchable.getClass());
+		var repo = findResolver(searchable.getClass());
 		Assert.notNull(repo, () -> "there's no repository for " + clzz + "!");
-		var result = repo.result(searchableId);
-		var text = result.text();
-		var title = result.title();
-		if (StringUtils.hasText(title)) {
-			var document = new Document(Long.toString(searchableId), searchableId, title, Instant.now(),
-					StringUtils.hasText(text) ? text : "", clzz);
-			this.documentRepository.save(document);
-		} //
-		else {
-			this.log.debug("we've got nothing to index for searchable {} with class {}!", searchableId, clzz);
+		var results = repo.results(List.of(searchableId));
+		if (!results.isEmpty()) {
+			var result = results.getFirst();
+			var text = result.text();
+			var title = result.title();
+			if (StringUtils.hasText(title)) {
+				var document = new Document(Long.toString(searchableId), searchableId, title, Instant.now(),
+						StringUtils.hasText(text) ? text : "", clzz);
+				this.documentRepository.save(document);
+			} //
+			else {
+				this.log.debug("we've got nothing to index for" + " searchable {} with class {}!", searchableId, clzz);
+			}
 		}
 	}
 
 	@Override
-	public Collection<RankedSearchResult> search(String shouldContain, Map<String, Object> metadata) {
-		var start = System.currentTimeMillis();
-		this.log.info("searching for {} with metadata {}", shouldContain, metadata);
+	public Collection<SearchableResult<? extends Searchable>> search(String shouldContain,
+			Map<String, Object> metadata) {
+		this.log.info("searching for [{}] with metadata {}", shouldContain, metadata);
 		var nativeQuery = NativeQuery.builder() //
 			.withQuery(q -> q //
 				.bool(b -> {
@@ -121,79 +97,60 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 			.withMaxResults(1000) //
 			.build();
 		var search = this.ops.search(nativeQuery, Document.class);
-		var elasticStop = System.currentTimeMillis();
-		var results = new ArrayList<>(this.mapResultsIntoRankedSearchResults(search));
-		var all = this.dedupeBySearchableAndType(results)
-			.stream()
-			.sorted(Comparator.comparingDouble(RankedSearchResult::rank))
-			.toList()
-			.reversed();
-		var stop = System.currentTimeMillis();
-		this.log.info("the total search for {} took {} ms. the call to network hosted Elastic alone took {} ms",
-				shouldContain, stop - start, elasticStop - start);
-		return all;
+		return this.mapDocumentsToSearchables(search);
 	}
 
-	private Collection<RankedSearchResult> mapResultsIntoRankedSearchResults(SearchHits<Document> search) {
-		var searchableIdToScore = new HashMap<Long, Float>();
-		for (var sh : search) {
-			searchableIdToScore.put(sh.getContent().searchableId(), sh.getScore());
-		}
-
-		var results = new ArrayList<RankedSearchResult>();
-		// step 1. bucket all the documents into collections based on their class
-		// step 2. keep another mapping of repository to class locally.
+	@SuppressWarnings("unchecked")
+	private List<SearchableResult<? extends Searchable>> mapDocumentsToSearchables(SearchHits<Document> search) {
+		var searchableToRank = new HashMap<Long, Float>();
 		var resultsBucketedByClass = new HashMap<Class<?>, List<Document>>();
-		var classToResolvers = new HashMap<Class<?>, SearchableResolver<?, ?>>();
+		var classToResolvers = new HashMap<Class<?>, SearchableResolver<?>>();
 		for (var doc : search) {
 			var clzz = (Class<Searchable>) ReflectionUtils.classForName(doc.getContent().className());
 			resultsBucketedByClass.computeIfAbsent(clzz, _ -> new ArrayList<>()).add(doc.getContent());
-			classToResolvers.computeIfAbsent(clzz, _ -> findRepository(clzz));
+			classToResolvers.computeIfAbsent(clzz, _ -> this.findResolver(clzz));
+			searchableToRank.put(doc.getContent().searchableId(), doc.getScore());
 		}
-
-		// step 3. call resultS(List<Long> ids )
+		var map = new HashMap<Long, ArrayList<SearchableResult<? extends Searchable>>>();
 		for (var entry : resultsBucketedByClass.entrySet()) {
 			var docs = entry.getValue();
-			var clzz = entry.getKey();
-			var ids = docs.stream().map(Document::searchableId).toList();
-			var resolver = classToResolvers.get(clzz);
-			Assert.notNull(resolver, "there must be a valid resolver for " + clzz);
-			var searchableResults = resolver.results(ids);
-			for (var sr : searchableResults) {
-				var score = searchableIdToScore.get(sr.searchableId());
-				var rankedSearchResult = this.from(clzz, score, sr);
-				results.add(rankedSearchResult);
+			var clazz = entry.getKey();
+			var searchableIds = docs.stream().map(Document::searchableId).toList();
+			var resolver = classToResolvers.get(clazz);
+			Assert.notNull(resolver, "there must be a valid resolver for " + clazz);
+			for (var rs : resolver.results(searchableIds)) {
+				map.computeIfAbsent(rs.aggregateId(), _ -> new ArrayList<>()).add(rs);
 			}
 		}
-		return results;
+		var results = new ArrayList<SearchableResult<? extends Searchable>>();
+		for (var aggregateToSearchableEntry : map.entrySet()) {
+			aggregateToSearchableEntry.getValue()
+				.stream()
+				.max(Comparator.comparing(SearchableResult::rank))
+				.ifPresent(results::add);
+		}
+		return results.stream()
+			.map((Function<SearchableResult<? extends Searchable>, SearchableResult<? extends Searchable>>) sr -> new SearchableResult<>(
+					sr.searchableId(), sr.searchable(), sr.title(), sr.text(), sr.aggregateId(), sr.context(),
+					sr.created(), searchableToRank.getOrDefault(sr.searchableId(), 0.0f), sr.type()))
+			.sorted((o1, o2) -> Float.compare(o2.rank(), o1.rank()))
+			.peek(this::log)
+			.toList();
 	}
 
-	private RankedSearchResult from(Class<?> clzz, double rank, SearchableResult<?, ?> searchableResult) {
-		return new RankedSearchResult(searchableResult.searchableId(), searchableResult.aggregate().id(),
-				searchableResult.title(), searchableResult.text(), resultName(clzz), rank, searchableResult.created());
+	private void log(SearchableResult<?> sr) {
+		if (this.log.isTraceEnabled())
+			this.log.trace("{}:{} {} {}", sr.rank(), sr.searchableId(), sr.title(), sr.context());
 	}
 
 	@SuppressWarnings("unchecked")
 	@ApplicationModuleListener
 	void indexForSearchOnTranscriptCompletion(TranscriptRecordedEvent event) {
 		var aClazz = (Class<? extends Searchable>) event.type();
-		var repo = this.findRepository(aClazz);
+		var repo = this.findResolver(aClazz);
 		var transcribable = Objects.requireNonNull(repo).find(event.transcribableId());
 		Assert.notNull(transcribable, "the transcribable id " + event.transcribableId() + " was null!");
 		this.index(transcribable);
-	}
-
-	private List<RankedSearchResult> dedupeBySearchableAndType(List<RankedSearchResult> results) {
-		var all = new ArrayList<RankedSearchResult>();
-		var map = new ConcurrentHashMap<Long, List<RankedSearchResult>>();
-		for (var rsr : results) {
-			map.computeIfAbsent(rsr.aggregateId(), _ -> new ArrayList<>()).add(rsr);
-		}
-		var comparator = Comparator.comparingDouble(RankedSearchResult::rank);
-		for (var k : map.keySet()) {
-			map.get(k).stream().max(comparator).ifPresent(all::add);
-		}
-		return all.stream().toList();
 	}
 
 }

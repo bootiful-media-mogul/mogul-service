@@ -287,10 +287,11 @@ class DefaultPodcastService implements PodcastService {
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
 		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);
 		var results = this.db//
-			.sql(" select * from podcast_episode pe where pe.podcast_id  = ? ") //
+			.sql("  select * from podcast_episode pe where pe.podcast_id  = ? ") //
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
+		log.info("getting episodes (deep? {}) for podcast {} returned {} episodes", deep, podcastId, results.size());
 		results.sort(this.episodeComparator);
 		return results;
 	}
@@ -445,32 +446,71 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public void deletePodcastEpisode(Long episodeId) {
-		var segmentsForEpisode = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
-		if (segmentsForEpisode == null)
-			segmentsForEpisode = new ArrayList<>();
 
-		var episode = this.getPodcastEpisodeById(episodeId);
+		try {
+			this.invalidatePodcastEpisodeCache(episodeId);
 
-		var ids = new HashSet<Long>();
+			this.log.info("deleting episode with id = {}", episodeId);
+			var segmentsForEpisode = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
+			if (segmentsForEpisode == null)
+				segmentsForEpisode = new ArrayList<>();
 
-		for (var managedFile : new ManagedFile[] { episode.graphic(), episode.producedAudio(),
-				episode.producedGraphic() })
-			if (managedFile != null)
-				ids.add(managedFile.id());
+			var episode = this.getPodcastEpisodeById(episodeId);
+			var podcastId = episode.podcastId();
+			var ids = new HashSet<Long>();
 
-		for (var segment : segmentsForEpisode)
-			for (var managedFile : new ManagedFile[] { segment.audio(), segment.producedAudio() })
+			for (var managedFile : new ManagedFile[] { episode.graphic(), episode.producedAudio(),
+					episode.producedGraphic() })
 				if (managedFile != null)
 					ids.add(managedFile.id());
 
-		this.db.sql("delete from podcast_episode_segment where podcast_episode_id  = ?").param(episode.id()).update();
-		this.db.sql("delete from podcast_episode where id = ?").param(episode.id()).update();
+			for (var segment : segmentsForEpisode)
+				for (var managedFile : new ManagedFile[] { segment.audio(), segment.producedAudio() })
+					if (managedFile != null)
+						ids.add(managedFile.id());
 
-		for (var managedFileId : ids)
-			this.managedFileService.deleteManagedFile(managedFileId);
+			var deleted = this.db.sql("delete from podcast_episode_segment where podcast_episode_id  = ?")
+				.param(episodeId)
+				.update();
+			this.log.info("deleted {} segments for episode {}", deleted, episodeId);
+			this.db.sql("delete from podcast_episode where id = ?").param(episode.id()).update();
 
-		this.invalidatePodcastEpisodeCache(episodeId);
-		this.publisher.publishEvent(new PodcastEpisodeDeletedEvent(episode));
+			for (var managedFileId : ids) {
+				// this.debug(managedFileId);
+				this.managedFileService.deleteManagedFile(managedFileId);
+			}
+			this.invalidatePodcastCache(podcastId);
+			this.invalidatePodcastEpisodeCache(episodeId);
+			this.publisher.publishEvent(new PodcastEpisodeDeletedEvent(episode));
+
+			// does the episode still exist?
+			var refreshedEpisode = this.getPodcastEpisodeById(episodeId);
+
+			this.log.debug("got the episode after deletion? {}", refreshedEpisode);
+		} //
+		catch (Throwable throwable) {
+			this.log.error("failed to delete episode with id = {}", episodeId, throwable);
+		}
+	}
+
+	private void debug(Long managedFileId) {
+		var refs = this.db.sql("""
+				SELECT 'segment' as source, id, podcast_episode_id
+				FROM podcast_episode_segment
+				WHERE segment_audio_managed_file_id = ? OR produced_segment_audio_managed_file_id = ?
+				UNION ALL
+				SELECT 'episode' as source, id, id as podcast_episode_id
+				FROM podcast_episode
+				WHERE graphic_managed_file_id = ?
+				   OR produced_audio_managed_file_id = ?
+				   OR produced_graphic_managed_file_id = ?
+				""")
+			.params(managedFileId, managedFileId, managedFileId, managedFileId, managedFileId)
+			.query((rs, row) -> rs.getString("source") + " id=" + rs.getLong("id") + " episode="
+					+ rs.getLong("podcast_episode_id"))
+			.list();
+
+		this.log.info("Before deleting managed_file {}, still referenced by: {}", managedFileId, refs);
 	}
 
 	@Override

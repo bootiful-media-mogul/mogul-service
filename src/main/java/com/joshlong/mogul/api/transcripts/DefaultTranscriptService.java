@@ -184,7 +184,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	@Override
 	public <T extends Transcribable> TranscribableResolver<T> resolverFor(Class<T> clazz) {
-		return (TranscribableResolver<T>) this.findRepository(clazz);
+		return (TranscribableResolver<T>) this.findResolver(clazz);
 	}
 
 	@ApplicationModuleListener

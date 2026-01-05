@@ -2,12 +2,13 @@ package com.joshlong.mogul.api.podcasts.search;
 
 import com.joshlong.mogul.api.AbstractSearchableResolver;
 import com.joshlong.mogul.api.SearchableResult;
-import com.joshlong.mogul.api.SearchableResultAggregate;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.podcasts.Episode;
+import com.joshlong.mogul.api.podcasts.Podcast;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
 import com.joshlong.mogul.api.transcripts.TranscriptService;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -18,7 +19,6 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 @Configuration
 @ImportRuntimeHints(SegmentSearchConfiguration.Hints.class)
@@ -27,8 +27,9 @@ class SegmentSearchConfiguration {
 	static class Hints implements RuntimeHintsRegistrar {
 
 		@Override
-		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-			hints.reflection().registerType(Segment.class, MemberCategory.values());
+		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			for (var c : Set.of(Segment.class, Podcast.class, Episode.class))
+				hints.reflection().registerType(c, MemberCategory.values());
 		}
 
 	}
@@ -41,7 +42,7 @@ class SegmentSearchConfiguration {
 
 }
 
-class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Episode> {
+class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 
 	private final PodcastService podcastService;
 
@@ -60,15 +61,10 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Epis
 	}
 
 	@Override
-	public SearchableResult<Segment, Episode> result(Long searchableId) {
-		var all = this.results(List.of(searchableId));
-		if (all.isEmpty())
-			return null;
-		return all.getFirst();
-	}
+	public List<SearchableResult<Segment>> results(List<Long> searchableIds) {
+		if (searchableIds.isEmpty())
+			return Collections.emptyList();
 
-	@Override
-	public List<SearchableResult<Segment, Episode>> results(List<Long> searchableIds) {
 		var segments = podcastService.getPodcastEpisodeSegmentsByIds(searchableIds);
 		var episodeIds = new HashSet<Long>();
 		for (var segment : segments) {
@@ -77,7 +73,7 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Epis
 		// now we load all the episodes and correlate them back to their episode
 		var episodes = podcastService.getAllPodcastEpisodesByIds(episodeIds);
 		// now we need to load all the podcasts in a single batch to deduce the mogul
-		var podcastIds = episodes.stream().map(Episode::podcastId).collect(Collectors.toList());
+		var podcastIds = episodes.stream().map(Episode::podcastId).toList();
 		var podcasts = podcastService.getAllPodcastsById(podcastIds);
 		var segmentsToEpisodes = new HashMap<Segment, Episode>();
 		for (var s : segments) {
@@ -86,7 +82,7 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Epis
 				.findFirst()
 				.ifPresent(it -> segmentsToEpisodes.put(s, it));
 		}
-		var results = new ArrayList<SearchableResult<Segment, Episode>>();
+		var results = new ArrayList<SearchableResult<Segment>>();
 		var mogulId = podcasts.iterator().next().mogulId();
 		var transcribableIds = segments.stream().map(s -> (Transcribable) s).toList();
 		var mapOfTranscripts = this.transcriptLoader.apply(mogulId, transcribableIds);
@@ -99,22 +95,15 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment, Epis
 		return results;
 	}
 
-	private SearchableResult<Segment, Episode> buildResultFor(Segment segment, Episode episode, String transcript) {
-		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
-		return new SearchableResult<>(segment.searchableId(), segment, episode.title(), transcript,
-				episodeSearchableResult, Map.of("episodeId", episode.id()), episode.created());
+	private SearchableResult<Segment> buildResultFor(Segment segment, Episode episode, String transcript) {
+		var context = Map.<String, Object>of("episodeId", episode.id(), "segmentId", segment.id(), "podcastId",
+				episode.podcastId());
+		return new SearchableResult<>(segment.searchableId(), segment, episode.title(), transcript, episode.id(),
+				context, episode.created(), 0, type(Segment.class));
 	}
 
-	@Override
-	public SearchableResult<Segment, Episode> result(Segment searchable) {
-		var segment = this.podcastService.getPodcastEpisodeSegmentById(searchable.searchableId());
-		var episode = this.podcastService.getPodcastEpisodeById(segment.episodeId());
-		var mogul = this.podcastService.getPodcastById(episode.podcastId()).mogulId();
-		var episodeSearchableResult = new SearchableResultAggregate<>(episode.id(), episode);
-		var transcribableStringMap = this.transcriptLoader.apply(mogul, List.of(searchable));
-		var resolved = transcribableStringMap.values().iterator().next();
-		return new SearchableResult<>(searchable.searchableId(), searchable, episode.title(), resolved,
-				episodeSearchableResult, Map.of("episodeId", episode.id()), episode.created());
+	private static String type(@NonNull Class<?> clzz) {
+		return (clzz.getSimpleName().charAt(0) + "").toLowerCase() + clzz.getSimpleName().substring(1);
 	}
 
 }

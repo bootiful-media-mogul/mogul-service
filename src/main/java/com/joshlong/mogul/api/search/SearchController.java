@@ -1,9 +1,16 @@
 package com.joshlong.mogul.api.search;
 
+import com.joshlong.mogul.api.Searchable;
+import com.joshlong.mogul.api.SearchableResult;
+import com.joshlong.mogul.api.utils.DateUtils;
+import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
@@ -16,9 +23,25 @@ class SearchController {
 		this.searchService = searchService;
 	}
 
+	@SchemaMapping
+	OffsetDateTime created(SearchableResult<?> rankedSearchResult) {
+		return DateUtils.forDate(rankedSearchResult.created());
+	}
+
+	@SchemaMapping
+	String context(SearchableResult<?> result) {
+		return JsonUtils.write(result.context());
+	}
+
 	@QueryMapping
-	Collection<RankedSearchResult> search(@Argument String query, @Argument Map<String, Object> metadata) {
-		return this.searchService.search(query, metadata);
+	Collection<SearchableResult<? extends Searchable>> search(@Argument String query,
+			@Argument Map<String, Object> metadata) {
+		var results = this.searchService.search(query, metadata);
+
+		if (results == null)
+			return new ArrayList<>();
+
+		return results;
 	}
 
 }

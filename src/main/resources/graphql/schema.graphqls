@@ -181,13 +181,14 @@ type AyrsharePublicationComposition {
 }
 
 
-type RankedSearchResult {
+type SearchableResult {
     aggregateId: Int
     searchableId: Int
     title: String
     description: String
     type: String
     rank: Float
+    context : String
     created: DateTime
 }
 
@@ -198,7 +199,7 @@ type Query {
     jobs : [Job]
 
     # search
-    search(query: String, metadata: JSON): [RankedSearchResult]
+    search(query: String, metadata: JSON): [SearchableResult]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 

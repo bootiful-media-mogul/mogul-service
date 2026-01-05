@@ -78,8 +78,10 @@ public abstract class RewindableResultSets {
 	}
 
 	private static void log(String msg, Object... params) {
-		if (log.isDebugEnabled()) {
-			log.debug(msg, params);
+		if (true)
+			return;
+		if (log.isTraceEnabled()) {
+			log.trace(msg, params);
 		}
 	}
 
