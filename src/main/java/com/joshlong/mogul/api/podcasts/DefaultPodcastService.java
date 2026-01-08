@@ -81,46 +81,6 @@ class DefaultPodcastService implements PodcastService {
 		this.podcastRowMapper = new PodcastRowMapper();
 	}
 
-	static class SegmentResultSetExtractor implements ResultSetExtractor<List<Segment>> {
-
-		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction;
-
-		SegmentResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction) {
-			this.managedFileFunction = managedFileFunction;
-		}
-
-		@Override
-		public List<Segment> extractData(ResultSet rs) throws SQLException, DataAccessException {
-
-			var list = new ArrayList<Map<String, Object>>();
-			var managedFileIds = new HashSet<Long>();
-
-			while (rs.next()) {
-				var segmentAudioManagedFileId = rs.getLong("segment_audio_managed_file_id");
-				var segmentAudioManagedFileId1 = rs.getLong("produced_segment_audio_managed_file_id");
-				managedFileIds.add(segmentAudioManagedFileId);
-				managedFileIds.add(segmentAudioManagedFileId1);
-				list.add(Map.of("podcast_episode_id", rs.getLong("podcast_episode_id"), //
-						"id", rs.getLong("id"), "segment_audio_managed_file_id", segmentAudioManagedFileId,
-						"produced_segment_audio_managed_file_id", segmentAudioManagedFileId1, "cross_fade_duration",
-						rs.getLong("cross_fade_duration"), "name", rs.getString("name"), "sequence_number",
-						rs.getInt("sequence_number")));
-			}
-
-			var managedFileMap = managedFileFunction.apply(managedFileIds);
-			var result = new ArrayList<Segment>();
-			for (var m : list) {
-				result.add(new Segment((Long) m.get("podcast_episode_id"), (Long) m.get("id"),
-						managedFileMap.get((Long) m.get("segment_audio_managed_file_id")),
-						managedFileMap.get((Long) m.get("produced_segment_audio_managed_file_id")),
-						(Long) m.get("cross_fade_duration"), (String) m.get("name"),
-						(Integer) m.get("sequence_number")));
-			}
-			return result;
-		}
-
-	}
-
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
 
@@ -133,20 +93,27 @@ class DefaultPodcastService implements PodcastService {
 			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
-		var comparator = Comparator.comparingInt(Segment::order);
+
 		for (var s : segments) {
 			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
 		}
 		for (var entry : episodeToSegmentsMap.entrySet()) {
-			entry.getValue().sort(comparator);
+			orderedSegments(entry.getValue());
 		}
 		return episodeToSegmentsMap;
 	}
 
+	private List<Segment> orderedSegments(List<Segment> segments) {
+		segments.sort(Comparator.comparingInt(Segment::order));
+		return segments;
+	}
+
 	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
-		var all = getPodcastEpisodeSegmentsByIds(List.of(episodeId));
-		return new ArrayList<>(all);
+		return this.orderedSegments(db.sql("select * from podcast_episode_segment where podcast_episode_id = ? ") //
+			.param(episodeId)
+			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles)));
+
 	}
 
 	private void triggerTranscription(Long mogulId, Long segmentId) {
@@ -376,7 +343,7 @@ class DefaultPodcastService implements PodcastService {
 
 	private void moveEpisodeSegment(Long episodeId, Long segmentId, int position) {
 		var segments = this.getPodcastEpisodeSegmentsByEpisode(episodeId);
-		var segment = this.getPodcastEpisodeSegmentById(segmentId);
+		var segment = CollectionUtils.firstOrNull(this.getPodcastEpisodeSegmentsByIds(List.of(segmentId)));
 		var positionOfSegment = segments.indexOf(segment);
 		var newPositionOfSegment = positionOfSegment + position;
 		if (newPositionOfSegment < 0 || newPositionOfSegment > (segments.size() - 1)) {
@@ -386,10 +353,11 @@ class DefaultPodcastService implements PodcastService {
 		segments.remove(segment);
 		segments.add(newPositionOfSegment, segment);
 		this.reorderSegments(segments);
-		var epId = this.getPodcastEpisodeSegmentById(segmentId).episodeId();
+		// CollectionUtils.firstOrNull(
+		// this.getPodcastEpisodeSegmentsByIds(List.of(segmentId)));
 		this.markAssetsDirty(episodeId);
-		this.invalidatePodcastEpisodeCache(epId);
-		var ep = this.getPodcastEpisodeById(epId);
+		this.invalidatePodcastEpisodeCache(episodeId);
+		var ep = this.getPodcastEpisodeById(episodeId);
 		this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(ep));
 	}
 
@@ -413,7 +381,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public void deletePodcastEpisodeSegment(Long episodeSegmentId) {
-		var segment = this.getPodcastEpisodeSegmentById(episodeSegmentId);
+		var segment = CollectionUtils.firstOrNull(this.getPodcastEpisodeSegmentsByIds(List.of(episodeSegmentId)));
 		Assert.state(segment != null, "you must specify a valid " + Segment.class.getName());
 		var managedFilesToDelete = Set.of(segment.audio().id(), segment.producedAudio().id());
 		this.markPodcastEpisodeBySegmentAssetsDirty(episodeSegmentId);
@@ -582,11 +550,12 @@ class DefaultPodcastService implements PodcastService {
 		this.refreshPodcastEpisodeCompleteness(episodeId);
 		this.markAssetsDirty(episodeId);
 		this.invalidatePodcastEpisodeCache(episodeId);
-		return this.getPodcastEpisodeSegmentById(id.longValue());
+		return CollectionUtils.firstOrNull(this.getPodcastEpisodeSegmentsByIds(List.of(id.longValue())));
 	}
 
 	private void markPodcastEpisodeBySegmentAssetsDirty(Long podcastEpisodeSegmentId) {
-		var pes = this.db.sql("select pes.podcast_episode_id pid from podcast_episode_segment pes  where pes.id = ?")
+		var pes = this.db //
+			.sql("select pes.podcast_episode_id pid from podcast_episode_segment pes  where pes.id = ? ") //
 			.params(podcastEpisodeSegmentId)
 			.query((rs, _) -> rs.getLong("pid"))
 			.single();
@@ -605,18 +574,6 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public Segment getPodcastEpisodeSegmentById(Long episodeSegmentId) {
-		var list = this.db//
-			.sql("select * from podcast_episode_segment where id =?")//
-			.params(episodeSegmentId)
-			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles));
-		if (list.isEmpty())
-			return null;
-		return list.getFirst();
-
-	}
-
-	@Override
 	public Collection<Segment> getPodcastEpisodeSegmentsByIds(List<Long> episodeSegmentIds) {
 		if (episodeSegmentIds.isEmpty())
 			return new ArrayList<>();
@@ -624,9 +581,12 @@ class DefaultPodcastService implements PodcastService {
 		for (var i = 0; i < episodeSegmentIds.size(); i++) {
 			arr[i] = episodeSegmentIds.get(i);
 		}
-		return db.sql("select * from podcast_episode_segment where id = any(?) ") //
+		var segmentList = db.sql("select * from podcast_episode_segment where id = any(?) ") //
 			.params(new SqlArrayValue("bigint", (Object[]) arr))//
 			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles));
+		this.log.info("segments returned for episode IDs {}: {}", CollectionUtils.join(episodeSegmentIds, ","),
+				segmentList.size());
+		return segmentList;
 	}
 
 	@Override
@@ -691,49 +651,6 @@ class DefaultPodcastService implements PodcastService {
 		}
 	}
 
-	static class EpisodeResultSetExtractor implements ResultSetExtractor<Collection<Episode>> {
-
-		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService;
-
-		EpisodeResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService) {
-			this.managedFileService = managedFileService;
-		}
-
-		@Override
-		public Collection<Episode> extractData(@NonNull ResultSet resultSet) throws SQLException, DataAccessException {
-			var rewind = JdbcUtils.rewindableResultSet(resultSet);
-
-			// iterate through the resultset, noting all ManagedFile IDs
-			var managedFileIds = new HashSet<Long>();
-			var noOpEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
-				managedFileIds.addAll(longs);
-				// don't care it'll return null, but c'est la vie
-				return Map.of();
-			});
-			while (rewind.next()) {
-				// force memoization
-				noOpEpisodeRowMapper.mapRow(rewind, 0);
-			}
-
-			// replay
-			rewind.rewind();
-			var allManagedFiles = this.managedFileService.apply(managedFileIds);
-			var resolvedEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
-				var map = new HashMap<Long, ManagedFile>();
-				for (var id : longs) {
-					map.put(id, allManagedFiles.getOrDefault(id, null));
-				}
-				return map;
-			});
-			var results = new ArrayList<Episode>();
-			while (rewind.next()) {
-				results.add(resolvedEpisodeRowMapper.mapRow(rewind, 0));
-			}
-			return results;
-		}
-
-	}
-
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
 		this.log.info("getting episodes for episode ids(length {}) {}", episodeIds.size(), episodeIds);
@@ -795,6 +712,89 @@ class DefaultPodcastService implements PodcastService {
 			.params(new SqlArrayValue("bigint", (Object[]) idsArray))
 			.query(this.podcastRowMapper)//
 			.list();
+	}
+
+	static class SegmentResultSetExtractor implements ResultSetExtractor<List<Segment>> {
+
+		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction;
+
+		SegmentResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileFunction) {
+			this.managedFileFunction = managedFileFunction;
+		}
+
+		@Override
+		public List<Segment> extractData(ResultSet rs) throws SQLException, DataAccessException {
+
+			var list = new ArrayList<Map<String, Object>>();
+			var managedFileIds = new HashSet<Long>();
+
+			while (rs.next()) {
+				var segmentAudioManagedFileId = rs.getLong("segment_audio_managed_file_id");
+				var segmentAudioManagedFileId1 = rs.getLong("produced_segment_audio_managed_file_id");
+				managedFileIds.add(segmentAudioManagedFileId);
+				managedFileIds.add(segmentAudioManagedFileId1);
+				list.add(Map.of("podcast_episode_id", rs.getLong("podcast_episode_id"), //
+						"id", rs.getLong("id"), "segment_audio_managed_file_id", segmentAudioManagedFileId,
+						"produced_segment_audio_managed_file_id", segmentAudioManagedFileId1, "cross_fade_duration",
+						rs.getLong("cross_fade_duration"), "name", rs.getString("name"), "sequence_number",
+						rs.getInt("sequence_number")));
+			}
+
+			var managedFileMap = managedFileFunction.apply(managedFileIds);
+			var result = new ArrayList<Segment>();
+			for (var m : list) {
+				result.add(new Segment((Long) m.get("podcast_episode_id"), (Long) m.get("id"),
+						managedFileMap.get((Long) m.get("segment_audio_managed_file_id")),
+						managedFileMap.get((Long) m.get("produced_segment_audio_managed_file_id")),
+						(Long) m.get("cross_fade_duration"), (String) m.get("name"),
+						(Integer) m.get("sequence_number")));
+			}
+			return result;
+		}
+
+	}
+
+	static class EpisodeResultSetExtractor implements ResultSetExtractor<Collection<Episode>> {
+
+		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService;
+
+		EpisodeResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService) {
+			this.managedFileService = managedFileService;
+		}
+
+		@Override
+		public Collection<Episode> extractData(@NonNull ResultSet resultSet) throws SQLException, DataAccessException {
+			var rewind = JdbcUtils.rewindableResultSet(resultSet);
+
+			// iterate through the resultset, noting all ManagedFile IDs
+			var managedFileIds = new HashSet<Long>();
+			var noOpEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
+				managedFileIds.addAll(longs);
+				// don't care it'll return null, but c'est la vie
+				return Map.of();
+			});
+			while (rewind.next()) {
+				// force memoization
+				noOpEpisodeRowMapper.mapRow(rewind, 0);
+			}
+
+			// replay
+			rewind.rewind();
+			var allManagedFiles = this.managedFileService.apply(managedFileIds);
+			var resolvedEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
+				var map = new HashMap<Long, ManagedFile>();
+				for (var id : longs) {
+					map.put(id, allManagedFiles.getOrDefault(id, null));
+				}
+				return map;
+			});
+			var results = new ArrayList<Episode>();
+			while (rewind.next()) {
+				results.add(resolvedEpisodeRowMapper.mapRow(rewind, 0));
+			}
+			return results;
+		}
+
 	}
 
 }

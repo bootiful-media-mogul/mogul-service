@@ -21,8 +21,6 @@ public interface PodcastService {
 
 	void deletePodcastEpisodeSegment(Long episodeSegmentId);
 
-	Segment getPodcastEpisodeSegmentById(Long episodeSegmentId);
-
 	Collection<Segment> getPodcastEpisodeSegmentsByIds(List<Long> episodeSegmentIds);
 
 	Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);

@@ -2,10 +2,12 @@ package com.joshlong.mogul.api.podcasts;
 
 import com.joshlong.mogul.api.AbstractTranscribableResolver;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -28,7 +30,8 @@ class SegmentTranscribableResolver extends AbstractTranscribableResolver<Segment
 
 	@Override
 	public Segment find(Long transcribableKey) {
-		return this.podcastService.getPodcastEpisodeSegmentById(transcribableKey);
+		return CollectionUtils
+			.firstOrNull(this.podcastService.getPodcastEpisodeSegmentsByIds(List.of(transcribableKey)));
 	}
 
 	@Override

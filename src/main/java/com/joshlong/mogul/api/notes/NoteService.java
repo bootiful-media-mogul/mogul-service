@@ -77,8 +77,8 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 		var newNote = new Note(mogulId, null, payloadKeyAsJson, payload.getClass(), new Date(), url, note);
 		var kg = new GeneratedKeyHolder();
 		db.sql("""
-				    insert into note (mogul_id, created, payload, payload_class, url, note)
-				    values (?, ?, ?, ?, ?, ?)
+				 insert into note (mogul_id, created, payload, payload_class, url, note)
+				 values (?, ?, ?, ?, ?, ?)
 				""")
 			.params(mogulId, newNote.created(), newNote.payload(), newNote.payloadClass().getName(),
 					url == null ? null : url.toString(), note)

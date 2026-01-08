@@ -24,6 +24,12 @@ import java.util.function.BiFunction;
 @ImportRuntimeHints(SegmentSearchConfiguration.Hints.class)
 class SegmentSearchConfiguration {
 
+	@Bean
+	SegmentSearchableResolver segmentSearchableResolver(TranscriptService transcriptService,
+			PodcastService podcastService) {
+		return new SegmentSearchableResolver(Segment.class, podcastService, transcriptService::readTranscripts);
+	}
+
 	static class Hints implements RuntimeHintsRegistrar {
 
 		@Override
@@ -32,12 +38,6 @@ class SegmentSearchConfiguration {
 				hints.reflection().registerType(c, MemberCategory.values());
 		}
 
-	}
-
-	@Bean
-	SegmentSearchableResolver segmentSearchableResolver(TranscriptService transcriptService,
-			PodcastService podcastService) {
-		return new SegmentSearchableResolver(Segment.class, podcastService, transcriptService::readTranscripts);
 	}
 
 }
@@ -55,9 +55,16 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 		this.transcriptLoader = transcriptLoader;
 	}
 
+	private static String type(@NonNull Class<?> clzz) {
+		return (clzz.getSimpleName().charAt(0) + "").toLowerCase() + clzz.getSimpleName().substring(1);
+	}
+
 	@Override
 	public Segment find(Long searchableId) {
-		return this.podcastService.getPodcastEpisodeSegmentById(searchableId);
+		var s = this.podcastService.getPodcastEpisodeSegmentsByIds(List.of(searchableId));
+		if (s.size() == 1)
+			return s.iterator().next();
+		return null;
 	}
 
 	@Override
@@ -100,10 +107,6 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 				episode.podcastId());
 		return new SearchableResult<>(segment.searchableId(), segment, episode.title(), transcript, episode.id(),
 				context, episode.created(), 0, type(Segment.class));
-	}
-
-	private static String type(@NonNull Class<?> clzz) {
-		return (clzz.getSimpleName().charAt(0) + "").toLowerCase() + clzz.getSimpleName().substring(1);
 	}
 
 }
