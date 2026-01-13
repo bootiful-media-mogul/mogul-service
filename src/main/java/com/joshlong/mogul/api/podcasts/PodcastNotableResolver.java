@@ -6,13 +6,16 @@ import org.springframework.stereotype.Component;
 @Component
 class PodcastNotableResolver extends AbstractNotableResolver<Podcast> {
 
-	PodcastNotableResolver() {
+	private final PodcastService podcastService;
+
+	PodcastNotableResolver(PodcastService podcastService) {
 		super(Podcast.class);
+		this.podcastService = podcastService;
 	}
 
 	@Override
 	public Podcast find(Long key) {
-		return null;
+		return this.podcastService.getPodcastById(key);
 	}
 
 }
