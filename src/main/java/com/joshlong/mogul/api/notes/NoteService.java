@@ -8,6 +8,8 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import com.joshlong.mogul.api.utils.UriUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -46,6 +48,8 @@ public interface NoteService {
 @Transactional
 class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<?>> implements NoteService {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	private final RowMapper<Note> noteRowMapper = (rs, _) -> new Note(rs.getLong("mogul_id"), rs.getLong("id"),
 			rs.getString("payload"), ReflectionUtils.classForName(rs.getString("payload_class")),
 			new java.util.Date(rs.getTimestamp("created").getTime()), UriUtils.uri(rs.getString("url")),
@@ -63,7 +67,12 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 
 	@Override
 	public <T extends Notable> T resolveNotable(Long mogulId, Long id, String clazz) {
-		return this.resolveNotable(mogulId, id, this.classForType(clazz));
+		var type = (Class<? extends T>) this.classForType(clazz);
+
+		this.log.debug("Resolving notable entity of type {} for mogulId {} and id {}", type.getSimpleName(), mogulId,
+				id);
+
+		return this.resolveNotable(mogulId, id, type);
 	}
 
 	@Override
@@ -88,16 +97,19 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz) {
-		return this.notes(mogulId, this.resolveNotable(mogulId, id, clazz));
+		var payload = this.resolveNotable(mogulId, id, clazz);
+		return this.notes(mogulId, payload);
 	}
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, T payload) {
-		return this.db //
+		var list = this.db //
 			.sql("select * from note where payload = ? and payload_class = ? order by created ")//
 			.params(JsonUtils.write(payload.notableKey()), payload.getClass().getName()) //
 			.query(this.noteRowMapper)//
 			.list();
+		log.info("found {} notes for {} of type {}", list.size(), payload.notableKey(), payload.getClass().getName());
+		return list;
 	}
 
 	@Override

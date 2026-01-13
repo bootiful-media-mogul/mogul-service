@@ -131,8 +131,8 @@ type NotificationEvent {
 type Mutation {
 
     createNote(type:String, id:Int, note:String): Boolean
-    deleteNote (type:String, id:Int) : Boolean
-    updateNote( id :Int, note:String): Boolean
+    deleteNote(id:Int) : Boolean
+    updateNote(id:Int, note:String): Boolean
 
 
     # jobs

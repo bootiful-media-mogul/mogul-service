@@ -1,7 +1,6 @@
-package com.joshlong.mogul.api;
+package com.joshlong.mogul.api.mogul;
 
-import com.joshlong.mogul.api.mogul.Mogul;
-import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.AbstractNotableResolver;
 import org.springframework.stereotype.Component;
 
 @Component

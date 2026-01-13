@@ -44,19 +44,16 @@ class NotesController {
 		var mogul = this.mogulService.getCurrentMogul();
 		var payload = this.noteService.resolveNotable(mogul.id(), id, type);
 		var newNote = this.noteService.create(mogul.id(), payload, null, note);
-		this.log.info("created note {} for {} of type {}", newNote.id(), id, type);
-		return true;
+		return newNote != null;
 	}
 
 	@QueryMapping
 	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id) {
 		var currentMogul = this.mogulService.getCurrentMogul();
-		var notes = this.noteService.notes(currentMogul.id(), id, type)//
+		return this.noteService.notes(currentMogul.id(), id, type)//
 			.stream()//
 			.map(note -> this.note(type, note))//
 			.toList();
-		this.log.info("found {} notes for {} of type {}", notes.size(), id, type);
-		return notes;
 	}
 
 	private ClientNote note(String type, Note note) {
