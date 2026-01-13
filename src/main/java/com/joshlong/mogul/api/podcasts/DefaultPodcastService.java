@@ -338,7 +338,6 @@ class DefaultPodcastService implements PodcastService {
 			.sql("update podcast_episode_segment set sequence_number = ? where id = ?")
 			.params(order, episodeSegmentId)
 			.update();
-
 	}
 
 	private void moveEpisodeSegment(Long episodeId, Long segmentId, int position) {

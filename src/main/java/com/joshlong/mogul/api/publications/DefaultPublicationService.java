@@ -7,7 +7,6 @@ import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
@@ -43,8 +42,6 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 	private final ApplicationEventPublisher publisher;
 
-	private final Map<String, Class<?>> publishableClasses = new ConcurrentHashMap<>();
-
 	DefaultPublicationService(JdbcClient db, MogulService mogulService, TextEncryptor textEncryptor,
 			TransactionTemplate tt, Function<SettingsLookup, Map<String, String>> settingsLookup,
 			Map<String, PublishableResolver<?>> resolvers, ApplicationEventPublisher publisher
@@ -57,13 +54,6 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		this.mogulService = mogulService;
 		this.textEncryptor = textEncryptor;
 		this.publisher = publisher;
-		for (var r : resolvers.entrySet()) {
-			var resolver = r.getValue();
-			for (var cl : ReflectionUtils.genericsFor(resolver.getClass())) {
-				this.publishableClasses.put(cl.getSimpleName().toLowerCase(), cl);
-			}
-		}
-
 	}
 
 	/*
@@ -75,16 +65,9 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		return new PublicationRowMapper(this.db, this.textEncryptor);
 	}
 
-	private <T extends Publishable> Class<T> publishableClassForTypeName(String type) {
-		var match = (Class<T>) this.publishableClasses.getOrDefault(type.toLowerCase(), null);
-		Assert.notNull(match, "couldn't find a matching class for type [" + type + "]");
-		return match;
-	}
-
 	@Override
 	public <T extends Publishable> T resolvePublishable(Long mogulId, Long id, String clazz) {
-		var type = this.publishableClassForTypeName(clazz);
-		return (T) this.resolvePublishable(mogulId, id, type);
+		return (T) this.resolvePublishable(mogulId, id, this.classForType(clazz));
 	}
 
 	@Override
@@ -230,7 +213,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, String clazz) {
-		return this.getPublicationsByPublicationKeyAndClass(publicationKey, this.publishableClassForTypeName(clazz));
+		return this.getPublicationsByPublicationKeyAndClass(publicationKey, this.classForType(clazz));
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {

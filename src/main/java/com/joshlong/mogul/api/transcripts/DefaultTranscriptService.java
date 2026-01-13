@@ -27,6 +27,8 @@ import java.util.Map;
 class DefaultTranscriptService extends AbstractDomainService<Transcribable, TranscribableResolver<?>>
 		implements TranscriptService {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	private final JdbcClient db;
 
 	private final TranscriptRowMapper transcribableRowMapper;
@@ -180,8 +182,6 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 		return map;
 	}
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	@Override
 	public <T extends Transcribable> TranscribableResolver<T> resolverFor(Class<T> clazz) {
 		return (TranscribableResolver<T>) this.findResolver(clazz);
@@ -202,7 +202,7 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 		this.notifyClient(event);
 	}
 
-	void recordTranscript(TranscriptCompletedEvent event) {
+	private void recordTranscript(TranscriptCompletedEvent event) {
 		var aClass = (Class<? extends Transcribable>) (event.type());
 		var transcribableRepository = this.resolverFor(aClass);
 		var transcribable = transcribableRepository.find(event.transcribableId());

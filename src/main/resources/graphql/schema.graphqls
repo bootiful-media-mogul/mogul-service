@@ -130,6 +130,12 @@ type NotificationEvent {
 
 type Mutation {
 
+    createNote(type:String, id:Int, note:String): Boolean
+    deleteNote (type:String, id:Int) : Boolean
+    createMogulNote( note:String): Boolean
+    updateMogulNote( id :Int, note:String): Boolean
+
+
     # jobs
     launchJob(jobName:String, contextAsJson: String ) : Boolean
 
@@ -192,6 +198,13 @@ type SearchableResult {
     created: DateTime
 }
 
+type Note {
+    id: Int
+    note: String
+    description: String
+    created: DateTime
+    type: String
+}
 
 type Query {
 
@@ -202,6 +215,11 @@ type Query {
     search(query: String, metadata: JSON): [SearchableResult]
 
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
+
+    # notes
+    notesForNotable (type:String, id:Int) : [Note]
+    notesForMogul: [Note]
+
 
     # publicationService
     publicationsForPublishable( type : String, id: Int ) : [Publication]
