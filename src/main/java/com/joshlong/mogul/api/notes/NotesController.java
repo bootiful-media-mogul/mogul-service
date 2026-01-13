@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.notes;
 
 import com.joshlong.mogul.api.Note;
-import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.DateUtils;
 import org.slf4j.Logger;
@@ -36,15 +35,8 @@ class NotesController {
 	}
 
 	@MutationMapping
-	boolean updateMogulNote(@Argument Long id, @Argument String note) {
+	boolean updateNote(@Argument Long id, @Argument String note) {
 		return this.noteService.update(id, null, note) != null;
-	}
-
-	@MutationMapping
-	boolean createMogulNote(@Argument String note) {
-		var mogul = this.mogulService.getCurrentMogul();
-		var type = this.noteService.typeFor(mogul);
-		return this.createNote(type, mogul.id(), note);
 	}
 
 	@MutationMapping
@@ -57,20 +49,14 @@ class NotesController {
 	}
 
 	@QueryMapping
-	Collection<ClientNote> notesForMogul() {
+	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id) {
 		var currentMogul = this.mogulService.getCurrentMogul();
-		var type = this.noteService.typeFor(currentMogul);
-		return this.notesForNotable(currentMogul.id(), type);
-	}
-
-	@QueryMapping
-	Collection<ClientNote> notesForNotable(@Argument Long id, @Argument String type) {
-		this.log.info("looking for notes for {} of type {}", id, type);
-		var currentMogul = this.mogulService.getCurrentMogul();
-		return this.noteService.notes(currentMogul.id(), id, type)//
+		var notes = this.noteService.notes(currentMogul.id(), id, type)//
 			.stream()//
 			.map(note -> this.note(type, note))//
 			.toList();
+		this.log.info("found {} notes for {} of type {}", notes.size(), id, type);
+		return notes;
 	}
 
 	private ClientNote note(String type, Note note) {

@@ -132,8 +132,7 @@ type Mutation {
 
     createNote(type:String, id:Int, note:String): Boolean
     deleteNote (type:String, id:Int) : Boolean
-    createMogulNote( note:String): Boolean
-    updateMogulNote( id :Int, note:String): Boolean
+    updateNote( id :Int, note:String): Boolean
 
 
     # jobs
@@ -201,7 +200,6 @@ type SearchableResult {
 type Note {
     id: Int
     note: String
-    description: String
     created: DateTime
     type: String
 }
@@ -217,9 +215,7 @@ type Query {
     ayrsharePublicationCompositions: [AyrsharePublicationComposition]
 
     # notes
-    notesForNotable (type:String, id:Int) : [Note]
-    notesForMogul: [Note]
-
+    notesForNotable(type:String, id:Int): [Note]
 
     # publicationService
     publicationsForPublishable( type : String, id: Int ) : [Publication]
