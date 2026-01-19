@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -23,9 +24,12 @@ class NotesController {
 
 	private final NoteService noteService;
 
-	NotesController(MogulService mogulService, NoteService noteService) {
+	private final ApplicationEventPublisher publisher;
+
+	NotesController(MogulService mogulService, NoteService noteService, ApplicationEventPublisher publisher) {
 		this.mogulService = mogulService;
 		this.noteService = noteService;
+		this.publisher = publisher;
 	}
 
 	@MutationMapping
@@ -44,6 +48,7 @@ class NotesController {
 		var mogul = this.mogulService.getCurrentMogul();
 		var payload = this.noteService.resolveNotable(mogul.id(), id, type);
 		var newNote = this.noteService.create(mogul.id(), payload, null, note);
+
 		return newNote != null;
 	}
 
@@ -63,4 +68,10 @@ class NotesController {
 }
 
 record ClientNote(String type, Long id, OffsetDateTime created, URI url, String note) {
+}
+
+record NoteCreatedEvent(Note note) {
+}
+
+record NoteUpdatedEvent(Note note) {
 }

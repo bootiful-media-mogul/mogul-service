@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.search.elastic;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.joshlong.mogul.api.AbstractDomainService;
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.SearchableResolver;
@@ -26,13 +25,13 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.function.Function;
 
 interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 
 }
 
 @Service
+@SuppressWarnings("unchecked")
 class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?>> implements SearchService {
 
 	static final String INDEX_NAME = "searchables";
@@ -50,16 +49,17 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 		this.ops = ops;
 	}
 
-	private static String keyFor(@Nullable Class<?> clzz) {
+	private String keyFor(@Nullable Class<?> clzz) {
 		return clzz != null ? clzz.getName() : null;
 	}
 
 	@Override
-	public <T extends Searchable> void index(T searchable) {
+	public void index(Searchable searchable) {
 		this.log.info("indexing for searchable {}", searchable);
 		var searchableId = searchable.searchableId();
-		var clzz = keyFor(searchable.getClass());
-		var repo = findResolver(searchable.getClass());
+		var searchableClass = searchable.getClass();
+		var clzz = this.keyFor(searchableClass);
+		var repo = this.findResolver(searchableClass);
 		Assert.notNull(repo, () -> "there's no repository for " + clzz + "!");
 		var results = repo.results(List.of(searchableId));
 		if (!results.isEmpty()) {
@@ -78,7 +78,7 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 	}
 
 	@Override
-	public Collection<SearchableResult<? extends Searchable>> search(String shouldContain,
+	public <T extends Searchable> Collection<SearchableResult<T>> search(String shouldContain,
 			Map<String, Object> metadata) {
 		this.log.info("searching for [{}] with metadata {}", shouldContain, metadata);
 		var nativeQuery = NativeQuery.builder() //
@@ -97,11 +97,15 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 			.withMaxResults(1000) //
 			.build();
 		var search = this.ops.search(nativeQuery, Document.class);
-		return this.mapDocumentsToSearchables(search);
+		var rankedSearchableResults = this.mapDocumentsToSearchable(search);
+		return rankedSearchableResults.stream()
+			.map(rsr -> new SearchableResult<>(rsr.searchableId(), (T) rsr.searchable(), rsr.title(), rsr.text(),
+					rsr.aggregateId(), rsr.created(), rsr.type(), rsr.context()))
+			.toList();
 	}
 
 	@SuppressWarnings("unchecked")
-	private List<SearchableResult<? extends Searchable>> mapDocumentsToSearchables(SearchHits<Document> search) {
+	private List<SearchableResult<? extends Searchable>> mapDocumentsToSearchable(SearchHits<Document> search) {
 		var searchableToRank = new HashMap<Long, Float>();
 		var resultsBucketedByClass = new HashMap<Class<?>, List<Document>>();
 		var classToResolvers = new HashMap<Class<?>, SearchableResolver<?>>();
@@ -111,36 +115,32 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 			classToResolvers.computeIfAbsent(clzz, _ -> this.findResolver(clzz));
 			searchableToRank.put(doc.getContent().searchableId(), doc.getScore());
 		}
-		var map = new HashMap<Long, ArrayList<SearchableResult<? extends Searchable>>>();
+		var map = new HashMap<Long, ArrayList<RankedSearchableResult<? extends Searchable>>>();
 		for (var entry : resultsBucketedByClass.entrySet()) {
 			var docs = entry.getValue();
 			var clazz = entry.getKey();
 			var searchableIds = docs.stream().map(Document::searchableId).toList();
 			var resolver = classToResolvers.get(clazz);
 			Assert.notNull(resolver, "there must be a valid resolver for " + clazz);
-			for (var rs : resolver.results(searchableIds)) {
-				map.computeIfAbsent(rs.aggregateId(), _ -> new ArrayList<>()).add(rs);
+			for (var searchableResult : resolver.results(searchableIds)) {
+				var rank = searchableToRank.getOrDefault(searchableResult.searchableId(), 0.0f);
+				map.computeIfAbsent(searchableResult.aggregateId(), _ -> new ArrayList<>())
+					.add(new RankedSearchableResult<>(rank, searchableResult));
 			}
 		}
-		var results = new ArrayList<SearchableResult<? extends Searchable>>();
-		for (var aggregateToSearchableEntry : map.entrySet()) {
-			aggregateToSearchableEntry.getValue()
+		var searchableResults = new ArrayList<RankedSearchableResult<? extends Searchable>>();
+		for (var entry : map.entrySet()) {
+			entry.getValue()
 				.stream()
-				.max(Comparator.comparing(SearchableResult::rank))
-				.ifPresent(results::add);
+				.max((o1, o2) -> Float.compare(o2.rank(), o1.rank()))
+				.ifPresent(searchableResults::add);
 		}
-		return results.stream()
-			.map((Function<SearchableResult<? extends Searchable>, SearchableResult<? extends Searchable>>) sr -> new SearchableResult<>(
-					sr.searchableId(), sr.searchable(), sr.title(), sr.text(), sr.aggregateId(), sr.context(),
-					sr.created(), searchableToRank.getOrDefault(sr.searchableId(), 0.0f), sr.type()))
-			.sorted((o1, o2) -> Float.compare(o2.rank(), o1.rank()))
-			.peek(this::log)
-			.toList();
-	}
-
-	private void log(SearchableResult<?> sr) {
-		if (this.log.isTraceEnabled())
-			this.log.trace("{}:{} {} {}", sr.rank(), sr.searchableId(), sr.title(), sr.context());
+		searchableResults.sort((o1, o2) -> Float.compare(o2.rank(), o1.rank()));
+		var finalList = new ArrayList<SearchableResult<? extends Searchable>>();
+		for (var r : searchableResults) {
+			finalList.add(r.searchableResult());
+		}
+		return finalList;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -155,8 +155,11 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 
 }
 
-@org.springframework.data.elasticsearch.annotations.Document(createIndex = false,
-		indexName = ElasticSearchService.INDEX_NAME)
+record RankedSearchableResult<T extends Searchable>(float rank, SearchableResult<T> searchableResult) {
+
+}
+
+@org.springframework.data.elasticsearch.annotations.Document(indexName = ElasticSearchService.INDEX_NAME)
 record Document(@Id String id, @Field(type = FieldType.Long) Long searchableId,
 		@Field(type = FieldType.Text, analyzer = "english") String title,
 		@Field(type = FieldType.Date, format = DateFormat.epoch_millis) Instant when,

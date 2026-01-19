@@ -190,9 +190,7 @@ type SearchableResult {
     aggregateId: Int
     searchableId: Int
     title: String
-    description: String
     type: String
-    rank: Float
     context : String
     created: DateTime
 }
@@ -204,7 +202,15 @@ type Note {
     type: String
 }
 
+type EntityContext {
+    resolvedType :String
+    context :String
+}
+
 type Query {
+
+    # context for navigation
+    entityContext(type: String, id: Int): EntityContext
 
     # jobs
     jobs : [Job]

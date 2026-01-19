@@ -67,7 +67,7 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 	@Override
 	public <T extends Publishable> T resolvePublishable(Long mogulId, Long id, String clazz) {
-		return (T) this.resolvePublishable(mogulId, id, this.classForType(clazz));
+		return this.resolvePublishable(mogulId, id, this.classForType(clazz));
 	}
 
 	@Override

@@ -89,8 +89,9 @@ class DefaultPodcastService implements PodcastService {
 		}
 
 		var segmentResultSetExtractor = new SegmentResultSetExtractor(managedFileService::getManagedFiles);
-		var segments = db.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ")
-			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))
+		var segments = db //
+			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ") //
+			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))//
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
 
@@ -352,8 +353,6 @@ class DefaultPodcastService implements PodcastService {
 		segments.remove(segment);
 		segments.add(newPositionOfSegment, segment);
 		this.reorderSegments(segments);
-		// CollectionUtils.firstOrNull(
-		// this.getPodcastEpisodeSegmentsByIds(List.of(segmentId)));
 		this.markAssetsDirty(episodeId);
 		this.invalidatePodcastEpisodeCache(episodeId);
 		var ep = this.getPodcastEpisodeById(episodeId);

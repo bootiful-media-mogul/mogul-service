@@ -58,6 +58,8 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	private final boolean trace = this.log.isTraceEnabled();
 
+	private final AtomicInteger counter = new AtomicInteger(0);
+
 	DefaultManagedFileService(String bucket, JdbcClient db, Storage storage, ApplicationEventPublisher publisher,
 			Cache cache, TransactionTemplate transactionTemplate, URI cloudfrontDomain, ApiProperties properties) {
 		this.bucket = bucket;
@@ -280,8 +282,6 @@ class DefaultManagedFileService implements ManagedFileService {
 			this.ensureVisibility(mf);
 		return mf;
 	}
-
-	private final AtomicInteger counter = new AtomicInteger(0);
 
 	@Override
 	public ManagedFile getManagedFileById(Long managedFileId) {

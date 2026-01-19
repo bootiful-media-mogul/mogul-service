@@ -8,8 +8,8 @@ import java.util.Map;
 
 public interface SearchService {
 
-	<T extends Searchable> void index(T searchable);
+	void index(Searchable searchable);
 
-	Collection<SearchableResult<? extends Searchable>> search(String query, Map<String, Object> metadata);
+	<T extends Searchable> Collection<SearchableResult<T>> search(String shouldContain, Map<String, Object> metadata);
 
 }

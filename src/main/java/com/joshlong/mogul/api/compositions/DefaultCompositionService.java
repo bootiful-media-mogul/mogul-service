@@ -66,9 +66,6 @@ class DefaultCompositionService implements CompositionService {
 		this.markdownPreviews = markdownPreviews;
 	}
 
-	public record AttachmentManagedFileUpdatedEvent(long managedFileId) {
-	}
-
 	@ApplicationModuleListener
 	void onManagedFileEvent(ManagedFileUpdatedEvent event) {
 
@@ -254,6 +251,9 @@ class DefaultCompositionService implements CompositionService {
 		this.invalidateCompositionCacheById(compositionId);
 		this.invalidateCompositionCacheByKey(this.readThroughCompositionById(compositionId));
 		return this.readThroughAttachmentById(newAttachmentId);
+	}
+
+	public record AttachmentManagedFileUpdatedEvent(long managedFileId) {
 	}
 
 }

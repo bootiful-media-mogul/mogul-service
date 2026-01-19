@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.api.utils.TypeUtils;
 import org.jspecify.annotations.NonNull;
 import org.springframework.util.Assert;
 
@@ -48,7 +49,7 @@ public abstract class AbstractDomainService<M, R extends DomainResolver<M, ?>> {
 	 * @return the string type identifier
 	 */
 	protected @NonNull String typeForClass(Class<?> clazz) {
-		return clazz.getSimpleName().toLowerCase();
+		return TypeUtils.typeName(clazz);
 	}
 
 	/**
@@ -82,7 +83,7 @@ public abstract class AbstractDomainService<M, R extends DomainResolver<M, ?>> {
 	}
 
 	protected <T extends M> T findEntity(Class<T> entityClass, Long key) {
-		var repository = (R) this.findResolver(entityClass);
+		var repository = this.findResolver(entityClass);
 		return entityClass.cast(repository.find(key));
 	}
 

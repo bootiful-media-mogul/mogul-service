@@ -4,43 +4,11 @@ import com.joshlong.mogul.api.AbstractSearchableResolver;
 import com.joshlong.mogul.api.SearchableResult;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.podcasts.Episode;
-import com.joshlong.mogul.api.podcasts.Podcast;
 import com.joshlong.mogul.api.podcasts.PodcastService;
 import com.joshlong.mogul.api.podcasts.Segment;
-import com.joshlong.mogul.api.transcripts.TranscriptService;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-import org.springframework.aot.hint.MemberCategory;
-import org.springframework.aot.hint.RuntimeHints;
-import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.ImportRuntimeHints;
 
 import java.util.*;
 import java.util.function.BiFunction;
-
-@Configuration
-@ImportRuntimeHints(SegmentSearchConfiguration.Hints.class)
-class SegmentSearchConfiguration {
-
-	@Bean
-	SegmentSearchableResolver segmentSearchableResolver(TranscriptService transcriptService,
-			PodcastService podcastService) {
-		return new SegmentSearchableResolver(Segment.class, podcastService, transcriptService::readTranscripts);
-	}
-
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
-			for (var c : Set.of(Segment.class, Podcast.class, Episode.class))
-				hints.reflection().registerType(c, MemberCategory.values());
-		}
-
-	}
-
-}
 
 class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 
@@ -53,10 +21,6 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 		super(entityClass);
 		this.podcastService = podcastService;
 		this.transcriptLoader = transcriptLoader;
-	}
-
-	private static String type(@NonNull Class<?> clzz) {
-		return (clzz.getSimpleName().charAt(0) + "").toLowerCase() + clzz.getSimpleName().substring(1);
 	}
 
 	@Override
@@ -72,16 +36,16 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 		if (searchableIds.isEmpty())
 			return Collections.emptyList();
 
-		var segments = podcastService.getPodcastEpisodeSegmentsByIds(searchableIds);
+		var segments = this.podcastService.getPodcastEpisodeSegmentsByIds(searchableIds);
 		var episodeIds = new HashSet<Long>();
 		for (var segment : segments) {
 			episodeIds.add(segment.episodeId());
 		}
 		// now we load all the episodes and correlate them back to their episode
-		var episodes = podcastService.getAllPodcastEpisodesByIds(episodeIds);
+		var episodes = this.podcastService.getAllPodcastEpisodesByIds(episodeIds);
 		// now we need to load all the podcasts in a single batch to deduce the mogul
 		var podcastIds = episodes.stream().map(Episode::podcastId).toList();
-		var podcasts = podcastService.getAllPodcastsById(podcastIds);
+		var podcasts = this.podcastService.getAllPodcastsById(podcastIds);
 		var segmentsToEpisodes = new HashMap<Segment, Episode>();
 		for (var s : segments) {
 			episodes.stream()
@@ -97,16 +61,15 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 		mapOfTranscripts.forEach((key, value) -> mapOfTranscribableIdsToTranscripts.put(key.transcribableId(), value));
 		for (var segment : segments) {
 			var episode = segmentsToEpisodes.get(segment);
-			results.add(this.buildResultFor(segment, episode, mapOfTranscribableIdsToTranscripts.get((segment.id()))));
+			var result = this.buildResultFor(segment, episode, mapOfTranscribableIdsToTranscripts.get((segment.id())));
+			results.add(result);
 		}
 		return results;
 	}
 
 	private SearchableResult<Segment> buildResultFor(Segment segment, Episode episode, String transcript) {
-		var context = Map.<String, Object>of("episodeId", episode.id(), "segmentId", segment.id(), "podcastId",
-				episode.podcastId());
 		return new SearchableResult<>(segment.searchableId(), segment, episode.title(), transcript, episode.id(),
-				context, episode.created(), 0, type(Segment.class));
+				episode.created(), this.type);
 	}
 
 }
