@@ -23,7 +23,7 @@ class NoteEntityContextBuilder implements EntityContextBuilder<Note> {
 	@Override
 	public EntityContext buildContextFor(Long mogulId, Long id) {
 		var note = this.service.getNoteById(id);
-		var notable = this.service.resolveNotable(1L, Long.parseLong(note.payload()),
+		var notable = this.service.resolveNotable(mogulId, Long.parseLong(note.payload()),
 				(Class<Notable>) note.payloadClass());
 		var delegateContextBuilder = EntityContextBuilder.contextBuilderFor(this.applicationContext,
 				notable.getClass());
