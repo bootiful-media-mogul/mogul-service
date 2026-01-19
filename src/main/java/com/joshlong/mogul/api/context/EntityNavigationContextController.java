@@ -40,10 +40,19 @@ class EntityNavigationContextController {
 		this.mogulService = mogulService;
 	}
 
+	private void debug() {
+		if (!this.contextBuildersByType.isEmpty())
+			this.contextBuildersByType
+				.forEach((k, v) -> this.log.info("\t context builder type to instance {} = {}", k, v));
+		else
+			this.log.info("there are no context builder types in the Map!");
+	}
+
 	@QueryMapping
 	EntityContext entityContext(@Argument String type, @Argument Long id) {
-		var mogul = mogulService.getCurrentMogul();
+		var mogul = this.mogulService.getCurrentMogul();
 		this.log.info("resolve entityContext for type {} and id {}", type, id);
+		this.debug();
 		var contextBuilder = this.contextBuildersByType.get(type);
 		return contextBuilder.buildContextFor(mogul.id(), id);
 	}
