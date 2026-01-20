@@ -41,11 +41,13 @@ class EntityNavigationContextController {
 	}
 
 	private void debug() {
-		if (!this.contextBuildersByType.isEmpty())
+		if (!this.contextBuildersByType.isEmpty()) {
 			this.contextBuildersByType
 				.forEach((k, v) -> this.log.info("\t context builder type to instance {} = {}", k, v));
-		else
+		} //
+		else {
 			this.log.info("there are no context builder types in the Map!");
+		}
 	}
 
 	@QueryMapping

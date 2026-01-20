@@ -41,21 +41,31 @@ class JobsController {
 			context = context == null ? new HashMap<>() : new HashMap<>(context);
 			var mogulId = this.mogulService.getCurrentMogul().id();
 			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
+			this.log.info("launching job with mogul # {}, context # {}", mogulId, context);
 			this.jobs.launch(jobName, context) //
 				.thenAccept(result -> {
 					var jobCompletionEvent = new JobCompletedEvent(mogulId, result.success(), jobName);
-					var json = JsonUtils.write(Map.of("jobName", jobName, "success", result.success()));
-					var notificationEvent = NotificationEvent //
-						.systemNotificationEventFor(mogulId, jobCompletionEvent, jobName, json);
-					NotificationEvents.notifyAsync(notificationEvent);
+					this.emit(jobName, true, mogulId, jobCompletionEvent);
+				}) //
+				.exceptionally(throwable -> {
+					var jce = new JobCompletedEvent(mogulId, false, jobName);
+					this.emit(jobName, true, mogulId, jce);
+					return null;
 				});
 			this.log.info("launched {} with {}", jobName, context);
 		} //
-		catch (JobLaunchException jobLaunchException) {
+		catch (Throwable jobLaunchException) {
 			this.log.warn("could not launch the job {} with context {}", jobName, context);
 			return false;
 		}
 		return true;
+	}
+
+	private void emit(String jobName, boolean success, Long mogulId, JobCompletedEvent event) {
+		var json = JsonUtils.write(Map.of("jobName", jobName, "success", success));
+		var notificationEvent = NotificationEvent //
+			.systemNotificationEventFor(mogulId, event, jobName, json);
+		NotificationEvents.notifyAsync(notificationEvent);
 	}
 
 	@QueryMapping

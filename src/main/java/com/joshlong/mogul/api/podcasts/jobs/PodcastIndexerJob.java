@@ -34,11 +34,16 @@ class PodcastIndexerJob implements Job {
 		this.searchService = searchService;
 	}
 
+	private long from(Map<String, Object> ctx, String k) {
+		var num = ctx.containsKey(k) ? (Number) ctx.get(k) : 0;
+		return num.longValue();
+	}
+
 	@Override
 	public Result run(Map<String, Object> context) throws Exception {
 		this.log.info("running for context {}", context);
-		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
-		var podcastId = (Long) context.get(Job.PODCAST_ID_KEY);
+		var mogulId = this.from(context, Job.MOGUL_ID_KEY);
+		var podcastId = this.from(context, Job.PODCAST_ID_KEY);
 		this.log.info("running for mogulId # {} and podcastId # {}", mogulId, podcastId);
 		this.doRun(mogulId, podcastId);
 		return Result.ok(context);
@@ -53,11 +58,11 @@ class PodcastIndexerJob implements Job {
 	}
 
 	private void doRun(Long mogulId, Long podcastId) {
-		log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
+		this.log.info("{} running for mogulId # {}", getClass().getName(), mogulId);
 		var allPodcastsByMogul = Set.of(this.podcastService.getPodcastById(podcastId));
-		log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
+		this.log.info("there are {} podcasts for mogulId #{}", allPodcastsByMogul.size(), mogulId);
 		for (var podcast : allPodcastsByMogul) {
-			var episodes = podcastService.getPodcastEpisodesByPodcast(podcast.id(), false)
+			var episodes = this.podcastService.getPodcastEpisodesByPodcast(podcast.id(), false)
 				.stream()
 				.sorted(Comparator.comparingLong(Episode::id))
 				.toList();
