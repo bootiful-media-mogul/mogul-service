@@ -14,9 +14,11 @@ import java.util.Map;
 @Component
 class EpisodeEntityContextBuilder implements EntityContextBuilder<Episode> {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	private final PodcastService podcastService;
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	private final String resolvedType = TypeUtils.typeName(Episode.class);
 
 	EpisodeEntityContextBuilder(PodcastService podcastService) {
 		this.podcastService = podcastService;
@@ -26,7 +28,7 @@ class EpisodeEntityContextBuilder implements EntityContextBuilder<Episode> {
 	public EntityContext buildContextFor(Long mogulId, Long episodeId) {
 		this.log.debug("resolving context for episode {}", episodeId);
 		var episode = this.podcastService.getPodcastEpisodeById(episodeId);
-		return new EntityContext(TypeUtils.typeName(Episode.class),
+		return new EntityContext(this.resolvedType,
 				Map.of("episodeId", episode.id(), "podcastId", episode.podcastId()));
 	}
 

@@ -15,8 +15,8 @@ type Setting {
 }
 
 type Composition  {
+#    mogulId: Int
     id: Int
-    mogulId: Int
     field: String
     attachments: [Attachment]
 }
@@ -88,10 +88,10 @@ type Episode {
     id : Int
     titleComposition: Composition
     descriptionComposition: Composition
-    availablePlugins :[String]
+#    availablePlugins :[String]
     title: String
     description: String
-    valid: Boolean
+#    valid: Boolean
     graphic: ManagedFile
     podcastId: Int
     producedAudio: ManagedFile
@@ -101,9 +101,9 @@ type Episode {
 }
 
 type Segment {
+#    transcribable : Boolean
     id : Int
     name : String
-    transcribable : Boolean
     audio: ManagedFile
     producedAudio : ManagedFile
     order : Int
@@ -166,8 +166,8 @@ type Mutation {
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Int
-    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
-    transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
+#    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
+#    transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
     movePodcastEpisodeSegmentDown(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
 

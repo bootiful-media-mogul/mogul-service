@@ -63,6 +63,11 @@ class PodcastController {
 		return true;
 	}
 
+	@SchemaMapping
+	Collection<Episode> episodes(Podcast podcast) {
+		return podcastService.getPodcastEpisodesByPodcast(podcast.id(), false);
+	}
+
 	@MutationMapping
 	boolean updatePodcastEpisode(@Argument Long podcastEpisodeId, @Argument String title,
 			@Argument String description) {

@@ -36,7 +36,7 @@ class ManagedFileController {
 	}
 
 	@MutationMapping
-	boolean setManagedFileVisibility(@Argument Long managedFileId, @Argument boolean visible) {
+	boolean setManagedFileVisibility(@Argument Long managedFileId, @Argument Boolean visible) {
 		this.managedFileService.setManagedFileVisibility(managedFileId, visible);
 		return true;
 	}
