@@ -5,28 +5,30 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Service;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
-/*
-TODO put these in github issues!
-* we need a mechanism by which to create tags and normalize them and so on so that we can
-    support autocomplete for other blogs published by a given author
-* we want to as friction-free as possible derive two things: the summary and the html
-** summary. we can compute  summary (eg, with the same mechanism in writing tools) for the post, or we can let the user provide their own
-*/
-@Service
+@Configuration
+class DefaultBlogServiceConfiguration {
+
+	@Bean
+	DefaultBlogService defaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
+		return new DefaultBlogService(db, singularity, publisher);
+	}
+
+}
+
 @Transactional
 class DefaultBlogService implements BlogService {
 
@@ -42,21 +44,18 @@ class DefaultBlogService implements BlogService {
 
 	private final Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
 
-	private final ApplicationEventPublisher applicationEventPublisher;
-
-	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
-			ApplicationEventPublisher applicationEventPublisher) {
+	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
 		this.db = db;
 		this.singularity = singularity;
 		this.publisher = publisher;
-		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
 	@Override
 	public Collection<Blog> getBlogsFor(long mogulId) {
-		var all = this.db.sql("select * from blog where mogul_id = ? ")
-			.params(mogulId)
-			.query(this.blogRowMapper)
+		var all = this.db //
+			.sql("select * from blog where mogul_id = ? ") //
+			.params(mogulId) //
+			.query(this.blogRowMapper) //
 			.list();
 		for (var a : all)
 			this.log.info("found blog {}", a);
@@ -74,18 +73,28 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Blog createBlog(Long mogulId, String title, String description) {
-		return this.create(mogulId, title, description);
+		var generatedKeyHolder = new GeneratedKeyHolder();
+		this.db //
+			.sql("""
+						insert into blog(mogul_id , title , description)
+						values (?,?,?)
+						on conflict on constraint blog_mogul_id_title_key do update
+						set title = excluded.title, description = excluded.description
+					""")//
+			.params(mogulId, title, description) //
+			.update(generatedKeyHolder);
+		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
+		var blog = this.getBlogById(id.longValue());
+		this.publisher.publishEvent(new BlogCreatedEvent(blog));
+
+		return blog;
 	}
 
 	@Override
 	public Blog updateBlog(Long mogulId, Long blogId, String title, String description) {
-		return this.update(mogulId, blogId, title, description);
-	}
-
-	private Blog update(Long mogul, Long blogId, String title, String description) {
 		// mogul
-		this.db.sql("update blog set title = ?, description = ? where id = ? and mogul_id = ? ")
-			.params(title, description, blogId, mogul)
+		this.db.sql("update blog set title = ?, description = ? where id = ? and mogul_id = ? ") //
+			.params(title, description, blogId, mogulId)//
 			.update();
 		//
 		var blog = this.getBlogById(blogId);
@@ -93,29 +102,20 @@ class DefaultBlogService implements BlogService {
 		return blog;
 	}
 
-	private Blog create(Long mogulId, String title, String description) {
-		var generatedKeyHolder = new GeneratedKeyHolder();
-		this.db.sql("""
-					insert into blog(mogul_id , title , description)
-					values (?,?,?)
-					on conflict on constraint blog_mogul_id_title_key do update
-					set title = excluded.title, description = excluded.description
-				""").params(mogulId, title, description).update(generatedKeyHolder);
-		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
-		var blog = this.getBlogById(id.longValue());
-		this.applicationEventPublisher.publishEvent(new BlogCreatedEvent(blog));
-		return blog;
-
-	}
-
 	@Override
 	public Blog getBlogById(Long id) {
-		return this.db.sql("select * from blog where id =? ").params(id).query(this.blogRowMapper).single();
+		return this.db.sql("select * from blog where id =? ") //
+			.params(id)
+			.query(this.blogRowMapper) //
+			.single();
 	}
 
 	@Override
 	public Post getPostById(Long id) {
-		return this.db.sql(" select * from blog_post where id =  ? ").params(id).query(this.postRowMapper).single();
+		return this.db.sql(" select * from blog_post where id =  ? ") //
+			.params(id) //
+			.query(this.postRowMapper) //
+			.single();
 	}
 
 	@Override
@@ -137,19 +137,26 @@ class DefaultBlogService implements BlogService {
 				%s
 
 				""";
-		return this.singularity.chat(prompt.formatted(content)).trim();
+		return this.singularity //
+			.chat(prompt.formatted(content)) //
+			.trim();
 	}
 
 	@Override
-	public Post updatePost(Long postId, String title, String content, String[] tags) {
-		return null;
+	public Post updatePost(Long postId, String title, String content, String summary) {
+		this.db.sql("update  blog_post set title = ? , content = ?, summary = ? where id = ?")
+			.params(title, content, summary, postId)
+			.update();
+		var postById = this.getPostById(postId);
+		this.publisher.publishEvent(new PostUpdatedEvent(postById));
+		return postById;
 	}
 
 	@Override
-	public Post createPost(Long blogId, String title, String content, String[] tags) {
+	public Post createPost(Long blogId, String title, String content, String summary) {
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql(" insert into blog_post(blog_id, title, content, tags) values  (?,?,?,?) ")
-			.params(blogId, title, content, tags)
+		this.db.sql(" insert into blog_post(blog_id, title, content ,summary ) values (?,?,?,?) ")
+			.params(blogId, title, content, summary)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh);
 		return getPostById(id.longValue());
@@ -160,7 +167,7 @@ class DefaultBlogService implements BlogService {
 		return Map.of();
 	}
 
-	@EventListener
+	@ApplicationModuleListener
 	void onPostUpdatedEvent(PostUpdatedEvent postUpdatedEvent) {
 		// todo update the markdown => html
 		// todo update the summary
@@ -186,12 +193,9 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Blog mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Blog(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("title"),
-					rs.getString("description"), rs.getTimestamp("created"), new HashSet<>());
+					rs.getString("description"), rs.getTimestamp("created"));
 		}
 
 	}
 
-}
-
-record PostUpdatedEvent(int postId, String title, String description) {
 }

@@ -14,7 +14,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Disabled
@@ -60,18 +59,17 @@ class DefaultBlogServiceTest {
 		Assertions.assertNotNull(blog.created(), "the created data should not be null");
 		Assertions.assertTrue(StringUtils.hasText(blog.title()), "the title should not be null");
 		Assertions.assertTrue(StringUtils.hasText(blog.description()), "the description should not be null");
-		Assertions.assertNotNull(blog.posts(), "there should be a non-null posts collection");
 		Assertions.assertEquals(blog, this.blogService.getBlogById(blog.id()));
 
 		// now let's create a post
-		var split = "spring,java,crm".split(",");
 		var post = this.blogService.createPost(blog.id(), "this is a post for my new blog!  ",
-				"this is some sample content that Im sure will be double dope indeed", split);
+				"this is some sample content that Im sure will be double dope indeed", "this is a summary");
 		Assertions.assertFalse(post.complete());
 		Assertions.assertNotNull(post.created());
 		Assertions.assertTrue(StringUtils.hasText(post.content()));
 		Assertions.assertTrue(StringUtils.hasText(post.title()));
 		Assertions.assertTrue(StringUtils.hasText(post.content()));
+		Assertions.assertTrue(StringUtils.hasText(post.summary()));
 
 	}
 

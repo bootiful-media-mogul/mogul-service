@@ -32,6 +32,28 @@ class BlogController {
 		return true;
 	}
 
+	@QueryMapping
+	Collection<Post> blogPostsByBlog(@Argument Long blogId) {
+		return this.service.getPostsForBlog(blogId);
+	}
+
+	@MutationMapping
+	boolean updatePost(@Argument Long postId, @Argument String title, @Argument String description,
+			@Argument String summary) {
+		this.service.updatePost(postId, title, description, summary);
+		return true;
+	}
+
+	@MutationMapping
+	String summarize(@Argument String content) {
+		return this.service.summarize(content);
+	}
+
+	@SchemaMapping
+	OffsetDateTime created(Post blog) {
+		return DateUtils.forDate(blog.created());
+	}
+
 	@ApplicationModuleListener
 	void blogCreatedEventNotifyingListener(BlogCreatedEvent event) {
 		var ne = NotificationEvent.visibleNotificationEventFor(event.blog().mogulId(), event,

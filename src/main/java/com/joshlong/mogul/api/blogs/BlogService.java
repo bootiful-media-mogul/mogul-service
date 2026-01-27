@@ -4,7 +4,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 public interface BlogService {
 
@@ -25,10 +24,10 @@ public interface BlogService {
 
 	String summarize(String content);
 
-	Post updatePost(Long postId, String title, String content, String[] tags);
+	Post updatePost(Long postId, String title, String content, String summary);
 
 	// posts
-	Post createPost(Long blogId, String title, String content, String[] tags);
+	Post createPost(Long blogId, String title, String content, String summary);
 
 	/**
 	 * I imagine a world whereas you type text and reference images that we resolve all

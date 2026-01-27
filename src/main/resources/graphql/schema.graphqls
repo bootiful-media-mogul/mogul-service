@@ -128,6 +128,65 @@ type NotificationEvent {
     visible : Boolean
 }
 
+type AyrsharePublicationComposition {
+    id: Int
+    composition: Composition
+    publication: Publication
+    platform: String
+}
+
+
+type SearchableResult {
+    aggregateId: Int
+    searchableId: Int
+    title: String
+    type: String
+    context : String
+    created: DateTime
+}
+
+type Note {
+    id: Int
+    note: String
+    created: DateTime
+    type: String
+}
+
+type EntityContext {
+    resolvedType :String
+    context :String
+}
+
+type NotificationContext  {
+    ablyChannel : String
+    ablyTokenRequest : TokenRequest
+}
+
+type TokenRequest {
+    keyName: String
+    nonce: String
+    mac: String
+    ttl: String
+    capability: String
+    timestamp: String
+}
+
+type Blog {
+    id: Int
+    title: String
+    description: String
+    created: DateTime
+}
+
+type Post {
+    id :Int
+    created: DateTime
+    title :String
+    content:String
+    summary:String
+    complete :Boolean
+}
+
 type Mutation {
 
     # blog
@@ -136,6 +195,10 @@ type Mutation {
     updateBlog(blogId:Int, title:String, description:String ): Boolean
 
     deleteBlog (blogId:Int): Boolean
+
+    updatePost(postId:Int, title:String, description:String, summary:String): Boolean
+
+    summarize(content:String): String
 
     # notes
     createNote(type:String, id:Int, note:String): Boolean
@@ -171,7 +234,7 @@ type Mutation {
     updatePodcastEpisode( podcastEpisodeId: Int, title: String, description: String): Boolean
     deletePodcastEpisode(podcastEpisodeId: Int): Boolean
 
-    # podcast episode segments 
+    # podcast episode segments
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Int
     #    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
@@ -186,49 +249,13 @@ type Mutation {
     updateSetting(category:String, name:String, value:String): Boolean
 }
 
-type AyrsharePublicationComposition {
-    id: Int
-    composition: Composition
-    publication: Publication
-    platform: String
-}
-
-
-type SearchableResult {
-    aggregateId: Int
-    searchableId: Int
-    title: String
-    type: String
-    context : String
-    created: DateTime
-}
-
-type Note {
-    id: Int
-    note: String
-    created: DateTime
-    type: String
-}
-
-type EntityContext {
-    resolvedType :String
-    context :String
-}
-
-type Blog {
-    id: Int
-    title: String
-    description: String
-    created: DateTime
-}
-
-
-
 type Query {
 
     # blogs
     blogById(blogId: Int) : Blog
     blogs: [Blog]
+    blogPostsByBlog (blogId: Int) : [Post]
+
 
 
     # context for navigation
@@ -278,18 +305,4 @@ type Query {
 
     # ayrshare
     ayrsharePlatforms: [String]
-}
-
-type NotificationContext  {
-    ablyChannel : String
-    ablyTokenRequest : TokenRequest
-}
-
-type TokenRequest {
-    keyName: String
-    nonce: String
-    mac: String
-    ttl: String
-    capability: String
-    timestamp: String
 }
