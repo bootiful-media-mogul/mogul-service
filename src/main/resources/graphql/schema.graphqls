@@ -15,7 +15,7 @@ type Setting {
 }
 
 type Composition  {
-#    mogulId: Int
+    #    mogulId: Int
     id: Int
     field: String
     attachments: [Attachment]
@@ -88,10 +88,10 @@ type Episode {
     id : Int
     titleComposition: Composition
     descriptionComposition: Composition
-#    availablePlugins :[String]
+    #    availablePlugins :[String]
     title: String
     description: String
-#    valid: Boolean
+    #    valid: Boolean
     graphic: ManagedFile
     podcastId: Int
     producedAudio: ManagedFile
@@ -101,7 +101,7 @@ type Episode {
 }
 
 type Segment {
-#    transcribable : Boolean
+    #    transcribable : Boolean
     id : Int
     name : String
     audio: ManagedFile
@@ -130,6 +130,14 @@ type NotificationEvent {
 
 type Mutation {
 
+    # blog
+    createBlog (title:String, description:String): Blog
+
+    updateBlog(blogId:Int, title:String, description:String ): Boolean
+
+    deleteBlog (blogId:Int): Boolean
+
+    # notes
     createNote(type:String, id:Int, note:String): Boolean
     deleteNote(id:Int) : Boolean
     updateNote(id:Int, note:String): Boolean
@@ -166,8 +174,8 @@ type Mutation {
     # podcast episode segments 
     deletePodcastEpisodeSegment(podcastEpisodeSegmentId: Int): Boolean
     createPodcastEpisodeSegment( podcastEpisodeId:  Int ): Int
-#    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
-#    transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
+    #    setPodcastEpisodeSegmentTranscript(podcastEpisodeSegmentId: Int , transcript: String) : Boolean
+    #    transcribePodcastEpisodeSegment(podcastEpisodeSegmentId: Int ) : Boolean
     movePodcastEpisodeSegmentUp(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
     movePodcastEpisodeSegmentDown(podcastEpisodeId: Int, podcastEpisodeSegmentId: Int  ): Boolean
 
@@ -207,7 +215,21 @@ type EntityContext {
     context :String
 }
 
+type Blog {
+    id: Int
+    title: String
+    description: String
+    created: DateTime
+}
+
+
+
 type Query {
+
+    # blogs
+    blogById(blogId: Int) : Blog
+    blogs: [Blog]
+
 
     # context for navigation
     entityContext(type: String, id: Int): EntityContext

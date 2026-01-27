@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.blogs;
 import com.joshlong.mogul.api.ai.AiClient;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.utils.JdbcUtils;
+import org.slf4j.Logger;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
@@ -13,25 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /*
 TODO put these in github issues!
-* create a blog
-* create a post
-* we need to support full-text search. Lucene? Do we have different Lucenes for each user?
-        Can we do Elasticsearch? the one hosted on Elastic.co ? Does postgresql provide
-        a full text search of any worth?  i think this should be a cross-cutting thing. podcasts, youtube, blogs, etc.,
-        should all be able to benefit from searchability. should we add a new interface - `Searchable`, etc? Maybe it exports
-        indexable text and metadata for each asset type that we could show in the search results, query by the metadata, etc.,
-        to drive feeds eg, of all mogul's content, of a particular mogul's content, or a particular mogul's blogs/podcasts/etc?
 * we need a mechanism by which to create tags and normalize them and so on so that we can
     support autocomplete for other blogs published by a given author
-*  we need a way to attach multiple mogul's to a particular blog post so that it
-        would show up in both mogul's feeds.
 * we want to as friction-free as possible derive two things: the summary and the html
 ** summary. we can compute  summary (eg, with the same mechanism in writing tools) for the post, or we can let the user provide their own
 */
@@ -49,23 +40,60 @@ class DefaultBlogService implements BlogService {
 
 	private final AiClient singularity;
 
-	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
+	private final Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
+
+	private final ApplicationEventPublisher applicationEventPublisher;
+
+	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
+			ApplicationEventPublisher applicationEventPublisher) {
 		this.db = db;
 		this.singularity = singularity;
 		this.publisher = publisher;
+		this.applicationEventPublisher = applicationEventPublisher;
+	}
+
+	@Override
+	public Collection<Blog> getBlogsFor(long mogulId) {
+		var all = this.db.sql("select * from blog where mogul_id = ? ")
+			.params(mogulId)
+			.query(this.blogRowMapper)
+			.list();
+		for (var a : all)
+			this.log.info("found blog {}", a);
+		return all;
+	}
+
+	@Override
+	public Collection<Post> getPostsForBlog(long blogId) {
+		return this.db //
+			.sql("select * from blog_post where blog_id = ? ") //
+			.params(blogId) //
+			.query(this.postRowMapper) //
+			.list();
 	}
 
 	@Override
 	public Blog createBlog(Long mogulId, String title, String description) {
-		return this.createOrUpdateBlog(mogulId, title, description);
+		return this.create(mogulId, title, description);
 	}
 
 	@Override
-	public Blog updateBlog(Long mogulId, String title, String description) {
-		return this.createOrUpdateBlog(mogulId, title, description);
+	public Blog updateBlog(Long mogulId, Long blogId, String title, String description) {
+		return this.update(mogulId, blogId, title, description);
 	}
 
-	private Blog createOrUpdateBlog(Long mogulId, String title, String description) {
+	private Blog update(Long mogul, Long blogId, String title, String description) {
+		// mogul
+		this.db.sql("update blog set title = ?, description = ? where id = ? and mogul_id = ? ")
+			.params(title, description, blogId, mogul)
+			.update();
+		//
+		var blog = this.getBlogById(blogId);
+		this.publisher.publishEvent(new BlogUpdatedEvent(blog));
+		return blog;
+	}
+
+	private Blog create(Long mogulId, String title, String description) {
 		var generatedKeyHolder = new GeneratedKeyHolder();
 		this.db.sql("""
 					insert into blog(mogul_id , title , description)
@@ -74,7 +102,9 @@ class DefaultBlogService implements BlogService {
 					set title = excluded.title, description = excluded.description
 				""").params(mogulId, title, description).update(generatedKeyHolder);
 		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
-		return this.getBlogById(id.longValue());
+		var blog = this.getBlogById(id.longValue());
+		this.applicationEventPublisher.publishEvent(new BlogCreatedEvent(blog));
+		return blog;
 
 	}
 
@@ -91,6 +121,7 @@ class DefaultBlogService implements BlogService {
 	@Override
 	public void deleteBlog(Long id) {
 		if (this.getBlogById(id) != null) {
+			this.log.info("deleting blog {}", id);
 			// todo queue up all the ManagedFiles associated with this blog for deletion
 			this.db.sql("delete from blog_post where blog_id = ? ").params(id).update();
 			this.db.sql("delete from blog where id = ? ").params(id).update();
@@ -110,17 +141,12 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
-	public Asset createPostAsset(Long postId, String key, ManagedFile managedFile) {
+	public Post updatePost(Long postId, String title, String content, String[] tags) {
 		return null;
 	}
 
 	@Override
-	public Post updatePost(Long postId, String title, String content, String[] tags, Set<Asset> assets) {
-		return null;
-	}
-
-	@Override
-	public Post createPost(Long blogId, String title, String content, String[] tags, Set<Asset> assets) {
+	public Post createPost(Long blogId, String title, String content, String[] tags) {
 		var gkh = new GeneratedKeyHolder();
 		this.db.sql(" insert into blog_post(blog_id, title, content, tags) values  (?,?,?,?) ")
 			.params(blogId, title, content, tags)
@@ -149,13 +175,8 @@ class DefaultBlogService implements BlogService {
 
 		@Override
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
-			var arr = rs.getArray("tags");
-			var tags = new String[0];
-			if (arr.getArray() instanceof String[] tagsStringArray) {
-				tags = tagsStringArray;
-			}
 			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
-					rs.getString("content"), tags, rs.getBoolean("complete"), new HashMap<>());
+					rs.getString("content"), rs.getBoolean("complete"), new HashMap<>(), rs.getString("summary"));
 		}
 
 	}
@@ -165,7 +186,7 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Blog mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Blog(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("title"),
-					rs.getString("description"), rs.getDate("created"), new HashSet<>());
+					rs.getString("description"), rs.getTimestamp("created"), new HashSet<>());
 		}
 
 	}

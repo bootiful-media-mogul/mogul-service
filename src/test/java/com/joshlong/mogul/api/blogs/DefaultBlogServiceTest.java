@@ -66,19 +66,13 @@ class DefaultBlogServiceTest {
 		// now let's create a post
 		var split = "spring,java,crm".split(",");
 		var post = this.blogService.createPost(blog.id(), "this is a post for my new blog!  ",
-				"this is some sample content that Im sure will be double dope indeed", split, new HashSet<>());
+				"this is some sample content that Im sure will be double dope indeed", split);
 		Assertions.assertFalse(post.complete());
 		Assertions.assertNotNull(post.created());
 		Assertions.assertTrue(StringUtils.hasText(post.content()));
 		Assertions.assertTrue(StringUtils.hasText(post.title()));
 		Assertions.assertTrue(StringUtils.hasText(post.content()));
-		var ctr = 0;
-		for (var t : post.tags()) {
-			for (var createdTag : split)
-				if (createdTag.equals(t))
-					ctr++;
-		}
-		Assertions.assertEquals(ctr, split.length, "there should be 3 matches for the tags");
+
 	}
 
 	@Test

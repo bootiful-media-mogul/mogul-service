@@ -179,10 +179,23 @@ class PodcastController {
 	}
 
 	@ApplicationModuleListener
-	void broadcastPodcastUpdatedEventToClients(PodcastUpdatedEvent podcastUpdatedEvent) {
-		var ne = NotificationEvent.visibleNotificationEventFor(podcastUpdatedEvent.podcast().mogulId(),
-				podcastUpdatedEvent, Long.toString(podcastUpdatedEvent.podcast().id()),
-				podcastUpdatedEvent.podcast().title());
+	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
+		this.doNotify(event, event.podcast());
+	}
+
+	@ApplicationModuleListener
+	void podcastDeletedEventNotifyingListener(PodcastDeletedEvent event) {
+		this.doNotify(event, event.podcast());
+	}
+
+	@ApplicationModuleListener
+	void podcastUpdatedEventNotifyingListener(PodcastUpdatedEvent event) {
+		this.doNotify(event, event.podcast());
+	}
+
+	private void doNotify(Object event, Podcast podcast) {
+		var ne = NotificationEvent.visibleNotificationEventFor(podcast.mogulId(), event, Long.toString(podcast.id()),
+				podcast.title());
 		NotificationEvents.notify(ne);
 	}
 

@@ -2,15 +2,20 @@ package com.joshlong.mogul.api.blogs;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
 public interface BlogService {
 
+	Collection<Blog> getBlogsFor(long mogulId);
+
+	Collection<Post> getPostsForBlog(long blogId);
+
 	// blog
 	Blog createBlog(Long mogulId, String title, String description);
 
-	Blog updateBlog(Long mogulId, String title, String description);
+	Blog updateBlog(Long mogulId, Long blogId, String title, String description);
 
 	Blog getBlogById(Long id);
 
@@ -20,12 +25,10 @@ public interface BlogService {
 
 	String summarize(String content);
 
-	Asset createPostAsset(Long postId, String key, ManagedFile managedFile);
-
-	Post updatePost(Long postId, String title, String content, String[] tags, Set<Asset> assets);
+	Post updatePost(Long postId, String title, String content, String[] tags);
 
 	// posts
-	Post createPost(Long blogId, String title, String content, String[] tags, Set<Asset> assets);
+	Post createPost(Long blogId, String title, String content, String[] tags);
 
 	/**
 	 * I imagine a world whereas you type text and reference images that we resolve all

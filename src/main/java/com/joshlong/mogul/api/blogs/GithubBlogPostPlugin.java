@@ -11,7 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-// todo can we put a testConnection method or something that uses the credential provided to validate that the connection
+// todo can we put a testConnection method or something that uses the
+//  credential provided to validate that the connection
 //  will work? maybe call a rest api that requires no parameters?
 @Component(GithubBlogPostPlugin.PLUGIN_NAME)
 class GithubBlogPostPlugin implements PublisherPlugin<Post>, BeanNameAware {
@@ -45,10 +46,12 @@ class GithubBlogPostPlugin implements PublisherPlugin<Post>, BeanNameAware {
 	@Override
 	public void publish(PublishContext<Post> p) {
 
+		this.log.debug("publishing post {} to github", p.payload().id());
 	}
 
 	@Override
 	public boolean unpublish(UnpublishContext<Post> context) {
+		this.log.debug("can't 'unpublish' a post to github");
 		return false;
 	}
 

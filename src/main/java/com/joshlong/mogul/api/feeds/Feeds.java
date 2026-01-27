@@ -37,19 +37,22 @@ public class Feeds {
 		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
 	}
 
-	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, String imageUrl,
-			String imageContentType, long thumbnailSize, String titleTxt, String entryUrl, String summaryText,
-			Map<String, String> customMetadataMap) {
+	static record Image(String url, String contentType, long length) {
+	}
+
+	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, Image image,
+			String titleTxt, String entryUrl, String summaryText, Map<String, String> customMetadataMap) {
 		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
 
-		var enclosure = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
-		enclosure.setAttribute("rel", "enclosure");
-		enclosure.setAttribute("type", imageContentType);
-		enclosure.setAttribute("href", imageUrl);
-		enclosure.setAttribute("title", "Thumbnail");
-		enclosure.setAttribute("length", Long.toString(thumbnailSize));
-		entry.appendChild(enclosure);
-
+		if (image != null) {
+			var enclosure = doc.createElementNS("http://www.w3.org/2005/Atom", "link");
+			enclosure.setAttribute("rel", "enclosure");
+			enclosure.setAttribute("type", image.contentType);
+			enclosure.setAttribute("href", image.url());
+			enclosure.setAttribute("title", "Thumbnail");
+			enclosure.setAttribute("length", Long.toString(image.length()));
+			entry.appendChild(enclosure);
+		}
 		// Add entry elements
 		var title = doc.createElementNS("http://www.w3.org/2005/Atom", "title");
 		title.setTextContent(titleTxt);
@@ -125,9 +128,12 @@ public class Feeds {
 		entries.forEach(entry -> {
 			try {
 				var entryObj = entryMapper.map(entry);
-				var entryElement = createEntry(doc, entryObj.id(), entryObj.updated(), entryObj.image().url(),
-						entryObj.image().contentType(), entryObj.image().length(), entryObj.title(), entryObj.url(),
-						entryObj.summary(), entryObj.metadata());
+				var imgExists = entryObj.image() != null;
+				var img = (imgExists
+						? new Image(entryObj.image().url(), entryObj.image().contentType(), entryObj.image().length())
+						: null);
+				var entryElement = createEntry(doc, entryObj.id(), entryObj.updated(), img, entryObj.title(),
+						entryObj.url(), entryObj.summary(), entryObj.metadata());
 				feedElement.appendChild(entryElement);
 			} //
 			catch (Exception e) {

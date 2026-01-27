@@ -9,8 +9,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
 import com.joshlong.mogul.api.media.MediaNormalizedEvent;
 import com.joshlong.mogul.api.media.MediaService;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.notifications.NotificationEvent;
-import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.transcripts.TranscriptInvalidatedEvent;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
 import com.joshlong.mogul.api.utils.CacheUtils;
@@ -21,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -673,20 +670,6 @@ class DefaultPodcastService implements PodcastService {
 			result.add(this.podcastEpisodesCache.get(id, () -> map.get(id)));
 		}
 		return result;
-	}
-
-	@EventListener
-	void podcastDeletedEventNotifyingListener(PodcastDeletedEvent event) {
-		var notificationEvent = NotificationEvent.visibleNotificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title());
-		NotificationEvents.notify(notificationEvent);
-	}
-
-	@EventListener
-	void podcastCreatedEventNotifyingListener(PodcastCreatedEvent event) {
-		var notificationEvent = NotificationEvent.systemNotificationEventFor(event.podcast().mogulId(), event,
-				Long.toString(event.podcast().id()), event.podcast().title());
-		NotificationEvents.notify(notificationEvent);
 	}
 
 	@Override
