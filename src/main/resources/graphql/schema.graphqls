@@ -255,6 +255,7 @@ type Query {
     blogById(blogId: Int) : Blog
     blogs: [Blog]
     blogPostsByBlog (blogId: Int) : [Post]
+    postById(postId: Int) : Post
 
 
 

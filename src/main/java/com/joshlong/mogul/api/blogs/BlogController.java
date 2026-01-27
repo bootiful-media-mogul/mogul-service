@@ -49,6 +49,11 @@ class BlogController {
 		return this.service.summarize(content);
 	}
 
+	@QueryMapping
+	Post postById(@Argument Long postId) {
+		return this.service.getPostById(postId);
+	}
+
 	@SchemaMapping
 	OffsetDateTime created(Post blog) {
 		return DateUtils.forDate(blog.created());
