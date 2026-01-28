@@ -27,6 +27,11 @@ class BlogController {
 	}
 
 	@MutationMapping
+	Post createPost(@Argument Long blogId, @Argument String title, @Argument String content, @Argument String summary) {
+		return this.service.createPost(blogId, title, content, summary);
+	}
+
+	@MutationMapping
 	boolean deleteBlog(@Argument Long blogId) {
 		this.service.deleteBlog(blogId);
 		return true;

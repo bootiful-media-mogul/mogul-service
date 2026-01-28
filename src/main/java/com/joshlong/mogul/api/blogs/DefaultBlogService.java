@@ -4,9 +4,8 @@ import com.joshlong.mogul.api.ai.AiClient;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -18,16 +17,6 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
-@Configuration
-class DefaultBlogServiceConfiguration {
-
-	@Bean
-	DefaultBlogService defaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
-		return new DefaultBlogService(db, singularity, publisher);
-	}
-
-}
 
 @Transactional
 class DefaultBlogService implements BlogService {
@@ -42,7 +31,7 @@ class DefaultBlogService implements BlogService {
 
 	private final AiClient singularity;
 
-	private final Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher) {
 		this.db = db;
@@ -159,7 +148,9 @@ class DefaultBlogService implements BlogService {
 			.params(blogId, title, content, summary)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh);
-		return getPostById(id.longValue());
+		var post = getPostById(id.longValue());
+		this.publisher.publishEvent(new PostCreatedEvent(post));
+		return post;
 	}
 
 	@Override
@@ -183,7 +174,8 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
-					rs.getString("content"), rs.getBoolean("complete"), new HashMap<>(), rs.getString("summary"));
+					rs.getString("content"), rs.getBoolean("complete"), new HashMap<>(), rs.getString("summary"),
+					rs.getLong("blog_id"));
 		}
 
 	}

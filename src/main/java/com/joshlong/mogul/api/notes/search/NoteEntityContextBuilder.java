@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api.podcasts.search;
+package com.joshlong.mogul.api.notes.search;
 
 import com.joshlong.mogul.api.EntityContext;
 import com.joshlong.mogul.api.EntityContextBuilder;

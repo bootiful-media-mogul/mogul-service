@@ -196,6 +196,8 @@ type Mutation {
 
     deleteBlog (blogId:Int): Boolean
 
+    createPost(blogId:Int, title:String, content:String, summary:String): Post
+
     updatePost(postId:Int, title:String, description:String, summary:String): Boolean
 
     summarize(content:String): String
