@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -35,6 +36,11 @@ class BlogController {
 	boolean deleteBlog(@Argument Long blogId) {
 		this.service.deleteBlog(blogId);
 		return true;
+	}
+
+	@SchemaMapping
+	Composition descriptionComposition(Post post) {
+		return this.service.getBlogPostDescriptionComposition(post.id());
 	}
 
 	@QueryMapping

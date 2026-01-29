@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
@@ -7,37 +8,38 @@ import java.util.Map;
 
 public interface BlogService {
 
-    Collection<Blog> getBlogsFor(long mogulId);
+	Collection<Blog> getBlogsFor(long mogulId);
 
-    Collection<Post> getPostsForBlog(long blogId);
+	Collection<Post> getPostsForBlog(long blogId);
 
-    // blog
-    Blog createBlog(Long mogulId, String title, String description);
+	// blog
+	Blog createBlog(Long mogulId, String title, String description);
 
-    Blog updateBlog(Long mogulId, Long blogId, String title, String description);
+	Blog updateBlog(Long mogulId, Long blogId, String title, String description);
 
-    Blog getBlogById(Long id);
+	Blog getBlogById(Long id);
 
-    Post getPostById(Long id);
+	Post getPostById(Long id);
 
-    Map<Long, Post> getPostsByIds(Collection<Long> ids);
+	Map<Long, Post> getPostsByIds(Collection<Long> ids);
 
-    void deleteBlog(Long id);
+	void deleteBlog(Long id);
 
-    String summarize(String content);
+	String summarize(String content);
 
-    Post updatePost(Long postId, String title, String content, String summary);
+	Post updatePost(Long postId, String title, String content, String summary);
 
-    // posts
-    Post createPost(Long blogId, String title, String content, String summary);
+	Post createPost(Long blogId, String title, String content, String summary);
 
-    /**
-     * I imagine a world whereas you type text and reference images that we resolve all
-     * URLs and download them, making them available in the ManagedFile file system as
-     * public ManagedFiles. You could also choose to add an image and then reference it by
-     * its id or a key or something. we'll discover it and automatically replace it with
-     * the actual source.
-     */
-    Map<String, ManagedFile> resolveAssetsForPost(Long postId);
+	/**
+	 * I imagine a world whereas you type text and reference images that we resolve all
+	 * URLs and download them, making them available in the ManagedFile file system as
+	 * public ManagedFiles. You could also choose to add an image and then reference it by
+	 * its id or a key or something. we'll discover it and automatically replace it with
+	 * the actual source.
+	 */
+	Map<String, ManagedFile> resolveAssetsForPost(Long postId);
+
+	Composition getBlogPostDescriptionComposition(Long postId);
 
 }

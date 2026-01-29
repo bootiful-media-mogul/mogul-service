@@ -14,34 +14,34 @@ import java.util.List;
 @Component
 class PostSearchableResolver extends AbstractSearchableResolver<Post> {
 
-    private final BlogService blogService;
+	private final BlogService blogService;
 
-    PostSearchableResolver(BlogService blogService) {
-        super(Post.class);
-        this.blogService = blogService;
-    }
+	PostSearchableResolver(BlogService blogService) {
+		super(Post.class);
+		this.blogService = blogService;
+	}
 
-    @Override
-    public List<SearchableResult<Post>> results(List<Long> searchableIds) {
-        if (searchableIds == null || searchableIds.isEmpty())
-            return Collections.emptyList();
-        var postsMap = this.blogService.getPostsByIds(searchableIds);
-        var searchableResults = new ArrayList<SearchableResult<Post>>();
-        Assert.state(!postsMap.isEmpty(), "Posts must not be empty");
-        for (var post : postsMap.values()) {
-            searchableResults.add(this.buildResultFor(post, post.content()));
-        }
-        return searchableResults;
-    }
+	@Override
+	public List<SearchableResult<Post>> results(List<Long> searchableIds) {
+		if (searchableIds == null || searchableIds.isEmpty())
+			return Collections.emptyList();
+		var postsMap = this.blogService.getPostsByIds(searchableIds);
+		var searchableResults = new ArrayList<SearchableResult<Post>>();
+		Assert.state(!postsMap.isEmpty(), "Posts must not be empty");
+		for (var post : postsMap.values()) {
+			searchableResults.add(this.buildResultFor(post, post.content()));
+		}
+		return searchableResults;
+	}
 
-    private SearchableResult<Post> buildResultFor(Post post, String transcript) {
-        return new SearchableResult<>(post.searchableId(), post, post.title(), transcript, post.id(), post.created(),
-                this.type);
-    }
+	private SearchableResult<Post> buildResultFor(Post post, String transcript) {
+		return new SearchableResult<>(post.searchableId(), post, post.title(), transcript, post.id(), post.created(),
+				this.type);
+	}
 
-    @Override
-    public Post find(Long key) {
-        return this.blogService.getPostById(key);
-    }
+	@Override
+	public Post find(Long key) {
+		return this.blogService.getPostById(key);
+	}
 
 }

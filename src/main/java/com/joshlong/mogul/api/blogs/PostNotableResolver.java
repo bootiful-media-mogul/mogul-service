@@ -6,15 +6,16 @@ import org.springframework.stereotype.Component;
 @Component
 class PostNotableResolver extends AbstractNotableResolver<Post> {
 
-    private final BlogService blogService;
+	private final BlogService blogService;
 
-    PostNotableResolver(BlogService blogService) {
-        super(Post.class);
-        this.blogService = blogService;
-    }
+	PostNotableResolver(BlogService blogService) {
+		super(Post.class);
+		this.blogService = blogService;
+	}
 
-    @Override
-    public Post find(Long key) {
-        return this.blogService.getPostById(key);
-    }
+	@Override
+	public Post find(Long key) {
+		return this.blogService.getPostById(key);
+	}
+
 }
