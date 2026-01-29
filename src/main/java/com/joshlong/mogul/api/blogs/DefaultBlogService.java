@@ -173,8 +173,8 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Post updatePost(Long postId, String title, String content, String summary) {
-		this.db.sql("update  blog_post set title = ? , content = ?, summary = ? where id = ?")
-			.params(title, content, summary, postId)
+		this.db.sql("update  blog_post set title = ? , content = ?, summary = ? where id = ?")//
+			.params(title, content, summary, postId)//
 			.update();
 		var postById = this.getPostById(postId);
 		this.publisher.publishEvent(new PostUpdatedEvent(postById));
