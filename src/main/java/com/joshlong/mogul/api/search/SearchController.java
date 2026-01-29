@@ -20,8 +20,6 @@ class SearchController {
 
 	private final SearchService searchService;
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	SearchController(SearchService searchService) {
 		this.searchService = searchService;
 	}

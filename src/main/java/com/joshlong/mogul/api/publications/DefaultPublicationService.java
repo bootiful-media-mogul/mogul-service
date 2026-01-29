@@ -186,11 +186,9 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		if (ids.isEmpty() || ids.stream().noneMatch(id -> id > 0))
 			return Collections.emptyMap();
 		var map = new HashMap<Long, Publication>();
-		var collectedIds = CollectionUtils.join(ids, ",");
 		var pubs = this.db //
-			.sql("select * from publication p where p.id in (" + collectedIds + ") ")
-			// todo fix this there's a way to do an Array
-			//
+			.sql("select * from publication p where p.id = any(?) ") //
+			.params(ids.toArray()) //
 			.query(this.getPublicationRowMapper()) //
 			.list();
 		for (var p : pubs)

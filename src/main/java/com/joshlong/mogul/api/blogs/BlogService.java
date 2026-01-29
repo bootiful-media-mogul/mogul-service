@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 public interface BlogService {
 
@@ -21,14 +21,15 @@ public interface BlogService {
 
 	Post getPostById(Long id);
 
+	Map<Long, Post> getPostsByIds(Collection<Long> ids);
+
 	void deleteBlog(Long id);
 
 	String summarize(String content);
 
-	Post updatePost(Long postId, String title, String content, String[] tags);
+	Post updatePost(Long postId, String title, String content, String summary);
 
-	// posts
-	Post createPost(Long blogId, String title, String content, String[] tags);
+	Post createPost(Long blogId, String title, String content, String summary);
 
 	/**
 	 * I imagine a world whereas you type text and reference images that we resolve all
@@ -38,5 +39,7 @@ public interface BlogService {
 	 * the actual source.
 	 */
 	Map<String, ManagedFile> resolveAssetsForPost(Long postId);
+
+	Composition getBlogPostDescriptionComposition(Long postId);
 
 }

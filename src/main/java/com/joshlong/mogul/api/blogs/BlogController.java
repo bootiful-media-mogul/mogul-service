@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.blogs;
 
+import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -27,9 +28,46 @@ class BlogController {
 	}
 
 	@MutationMapping
+	Post createPost(@Argument Long blogId, @Argument String title, @Argument String content, @Argument String summary) {
+		return this.service.createPost(blogId, title, content, summary);
+	}
+
+	@MutationMapping
 	boolean deleteBlog(@Argument Long blogId) {
 		this.service.deleteBlog(blogId);
 		return true;
+	}
+
+	@SchemaMapping
+	Composition descriptionComposition(Post post) {
+		return this.service.getBlogPostDescriptionComposition(post.id());
+	}
+
+	@QueryMapping
+	Collection<Post> blogPostsByBlog(@Argument Long blogId) {
+		return this.service.getPostsForBlog(blogId);
+	}
+
+	@MutationMapping
+	boolean updatePost(@Argument Long postId, @Argument String title, @Argument String description,
+			@Argument String summary) {
+		this.service.updatePost(postId, title, description, summary);
+		return true;
+	}
+
+	@MutationMapping
+	String summarize(@Argument String content) {
+		return this.service.summarize(content);
+	}
+
+	@QueryMapping
+	Post postById(@Argument Long postId) {
+		return this.service.getPostById(postId);
+	}
+
+	@SchemaMapping
+	OffsetDateTime created(Post blog) {
+		return DateUtils.forDate(blog.created());
 	}
 
 	@ApplicationModuleListener
