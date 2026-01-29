@@ -17,7 +17,7 @@ import static com.joshlong.mogul.api.podcasts.publication.MockPodcastEpisodePubl
 @Component(PLUGIN_NAME)
 class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
 
-	static final String PLUGIN_NAME = "mock";
+	static final String PLUGIN_NAME = "mockPodcastEpisode";
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
