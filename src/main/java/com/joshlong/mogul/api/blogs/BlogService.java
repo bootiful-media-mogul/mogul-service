@@ -12,6 +12,8 @@ public interface BlogService {
 
 	Collection<Post> getPostsForBlog(long blogId);
 
+	void deletePost(Long postId);
+
 	// blog
 	Blog createBlog(Long mogulId, String title, String description);
 

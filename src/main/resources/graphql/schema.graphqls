@@ -201,6 +201,8 @@ type Mutation {
 
     updatePost(postId:Int, title:String, description:String, summary:String): Boolean
 
+    deletePost(postId:Int): Boolean
+
     summarize(content:String): String
 
     # notes

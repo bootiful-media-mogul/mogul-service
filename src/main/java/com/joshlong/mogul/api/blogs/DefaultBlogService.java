@@ -133,11 +133,26 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
+	public void deletePost(Long postId) {
+		var composition = this.getDescriptionComposition(postId);
+		this.compositionService.deleteCompositionById(composition.id());
+		this.db.sql("delete from blog_post where id = ? ").params(postId).update();
+	}
+
+	@Override
 	public void deleteBlog(Long id) {
-		if (this.getBlogById(id) != null) {
-			this.log.info("deleting blog {}", id);
-			// todo queue up all the ManagedFiles associated with this blog for deletion
-			this.db.sql("delete from blog_post where blog_id = ? ").params(id).update();
+		var blog = this.getBlogById(id);
+		if (blog != null) {
+			// todo get all the posts
+			// get all the compositions
+			// get all the managed_files on the posts (none yet but maybe one day)
+
+			var posts = this.getPostsForBlog(id);
+			for (var post : posts) {
+				var postId = post.id();
+				this.deletePost(postId);
+			}
+
 			this.db.sql("delete from blog where id = ? ").params(id).update();
 		}
 	}

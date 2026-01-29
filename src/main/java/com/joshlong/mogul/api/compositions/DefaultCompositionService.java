@@ -131,11 +131,26 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
-	public void deleteCompositionAttachment(Long id) {
+	public void deleteCompositionById(Long id) {
+		var composition = this.readThroughCompositionById(id);
+		if (composition == null) {
+			return;
+		}
+
+		if (composition.attachments() != null && !composition.attachments().isEmpty())
+			composition.attachments().forEach(attachment -> {
+				this.deleteCompositionAttachmentyId(attachment.id());
+			});
+		this.db.sql("delete from composition where id = ?").param(id).update();
+	}
+
+	@Override
+	public void deleteCompositionAttachmentyId(Long id) {
 		// this is gross, but i need the composition_id for the caches
-		var compositionId = this.db.sql("select composition_id from composition_attachment where id = ?")
-			.param(id)
-			.query((rs, _) -> rs.getLong("composition_id"))
+		var compositionId = this.db //
+			.sql("select composition_id from composition_attachment where id = ?") //
+			.param(id) //
+			.query((rs, _) -> rs.getLong("composition_id"))//
 			.single();
 		var composition = this.readThroughCompositionById(compositionId);
 		var attachmentById = this.readThroughAttachmentById(id);

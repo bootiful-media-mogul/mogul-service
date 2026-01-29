@@ -73,7 +73,7 @@ class DefaultCompositionServiceTest {
 		descriptionComp = podcastService.getPodcastEpisodeDescriptionComposition(episode.id());
 		assertEquals(1, descriptionComp.attachments().size(), "there should be one attachment for the title");
 
-		compositionService.deleteCompositionAttachment(descriptionComp.attachments().iterator().next().id());
+		compositionService.deleteCompositionAttachmentyId(descriptionComp.attachments().iterator().next().id());
 		descriptionComp = podcastService.getPodcastEpisodeDescriptionComposition(episode.id());
 		assertTrue(descriptionComp.attachments().isEmpty(), "there should be no attachments for the description, yet");
 

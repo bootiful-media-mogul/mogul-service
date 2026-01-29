@@ -18,7 +18,9 @@ public interface CompositionService {
 
 	Map<Long, Composition> getCompositionsByIds(Collection<Long> ids);
 
-	void deleteCompositionAttachment(Long id);
+	void deleteCompositionById(Long id);
+
+	void deleteCompositionAttachmentyId(Long id);
 
 	String createMarkdownPreviewForAttachment(Attachment attachment);
 
