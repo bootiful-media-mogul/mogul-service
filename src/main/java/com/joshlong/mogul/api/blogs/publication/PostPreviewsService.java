@@ -41,11 +41,12 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 	@Override
 	public PostPreview createPostPreview(Long mogulId, Long publicationId, Long postId) {
-		var mf = this.managedFileService.createManagedFile(mogulId, "blog-post-publication-previews", Long.toString(postId), 0,
-				MediaType.APPLICATION_OCTET_STREAM, true);
+		var mf = this.managedFileService.createManagedFile(mogulId, "blog-post-publication-previews",
+				Long.toString(postId), 0, MediaType.APPLICATION_OCTET_STREAM, true);
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql("insert into blog_post_publication_preview(mogul_id, publication_id, blog_post_id, managed_file_id) values (?,?,?,?)") //
-			.params(mogulId, publicationId ,postId, mf.id())
+		this.db.sql(
+				"insert into blog_post_publication_preview(mogul_id, publication_id, blog_post_id, managed_file_id) values (?,?,?,?)") //
+			.params(mogulId, publicationId, postId, mf.id())
 			.update(gkh);
 		var previewId = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 		return this.getPostPreviewById(previewId);
@@ -53,7 +54,10 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 	@Override
 	public PostPreview getPostPreviewById(Long id) {
-		return this.db.sql("select * from blog_post_publication_preview where id = ?").param(id).query(this.publicationPreviewRowMapper).single();
+		return this.db.sql("select * from blog_post_publication_preview where id = ?")
+			.param(id)
+			.query(this.publicationPreviewRowMapper)
+			.single();
 
 	}
 
@@ -61,9 +65,8 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 		@Override
 		public PostPreview mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new PostPreview(
-					rs.getLong("publication_id"),
-					rs.getLong("id"), blogService.getPostById(rs.getLong("blog_post_id")),
+			return new PostPreview(rs.getLong("publication_id"), rs.getLong("id"),
+					blogService.getPostById(rs.getLong("blog_post_id")),
 					managedFileService.getManagedFileById(rs.getLong("managed_file_id")));
 		}
 

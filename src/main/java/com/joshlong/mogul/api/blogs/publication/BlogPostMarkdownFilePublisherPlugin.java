@@ -50,7 +50,7 @@ class BlogPostMarkdownFilePublisherPlugin implements PublisherPlugin<Post> {
 	@Override
 	public void publish(PublishContext<Post> publishContext) {
 		var postId = publishContext.payload().id();
-		var publicationId = Long.parseLong( publishContext.context().get(PublicationService.PUBLICATION_ID));
+		var publicationId = Long.parseLong(publishContext.context().get(PublicationService.PUBLICATION_ID));
 		var mogulId = Long.parseLong(publishContext.context().get(PublicationService.MOGUL_ID));
 		for (var entry : publishContext.context().entrySet()) {
 			this.log.info("{}={}", entry.getKey(), entry.getValue());
@@ -58,7 +58,7 @@ class BlogPostMarkdownFilePublisherPlugin implements PublisherPlugin<Post> {
 		this.log.info("publishing Markdown file {} for post", publishContext.payload().id());
 		var postById = this.blogService.getPostById(postId);
 		var byteArrayResource = new ByteArrayResource(postById.content().getBytes());
-		var preview = this.postPreviewsService.createPostPreview(mogulId, publicationId,postId);
+		var preview = this.postPreviewsService.createPostPreview(mogulId, publicationId, postId);
 		this.managedFileService.write(preview.managedFile().id(),
 				"blog-post-" + postId + "preview-" + UUID.randomUUID() + ".md",
 				MediaType.parseMediaType("text/markdown"), byteArrayResource);
