@@ -83,7 +83,7 @@ class PublicationController<T extends Publishable> {
 
 		Assert.hasText(plugin, "the plugin named [" + plugin + "] does not exist!");
 		var currentMogulId = this.mogulService.getCurrentMogul().id();
-		var episode = (T) publicationService.resolvePublishable(mogulService.getCurrentMogul().id(), publishableId,
+		var publishable = (T) publicationService.resolvePublishable(mogulService.getCurrentMogul().id(), publishableId,
 				publishableType);
 		var publisherPlugin = this.plugins.get(plugin);
 		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
@@ -92,7 +92,7 @@ class PublicationController<T extends Publishable> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.mogulService.assertAuthorizedMogul(currentMogulId);
 			var contextAndSettings = this.contextFromClient(contextJson);
-			this.publicationService.publish(currentMogulId, episode, contextAndSettings, publisherPlugin);
+			this.publicationService.publish(currentMogulId, publishable, contextAndSettings, publisherPlugin);
 		};
 		this.executor.execute(runnable);
 		return true;

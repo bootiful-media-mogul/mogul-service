@@ -13,6 +13,10 @@ import java.util.Map;
  */
 public interface PublicationService {
 
+	String MOGUL_ID = "mogulId";
+
+	String PUBLICATION_ID = "publicationId";
+
 	<T extends Publishable> T resolvePublishable(Long mogulId, Long id, String clazz);
 
 	<T extends Publishable> T resolvePublishable(Long mogulId, Long id, Class<T> clazz);
