@@ -15,7 +15,7 @@ import java.sql.SQLException;
 
 public interface PostPreviewsService {
 
-	PostPreview createPostPreview(Long mogulId, Long postId);
+	PostPreview createPostPreview(Long mogulId, Long publicationId, Long postId);
 
 	PostPreview getPostPreviewById(Long id);
 
@@ -31,7 +31,7 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 	private final BlogService blogService;
 
-	private final PostPreviewRowMapper pp = new PostPreviewRowMapper();
+	private final PostPreviewRowMapper publicationPreviewRowMapper = new PostPreviewRowMapper();
 
 	DefaultPostPreviewsService(JdbcClient db, ManagedFileService managedFileService, BlogService blogService) {
 		this.db = db;
@@ -40,12 +40,12 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 	}
 
 	@Override
-	public PostPreview createPostPreview(Long mogulId, Long postId) {
-		var mf = this.managedFileService.createManagedFile(mogulId, "blog-post-previews", Long.toString(postId), 0,
+	public PostPreview createPostPreview(Long mogulId, Long publicationId, Long postId) {
+		var mf = this.managedFileService.createManagedFile(mogulId, "blog-post-publication-previews", Long.toString(postId), 0,
 				MediaType.APPLICATION_OCTET_STREAM, true);
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql("insert into blog_post_preview (mogul_id, blog_post_id, managed_file_id) values (?, ?, ?)") //
-			.params(mogulId, postId, mf.id())
+		this.db.sql("insert into blog_post_publication_preview(mogul_id, publication_id, blog_post_id, managed_file_id) values (?,?,?,?)") //
+			.params(mogulId, publicationId ,postId, mf.id())
 			.update(gkh);
 		var previewId = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 		return this.getPostPreviewById(previewId);
@@ -53,7 +53,7 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 	@Override
 	public PostPreview getPostPreviewById(Long id) {
-		return this.db.sql("select * from blog_post_preview where id = ?").param(id).query(this.pp).single();
+		return this.db.sql("select * from blog_post_publication_preview where id = ?").param(id).query(this.publicationPreviewRowMapper).single();
 
 	}
 
@@ -61,7 +61,9 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 
 		@Override
 		public PostPreview mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new PostPreview(rs.getLong("id"), blogService.getPostById(rs.getLong("blog_post_id")),
+			return new PostPreview(
+					rs.getLong("publication_id"),
+					rs.getLong("id"), blogService.getPostById(rs.getLong("blog_post_id")),
 					managedFileService.getManagedFileById(rs.getLong("managed_file_id")));
 		}
 
