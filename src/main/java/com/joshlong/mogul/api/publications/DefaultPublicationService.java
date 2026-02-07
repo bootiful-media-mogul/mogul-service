@@ -4,7 +4,6 @@ import com.joshlong.mogul.api.*;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -111,6 +110,8 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		var context = new ConcurrentHashMap<String, String>();
 		context.putAll(configuration);
 		context.putAll(contextAndSettings);
+		context.put(MOGUL_ID, Long.toString(mogulId));
+
 		var publicationId = (long) Objects.requireNonNull(this.transactionTemplate.execute(transactionStatus -> {
 			var mogul = this.mogulService.getMogulById(mogulId);
 			Assert.notNull(mogul, "the mogul should not be null");
@@ -125,6 +126,8 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 				.update(kh);
 			return JdbcUtils.getIdFromKeyHolder(kh).longValue();
 		}));
+
+		context.put(PUBLICATION_ID, Long.toString(publicationId));
 
 		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(this.getPublicationById(publicationId)));
 

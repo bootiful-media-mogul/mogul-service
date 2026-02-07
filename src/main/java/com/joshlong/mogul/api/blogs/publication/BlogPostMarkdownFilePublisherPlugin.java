@@ -1,51 +1,80 @@
 package com.joshlong.mogul.api.blogs.publication;
 
-
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.blogs.Post;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.publications.PublicationService;
+import com.joshlong.mogul.api.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.UUID;
 
 import static com.joshlong.mogul.api.blogs.publication.BlogPostMarkdownFilePublisherPlugin.PLUGIN_NAME;
 
 @Component(value = PLUGIN_NAME)
 class BlogPostMarkdownFilePublisherPlugin implements PublisherPlugin<Post> {
 
-    static final String PLUGIN_NAME = "blogPostMarkdownFile";
+	static final String PLUGIN_NAME = "blogPostMarkdownFile";
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final BlogService blogService;
+	private final BlogService blogService;
 
-    BlogPostMarkdownFilePublisherPlugin(BlogService blogService) {
-        this.blogService = blogService;
-    }
+	private final PostPreviewsService postPreviewsService;
 
-    @Override
-    public String name() {
-        return PLUGIN_NAME;
-    }
+	private final ManagedFileService managedFileService;
 
-    @Override
-    public Set<String> requiredSettingKeys() {
-        return Set.of();
-    }
+	BlogPostMarkdownFilePublisherPlugin(BlogService blogService, PostPreviewsService postPreviewsService,
+			ManagedFileService managedFileService) {
+		this.blogService = blogService;
+		this.postPreviewsService = postPreviewsService;
+		this.managedFileService = managedFileService;
+	}
 
-    @Override
-    public void publish(PublishContext<Post> publishContext) {
-        for (var entry : publishContext.context().entrySet()) {
-            this.log.info("{}={}", entry.getKey(), entry.getValue());
-        }
-        this.log.info ("publishing Markdown file {} for post",
-                publishContext.payload().id());
-    }
+	@Override
+	public String name() {
+		return PLUGIN_NAME;
+	}
 
-    @Override
-    public boolean unpublish(UnpublishContext<Post> uc) {
-        return false;
-    }
+	@Override
+	public Set<String> requiredSettingKeys() {
+		return Set.of();
+	}
+
+	@Override
+	public void publish(PublishContext<Post> publishContext) {
+		var postId = publishContext.payload().id();
+		var mogulId = Long.parseLong(publishContext.context().get(PublicationService.MOGUL_ID));
+		for (var entry : publishContext.context().entrySet()) {
+			this.log.info("{}={}", entry.getKey(), entry.getValue());
+		}
+		this.log.info("publishing Markdown file {} for post", publishContext.payload().id());
+		var postById = this.blogService.getPostById(postId);
+		var byteArrayResource = new ByteArrayResource(postById.content().getBytes());
+		var preview = this.postPreviewsService.createPostPreview(mogulId, postId);
+		this.managedFileService.write(preview.managedFile().id(),
+				"blog-post-" + postId + "preview-" + UUID.randomUUID() + ".md",
+				MediaType.parseMediaType("text/markdown"), byteArrayResource);
+		this.managedFileService.setManagedFileVisibility(preview.managedFile().id(), true);
+
+		// todo find some way to pass to this place or in the context the servlet context
+		// so we can get the host:port
+		// i can't use the private url for this managedFile because it's relative and not
+		// absolute. i need the host:port
+
+		publishContext.success(PLUGIN_NAME,
+				UriUtils.uri(this.managedFileService.getPublicUrlForManagedFile(preview.managedFile().id())));
+	}
+
+	@Override
+	public boolean unpublish(UnpublishContext<Post> uc) {
+		return false;
+	}
+
 }

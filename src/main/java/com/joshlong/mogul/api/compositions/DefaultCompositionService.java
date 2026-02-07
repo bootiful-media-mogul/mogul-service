@@ -72,7 +72,7 @@ class DefaultCompositionService implements CompositionService {
 		record CompositionAndAttachment(Long compositionId, Attachment attachment) {
 		}
 
-		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", getClass().getSimpleName(),
+		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", this.getClass().getSimpleName(),
 				event.managedFile());
 		var managedFileEventId = event.managedFile().id();
 		var compositionAndAttachmentRowMapper = new RowMapper<CompositionAndAttachment>() {
@@ -88,12 +88,18 @@ class DefaultCompositionService implements CompositionService {
 			.param(managedFileEventId) //
 			.query(compositionAndAttachmentRowMapper) //
 			.list();
+		if (attachments.isEmpty())
+			return;
+		else
+			this.log.info("there are {} attachments for managed file {}", attachments.size(), managedFileEventId);
+
 		var compositions = new HashSet<Long>();
 		for (var meta : attachments) {
 			this.invalidateAttachmentCache(meta.attachment().id());
 			compositions.add(meta.compositionId());
 		}
-		this.invalidateCompositionCacheById(compositions.iterator().next());
+		if (!compositions.isEmpty())
+			this.invalidateCompositionCacheById(compositions.iterator().next());
 
 		NotificationEvents.notifyAsync(NotificationEvent.systemNotificationEventFor(event.managedFile().mogulId(),
 				new AttachmentManagedFileUpdatedEvent(managedFileEventId), Long.toString(event.managedFile().id()),

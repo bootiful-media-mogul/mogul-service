@@ -88,7 +88,7 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 		var producedGraphicAuthorization = this.podbeanClient.upload(CommonMediaTypes.JPG, tempGraphicFile);
 		this.log.debug("got the podcast graphic authorization from podbean: {}", producedGraphicAuthorization);
 
-		var pluginName = "podbean";
+		var pluginName = PLUGIN_NAME;
 		var podbeanEpisode = (com.joshlong.podbean.Episode) null;
 		var errorMessage = "";
 		try {
