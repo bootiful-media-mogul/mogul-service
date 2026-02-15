@@ -29,7 +29,7 @@ import java.util.Map;
 @RegisterReflectionForBinding(Entry.class)
 public class Feeds {
 
-	private static final String MOGUL_FEEDS_NS = "http://api.media-mogul.io";
+	private static final String MOGUL_FEEDS_NS = "http://api.mogul.tools";
 
 	private static final String MOGUL_FEEDS_ELEMENT_PREFIX = "mogul-feeds";
 
