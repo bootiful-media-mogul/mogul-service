@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.1</version>
+        <version>4.0.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.joshlong.mogul</groupId>
@@ -14,7 +14,7 @@
     <name>mogul-service</name>
     <properties>
         <java.version>25</java.version>
-        <spring-ai.version>2.0.0-M1</spring-ai.version>
+        <spring-ai.version>2.0.0-M2</spring-ai.version>
         <spring-cloud.version>2025.1.0</spring-cloud.version>
         <spring-modulith.version>2.0.1</spring-modulith.version>
     </properties>
