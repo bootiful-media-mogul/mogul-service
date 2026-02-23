@@ -22,8 +22,9 @@ class IndexController {
 		return me(principal);
 	}
 
-	@GetMapping ("/wp")
+	@GetMapping("/wp")
 	Map<String, String> wp(HttpServletRequest request) {
 		return Map.of("name", request.getHeader("X-WordPress-Token"));
 	}
+
 }
