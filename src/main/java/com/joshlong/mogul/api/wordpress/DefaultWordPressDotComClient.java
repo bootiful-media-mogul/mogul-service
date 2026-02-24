@@ -17,13 +17,13 @@ import java.util.function.Function;
  * API is completely different from the Wordpress API in self-hosted instances of
  * WordPress.
  */
-class DefaultWordPressDotComDotComClient implements WordPressDotComClient {
+class DefaultWordPressDotComClient implements WordPressClient {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final RestClient restClient;
 
-	DefaultWordPressDotComDotComClient(RestClient wordPressRestClient) {
+	DefaultWordPressDotComClient(RestClient wordPressRestClient) {
 		this.restClient = wordPressRestClient;
 	}
 

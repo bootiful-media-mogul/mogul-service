@@ -61,9 +61,8 @@ class WordPressConfiguration {
 	}
 
 	@Bean
-	DefaultWordPressDotComDotComClient wordPressClient(
-			@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
-		return new DefaultWordPressDotComDotComClient(wordPressRestClient);
+	DefaultWordPressDotComClient wordPressClient(@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
+		return new DefaultWordPressDotComClient(wordPressRestClient);
 	}
 
 	@Bean

@@ -3,7 +3,7 @@ package com.joshlong.mogul.api.blogs.publication;
 import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.blogs.Post;
 import com.joshlong.mogul.api.utils.UriUtils;
-import com.joshlong.mogul.api.wordpress.WordPressDotComClient;
+import com.joshlong.mogul.api.wordpress.WordPressClient;
 import com.joshlong.mogul.api.wordpress.WordPressPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +20,10 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final WordPressDotComClient wordPressDotComClient;
+	private final WordPressClient wordPressClient;
 
-	WordPressBlogPostPublisherPlugin(WordPressDotComClient wordPressDotComClient) {
-		this.wordPressDotComClient = wordPressDotComClient;
+	WordPressBlogPostPublisherPlugin(WordPressClient wordPressClient) {
+		this.wordPressClient = wordPressClient;
 	}
 
 	@Override
@@ -43,7 +43,7 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 	public void publish(PublishContext<Post> publishContext) {
 
 		var payload = publishContext.payload();
-		var wordPressPostResponse = this.wordPressDotComClient.publishPost(new WordPressPost(payload.title(),
+		var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
 				payload.content(), WordPressPost.Status.DRAFT, "", List.of(), List.of(), ""));
 
 		Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");

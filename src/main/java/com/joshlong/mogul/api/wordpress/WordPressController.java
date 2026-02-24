@@ -11,11 +11,11 @@ import static com.joshlong.mogul.api.wordpress.WordPressConfiguration.WORDPRESS_
 @Controller
 class WordPressController {
 
-	private final WordPressDotComClient client;
+	private final WordPressClient client;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	WordPressController(WordPressDotComClient client) {
+	WordPressController(WordPressClient client) {
 		this.client = client;
 	}
 

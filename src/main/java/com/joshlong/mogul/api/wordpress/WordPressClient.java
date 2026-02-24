@@ -3,7 +3,7 @@ package com.joshlong.mogul.api.wordpress;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 
-public interface WordPressDotComClient {
+public interface WordPressClient {
 
 	WordPressPostResponse publishPost(WordPressPost post);
 
