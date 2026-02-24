@@ -5,12 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
 public record WordPressMediaResponse(int id, String link, String status, String mime_type, String source_url, // the
-																												// actual
-																												// URL
-																												// of
-																												// the
-																												// uploaded
-																												// file
+
 		WordPressRendered title, WordPressRendered caption, @JsonProperty("alt_text") WordPressRendered altText,
 		@JsonProperty("media_details") MediaDetails mediaDetails) {
 	public record WordPressRendered(String rendered) {

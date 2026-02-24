@@ -35,14 +35,17 @@ class WordPressConfiguration {
 	}
 
 	@Bean(WORDPRESS_REST_CLIENT)
-	RestClient wordPressRestClient(
-
-			RestClient.Builder builder) {
+	RestClient wordPressRestClient(RestClient.Builder builder) {
 		// todo we need to put baseUrl and sites in settings, too!
-		var site = "joshlong.dev";
-		var base = "https://public-api.wordpress.com/rest/v1.1";
+		// var site = "joshlong.dev";// should be a setting. we can obtain the id given
+		// the site..
+		var siteId = "252444194"; // should be a setting
+		// get the site ID from
+		// https://public-api.wordpress.com/rest/v1.1/sites/joshlong.dev
+		var base = "https://public-api.wordpress.com/wp/v2/sites/" + siteId;
+		this.log.info("setting up a RestClient for WordPress.com site {} at {}", siteId, base);
 		return builder //
-			.baseUrl(base + "/sites/" + site) //
+			.baseUrl(base) //
 			.requestInterceptor((request, body, execution) -> {
 				var token = WordPressToken.get();
 				if (StringUtils.hasText(token)) {
@@ -58,8 +61,9 @@ class WordPressConfiguration {
 	}
 
 	@Bean
-	DefaultWordPressClient wordPressClient(@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
-		return new DefaultWordPressClient(wordPressRestClient);
+	DefaultWordPressDotComDotComClient wordPressClient(
+			@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
+		return new DefaultWordPressDotComDotComClient(wordPressRestClient);
 	}
 
 	@Bean

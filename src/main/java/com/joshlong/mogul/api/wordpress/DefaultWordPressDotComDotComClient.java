@@ -3,8 +3,8 @@ package com.joshlong.mogul.api.wordpress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -12,22 +12,36 @@ import tools.jackson.databind.JsonNode;
 import java.util.function.Function;
 
 /**
- * just enough API surface area to support the blog publishing feature
+ * just enough API surface area to support the blog publishing feature. the trouble is
+ * that <a href="https://www.wordpress.com">WordPress</a> is a bit of a mess, and its REST
+ * API is completely different from the Wordpress API in self-hosted instances of
+ * WordPress.
  */
-class DefaultWordPressClient implements WordPressClient {
+class DefaultWordPressDotComDotComClient implements WordPressDotComClient {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final RestClient restClient;
 
-	DefaultWordPressClient(RestClient wordPressRestClient) {
+	DefaultWordPressDotComDotComClient(RestClient wordPressRestClient) {
 		this.restClient = wordPressRestClient;
 	}
 
 	// Publish a post immediately
 	@Override
 	public WordPressPostResponse publishPost(WordPressPost post) {
-		return restClient.post().uri("/posts/new").body(post).retrieve().body(WordPressPostResponse.class);
+		var jsonRespone = restClient.post() //
+			.uri("/posts")//
+			.body(post) //
+			.retrieve()
+			.onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
+				var body = new String(res.getBody().readAllBytes());
+				this.log.error("4xx error: status={} body={}", res.getStatusCode(), body);
+				throw new RuntimeException("WordPress API error: " + body);
+			})
+			.body(WordPressPostResponse.class); //
+		this.log.info("the json response is {} ", jsonRespone);
+		return jsonRespone;
 	}
 
 	@Override
