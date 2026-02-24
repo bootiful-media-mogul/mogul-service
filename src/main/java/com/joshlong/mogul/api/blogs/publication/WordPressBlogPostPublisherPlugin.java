@@ -13,8 +13,8 @@ import org.springframework.util.Assert;
 import java.util.List;
 import java.util.Set;
 
-@Component(value = BlogPostWordPressPublisherPlugin.PLUGIN_NAME)
-class BlogPostWordPressPublisherPlugin implements PublisherPlugin<Post> {
+@Component(value = WordPressBlogPostPublisherPlugin.PLUGIN_NAME)
+class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
 	static final String PLUGIN_NAME = "wordpress";
 
@@ -22,7 +22,7 @@ class BlogPostWordPressPublisherPlugin implements PublisherPlugin<Post> {
 
 	private final WordPressDotComClient wordPressDotComClient;
 
-	BlogPostWordPressPublisherPlugin(WordPressDotComClient wordPressDotComClient) {
+	WordPressBlogPostPublisherPlugin(WordPressDotComClient wordPressDotComClient) {
 		this.wordPressDotComClient = wordPressDotComClient;
 	}
 
