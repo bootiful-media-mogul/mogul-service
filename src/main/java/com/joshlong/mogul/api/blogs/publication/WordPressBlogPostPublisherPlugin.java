@@ -45,13 +45,14 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 		var payload = publishContext.payload();
 		var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
 				payload.content(), WordPressPost.Status.DRAFT, "", List.of(), List.of(), ""));
-
+		// todo what's a slug? excerpt? those other values?
 		Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");
 		this.log.info("published post to WordPress at {}", wordPressPostResponse.link());
 		publishContext.success(PLUGIN_NAME, UriUtils.uri(wordPressPostResponse.link()));
 
 	}
 
+	// todo should we make post == publish and then unpublish == draft ?
 	@Override
 	public boolean unpublish(UnpublishContext<Post> uc) {
 		// todo implement this

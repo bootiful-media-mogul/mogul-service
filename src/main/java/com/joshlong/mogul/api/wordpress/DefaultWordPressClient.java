@@ -12,11 +12,14 @@ import tools.jackson.databind.JsonNode;
 import java.util.function.Function;
 
 /**
- * just enough API surface area to support the blog publishing feature. the trouble is
- * that <a href="https://www.wordpress.com">WordPress</a> is a bit of a mess, and its REST
- * API is completely different from the Wordpress API in self-hosted instances of
- * WordPress.
+ * just enough API surface area to support the blog publishing feature. This client works
+ * with the API in opensource WordPress instances. It is <em>not</em> intended to be used
+ * with WordPress.com's proprietary (and original) API.
+ *
  */
+
+// todo how much can we infer? also,
+
 class DefaultWordPressClient implements WordPressClient {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
