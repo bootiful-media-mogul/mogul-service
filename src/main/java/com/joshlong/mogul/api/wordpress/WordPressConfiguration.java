@@ -93,9 +93,8 @@ class WordPressConfiguration {
 		@Override
 		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 
-			for (var clazz : Set.of(
-					WordPressStatus.class ,
-					WordPressPostResponse.class, WordPressPost.class, WordPressMediaResponse.class)) {
+			for (var clazz : Set.of(WordPressStatus.class, WordPressPostResponse.class, WordPressPost.class,
+					WordPressMediaResponse.class)) {
 				hints.reflection().registerType(clazz, MemberCategory.values());
 			}
 		}
