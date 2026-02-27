@@ -31,12 +31,8 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 		return PLUGIN_NAME;
 	}
 
-	@Override
 	public Set<String> requiredSettingKeys() {
-		// todo the base URL for the wordpress instance,
-		// the client id and the client secret should all
-		// be required configuration
-		return Set.of();
+		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret");
 	}
 
 	@Override
