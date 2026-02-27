@@ -190,10 +190,9 @@ type Post {
 
 # wordpress
 type WordPressStatus {
-    avatarUrl: String
-    connected: Boolean
-    email: String
     displayName: String
+    connected: Boolean
+    id: Int
 }
 
 type Mutation {

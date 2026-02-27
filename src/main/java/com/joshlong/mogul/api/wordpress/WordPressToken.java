@@ -12,12 +12,17 @@ import static com.joshlong.mogul.api.wordpress.WordPressConfiguration.WORDPRESS_
  */
 abstract class WordPressToken {
 
-	static String get() {
-		var credentials = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getDetails();
-		if (credentials instanceof Map<?, ?> map) {
-			return (String) map.get(WORDPRESS_TOKEN_CONTEXT_KEY);
-		}
-		throw new IllegalStateException("No WordPress token found in authentication details");
-	}
+    static String get() {
+        var credentials = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getDetails();
+        if (credentials instanceof Map<?, ?> map) {
+            return (String) map.get(WORDPRESS_TOKEN_CONTEXT_KEY);
+        }
+        return null;
+    }
+
+    static String require() {
+        return Objects.requireNonNull(get());
+    }
+
 
 }
