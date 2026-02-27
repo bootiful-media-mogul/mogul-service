@@ -18,86 +18,83 @@ import java.util.function.Function;
  *
  */
 
-// todo how much can we infer? also,
 
 class DefaultWordPressClient implements WordPressClient {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final RestClient restClient;
+    private final RestClient restClient;
 
-	DefaultWordPressClient(RestClient wordPressRestClient) {
-		this.restClient = wordPressRestClient;
-	}
+    DefaultWordPressClient(RestClient wordPressRestClient) {
+        this.restClient = wordPressRestClient;
+    }
 
-	// Publish a post immediately
-	@Override
-	public WordPressPostResponse publishPost(WordPressPost post) {
-		var jsonRespone = restClient.post() //
-			.uri("/posts")//
-			.body(post) //
-			.retrieve()
-			.onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-				var body = new String(res.getBody().readAllBytes());
-				this.log.error("4xx error: status={} body={}", res.getStatusCode(), body);
-				throw new RuntimeException("WordPress API error: " + body);
-			})
-			.body(WordPressPostResponse.class); //
-		this.log.info("the json response is {} ", jsonRespone);
-		return jsonRespone;
-	}
+    // Publish a post immediately
+    @Override
+    public WordPressPostResponse publishPost(WordPressPost post) {
+        var response = restClient.post() //
+                .uri("/posts")//
+                .body(post) //
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, (_, res) -> {
+                    var body = new String(res.getBody().readAllBytes());
+                    this.log.error("4xx error: status={} body={}", res.getStatusCode(), body);
+                    throw new RuntimeException("WordPress API error: " + body);
+                })
+                .body(WordPressPostResponse.class); //
+        this.log.info("the json response is {} ", response);
+        return response;
+    }
 
-	@Override
-	public WordPressPostResponse saveDraft(WordPressPost post) {
-		var draft = new WordPressPost(post.title(), post.content(), WordPressPost.Status.PUBLISH, post.slug(),
-				post.categories(), post.tags(), post.excerpt());
-		return restClient.post().uri("/posts").body(draft).retrieve().body(WordPressPostResponse.class);
-	}
+    @Override
+    public WordPressPostResponse saveDraft(WordPressPost post) {
+        var draft = new WordPressPost(post.title(), post.content(), WordPressPost.Status.PUBLISH, post.slug(),
+                post.categories(), post.tags(), post.excerpt());
+        return restClient.post().uri("/posts").body(draft).retrieve().body(WordPressPostResponse.class);
+    }
 
-	@Override
-	public WordPressPostResponse updatePost(int postId, WordPressPost post) {
-		return restClient.post() // WordPress uses POST for updates too (or PUT)
-			.uri("/posts/{id}", postId)
-			.body(post)
-			.retrieve()
-			.body(WordPressPostResponse.class);
-	}
+    @Override
+    public WordPressPostResponse updatePost(int postId, WordPressPost post) {
+        return restClient.post() // WordPress uses POST for updates too (or PUT)
+                .uri("/posts/{id}", postId)
+                .body(post)
+                .retrieve()
+                .body(WordPressPostResponse.class);
+    }
 
-	private <T> T safeGet(JsonNode node, String key, Function<JsonNode, T> supplier,
-			Function<JsonNode, T> emptySupplier) {
-		return node.has(key) ? supplier.apply(node.get(key)) : emptySupplier.apply(node);
-	}
+    private <T> T safeGet(JsonNode node, String key, Function<JsonNode, T> supplier,
+                          Function<JsonNode, T> emptySupplier) {
+        return node.has(key) ? supplier.apply(node.get(key)) : emptySupplier.apply(node);
+    }
 
-	@Override
-	public WordPressStatus status() {
-		var wpToken = WordPressToken.get();
-		if (StringUtils.hasText(wpToken)) {
-			this.log.info("calling HTTP endpoint with token: {}", wpToken);
-			var jsonNode = this.restClient //
-				.get() //
-				.uri("/me") //
-				.retrieve() //
-				.body(JsonNode.class);
+    @Override
+    public WordPressStatus status() {
+        var wpToken = WordPressToken.get();
+        if (StringUtils.hasText(wpToken)) {
+            this.log.info("calling HTTP endpoint with token: {}", wpToken);
+            var jsonNode = this.restClient //
+                    .get() //
+                    .uri("/users/me") //
+                    .retrieve() //
+                    .body(JsonNode.class);
+            if (jsonNode != null) {
+                var id = safeGet(jsonNode, "id", JsonNode::asLong, _ -> 0L);
+                var name = safeGet(jsonNode, "name", JsonNode::asString, _ -> null);
+                return new WordPressStatus(true, id, name);
+            }
+        }
+        return new WordPressStatus(false, 0L, null);
+    }
 
-			if (jsonNode != null) {
-				var avatarUrl = safeGet(jsonNode, "avatar_URL", JsonNode::asText, null);
-				var email = safeGet(jsonNode, "email", JsonNode::asString, jn -> null);
-				var displayName = safeGet(jsonNode, "display_name", JsonNode::asString, jn -> null);
-				return new WordPressStatus(avatarUrl, true, email, displayName);
-			}
-		}
-		return new WordPressStatus(null, false, null, null);
-	}
-
-	@Override
-	public WordPressMediaResponse uploadMedia(String filename, Resource data, MediaType mimeType) {
-		return restClient.post()
-			.uri("/media")
-			.contentType(mimeType)
-			.header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-			.body(data)
-			.retrieve()
-			.body(WordPressMediaResponse.class);
-	}
+    @Override
+    public WordPressMediaResponse uploadMedia(String filename, Resource data, MediaType mimeType) {
+        return restClient.post()
+                .uri("/media")
+                .contentType(mimeType)
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(data)
+                .retrieve()
+                .body(WordPressMediaResponse.class);
+    }
 
 }

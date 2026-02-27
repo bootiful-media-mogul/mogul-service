@@ -21,74 +21,70 @@ import java.util.Set;
 @ImportRuntimeHints(WordPressConfiguration.Hints.class)
 class WordPressConfiguration {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
-	static final String WORDPRESS_REST_CLIENT = "wordpressRestClient";
+    static final String WORDPRESS_REST_CLIENT = "wordpressRestClient";
 
-	static final String WORDPRESS_TOKEN_CONTEXT_KEY = "wordpress-token";
+    static final String WORDPRESS_TOKEN_CONTEXT_KEY = "wordpress-token";
 
-	static final String WORDPRESS_TOKEN_HEADER = "X-WordPress-Token";
+    static final String WORDPRESS_TOKEN_HEADER = "X-WordPress-Token";
 
-	@Bean
-	TokenPropagatingFilter wordPressTokenInstallingFilter() {
-		return new TokenPropagatingFilter(WORDPRESS_TOKEN_HEADER, WORDPRESS_TOKEN_CONTEXT_KEY);
-	}
+    @Bean
+    TokenPropagatingFilter wordPressTokenInstallingFilter() {
+        return new TokenPropagatingFilter(WORDPRESS_TOKEN_HEADER, WORDPRESS_TOKEN_CONTEXT_KEY);
+    }
 
-	@Bean(WORDPRESS_REST_CLIENT)
-	RestClient wordPressRestClient(RestClient.Builder builder) {
-		// todo we need to put baseUrl and sites in settings, too!
-		// var site = "joshlong.dev";// should be a setting. we can obtain the id given
-		// the site..
-		var siteId = "252444194"; // should be a setting
-		// get the site ID from
-		// https://public-api.wordpress.com/rest/v1.1/sites/joshlong.dev
-		var base = "https://public-api.wordpress.com/wp/v2/sites/" + siteId;
-		this.log.info("setting up a RestClient for WordPress.com site {} at {}", siteId, base);
-		return builder //
-			.baseUrl(base) //
-			.requestInterceptor((request, body, execution) -> {
-				var token = WordPressToken.get();
-				if (StringUtils.hasText(token)) {
+    @Bean(WORDPRESS_REST_CLIENT)
+    RestClient wordPressRestClient(RestClient.Builder builder) {
+        // todo we need to put baseUrl and sites in settings, too!
+        // var site = "joshlong.dev";// should be a setting. we can obtain the id given
+        // the site..
+        var siteId = "252444194"; // should be a setting
+        // get the site ID from
+        // https://public-api.wordpress.com/rest/v1.1/sites/joshlong.dev
+        var base = "https://public-api.wordpress.com/wp/v2/sites/" + siteId;
+        this.log.info("setting up a RestClient for WordPress.com site {} at {}", siteId, base);
+        return builder //
+                .baseUrl(base) //
+                .requestInterceptor((request, body, execution) -> {
+                    var token = WordPressToken.get();
+                    if (StringUtils.hasText(token)) {
+                        request.getHeaders().setBearerAuth(token);
+                    }
+                    return execution.execute(request, body);
+                })
+                .build();
+    }
 
-					if (this.log.isDebugEnabled())
-						this.log.debug("setting outbound RestClient call's" + " WP bearer token to {}", token);
+    @Bean
+    DefaultWordPressClient wordPressClient(@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
+        return new DefaultWordPressClient(wordPressRestClient);
+    }
 
-					request.getHeaders().setBearerAuth(token);
-				}
-				return execution.execute(request, body);
-			})
-			.build();
-	}
+    @Bean
+    WebGraphQlInterceptor headerInterceptor() {
+        return (request, chain) -> {
+            var wpToken = request.getHeaders().getFirst(WORDPRESS_TOKEN_HEADER);
+            request.configureExecutionInput((_, builder) -> builder.graphQLContext(ctx -> {
+                        if (wpToken != null) {
+                            ctx.put(WORDPRESS_TOKEN_CONTEXT_KEY, wpToken);
+                        }
+                    }) //
+                    .build());
+            return chain.next(request);
+        };
+    }
 
-	@Bean
-	DefaultWordPressClient wordPressClient(@Qualifier(WORDPRESS_REST_CLIENT) RestClient wordPressRestClient) {
-		return new DefaultWordPressClient(wordPressRestClient);
-	}
+    static class Hints implements RuntimeHintsRegistrar {
 
-	@Bean
-	WebGraphQlInterceptor headerInterceptor() {
-		return (request, chain) -> {
-			var wpToken = request.getHeaders().getFirst(WORDPRESS_TOKEN_HEADER);
-			request.configureExecutionInput((_, builder) -> builder.graphQLContext(ctx -> {
-				if (wpToken != null) {
-					ctx.put(WORDPRESS_TOKEN_CONTEXT_KEY, wpToken);
-				}
-			}) //
-				.build());
-			return chain.next(request);
-		};
-	}
+        @Override
+        public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 
-	static class Hints implements RuntimeHintsRegistrar {
+            for (var clazz : Set.of(WordPressPostResponse.class, WordPressPost.class, WordPressMediaResponse.class)) {
+                hints.reflection().registerType(clazz, MemberCategory.values());
+            }
+        }
 
-		@Override
-		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-
-			for (var clazz : Set.of(WordPressPostResponse.class, WordPressPost.class, WordPressMediaResponse.class)) {
-				hints.reflection().registerType(clazz, MemberCategory.values());
-			}
-		}
-
-	}
+    }
 
 }
