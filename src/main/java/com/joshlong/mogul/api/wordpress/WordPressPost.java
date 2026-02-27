@@ -5,12 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
 import java.util.Locale;
 
-public record WordPressPost(String title, String content, Status status, // "publish",
-																			// "draft",
-																			// "pending",
-																			// "future"
-		String slug, List<Integer> categories, List<Integer> tags, String excerpt) {
-	public static enum Status {
+public record WordPressPost(String title, String content, Status status, String slug, List<Integer> categories,
+		List<Integer> tags, String excerpt) {
+	public enum Status {
 
 		PUBLISH("publish"), DRAFT("draft"), PENDING("pending"), FUTURE("future");
 

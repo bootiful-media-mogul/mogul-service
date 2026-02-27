@@ -32,16 +32,16 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 	}
 
 	public Set<String> requiredSettingKeys() {
-		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret");
+		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret", "baseUrl", "siteId");
 	}
 
 	@Override
 	public void publish(PublishContext<Post> publishContext) {
 
 		var payload = publishContext.payload();
+		// todo what's a slug? excerpt? those other values?
 		var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
 				payload.content(), WordPressPost.Status.DRAFT, "", List.of(), List.of(), ""));
-		// todo what's a slug? excerpt? those other values?
 		Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");
 		this.log.info("published post to WordPress at {}", wordPressPostResponse.link());
 		publishContext.success(PLUGIN_NAME, UriUtils.uri(wordPressPostResponse.link()));

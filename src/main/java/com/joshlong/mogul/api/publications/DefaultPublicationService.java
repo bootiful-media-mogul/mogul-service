@@ -56,8 +56,8 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	}
 
 	/*
-	 * do <EM>NOT</EM> make this a shared class variable! there's <EM>state</EM> in the
-	 * {@link PublicationRowMapper} and you'll see duplicate records if this is used
+	 * do <EM>NOT</EM> make this a shared class variable. There's <EM>state</EM> in the
+	 * {@link PublicationRowMapper}, and you'll see duplicate records if this is used
 	 * across more than one request
 	 */
 	private PublicationRowMapper getPublicationRowMapper() {
