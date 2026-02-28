@@ -1,15 +1,18 @@
 # Domain Pattern Convention
 
-This document describes the **Domain Pattern**, a convention used throughout the Mogul codebase for implementing cross-cutting concerns that can be applied to multiple unrelated entity types.
+This document describes the **Domain Pattern**, a convention used throughout the Mogul codebase for implementing
+cross-cutting concerns that can be applied to multiple unrelated entity types.
 
 ## Overview
 
-The Domain Pattern allows different entity types (Episodes, Posts, Segments, etc.) to participate in cross-cutting concerns (publications, transcriptions, compositions, etc.) without tight coupling or inheritance hierarchies.
+The Domain Pattern allows different entity types (Episodes, Posts, Segments, etc.) to participate in cross-cutting
+concerns (publications, transcriptions, compositions, etc.) without tight coupling or inheritance hierarchies.
 
 ### Key Concepts
 
 - **Domain**: A cross-cutting concern like "publications", "transcriptions", or "compositions"
-- **Marker Interface**: An interface (e.g., `Publishable`, `Transcribable`) that marks an entity as participating in a domain
+- **Marker Interface**: An interface (e.g., `Publishable`, `Transcribable`) that marks an entity as participating in a
+  domain
 - **Domain Type**: A record (e.g., `Publication`, `Transcript`) that stores the domain-specific data
 - **Repository**: A strategy for loading entity instances that implement the marker interface
 - **Service**: Orchestrates the lifecycle of domain types using repositories
@@ -48,6 +51,7 @@ public record Publication(
 ```
 
 **Key Fields**:
+
 - `payload`: JSON-serialized ID of the owning entity
 - `payloadClass`: Fully qualified class name of the owning entity (e.g., `Episode.class`)
 
@@ -63,6 +67,7 @@ public interface PublishableRepository<T extends Publishable>
 ```
 
 **Base Interface** (`DomainRepository`):
+
 - `boolean supports(Class<?> clazz)` - Checks if this repository handles the given entity class
 - `T find(Long key)` - Loads an entity instance by its ID
 
@@ -89,6 +94,7 @@ class PodcastPublishableRepository extends AbstractPublishableRepository<Episode
 ```
 
 **Abstract Base Class** (`AbstractDomainRepository`):
+
 - Automatically implements `supports()` based on the entity class
 - Reduces boilerplate in concrete implementations
 
@@ -112,6 +118,7 @@ class DefaultPublicationService
 ```
 
 **Abstract Base Class** (`AbstractDomainService`):
+
 - `findRepository(Class)` - Finds the appropriate repository at runtime
 - `findEntity(Class, Long)` - Finds and loads an entity using the right repository
 
@@ -217,6 +224,7 @@ public record Episode(
 ## Existing Domains
 
 ### Publications (`Publishable`)
+
 **Purpose**: Publishing entities to various platforms (blogs, social media, etc.)
 
 **Entities**: `Episode`, `Post`
@@ -228,11 +236,13 @@ public record Episode(
 ---
 
 ### Transcriptions (`Transcribable`)
+
 **Purpose**: Audio transcription for entities with audio files
 
 **Entities**: `Segment`
 
 **Repository**: `TranscribableRepository<T>`
+
 - Additional method: `Resource audio(Long key)` - Returns the audio resource
 
 **Service**: `TranscriptService`
@@ -240,6 +250,7 @@ public record Episode(
 ---
 
 ### Compositions (`Composable`)
+
 **Purpose**: Textual content with managed file attachments
 
 **Entities**: `Podcast`, `Episode`, `AyrsharePublicationComposition`
@@ -251,11 +262,13 @@ public record Episode(
 ---
 
 ### Search (`Searchable`)
+
 **Purpose**: Indexing and searching entities
 
 **Entities**: `Segment`
 
 **Repository**: `SearchableRepository<T, AGGREGATE>`
+
 - Additional generic: `AGGREGATE` - The aggregation type (e.g., `Episode` for `Segment`)
 - Additional method: `SearchableResult<T, AGGREGATE> result(T searchable)`
 
@@ -264,6 +277,7 @@ public record Episode(
 ---
 
 ### Notes (`Notable`)
+
 **Purpose**: Attaching notes/annotations to entities
 
 **Entities**: *(implementations needed)*
@@ -299,6 +313,7 @@ create table domain_name (
 ```
 
 Example:
+
 ```sql
 create table publication (
     id serial primary key,
@@ -316,7 +331,8 @@ create table publication (
 ## Best Practices
 
 1. **Use Abstract Base Classes**: Extend `AbstractDomainRepository` and `AbstractDomainService` to reduce boilerplate
-2. **Pattern-Specific Methods**: Add domain-specific methods to repository interfaces (e.g., `audio()` for `TranscribableRepository`)
+2. **Pattern-Specific Methods**: Add domain-specific methods to repository interfaces (e.g., `audio()` for
+   `TranscribableRepository`)
 3. **Consistent Naming**: Follow the `-able` suffix convention for marker interfaces
 4. **Single Responsibility**: Keep repositories focused on entity loading
 5. **Service Layer**: Put business logic in services, not repositories

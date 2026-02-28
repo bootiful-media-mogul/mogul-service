@@ -188,6 +188,13 @@ type Post {
     descriptionComposition: Composition
 }
 
+# wordpress
+type WordPressStatus {
+    displayName: String
+    connected: Boolean
+    id: Int
+}
+
 type Mutation {
 
     # blog
@@ -255,6 +262,9 @@ type Mutation {
 }
 
 type Query {
+
+    # wordpress
+    wordPressStatus : WordPressStatus
 
     # blogs
     blogById(blogId: Int) : Blog

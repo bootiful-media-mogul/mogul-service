@@ -37,9 +37,6 @@ public class Feeds {
 		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
 	}
 
-	static record Image(String url, String contentType, long length) {
-	}
-
 	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, Image image,
 			String titleTxt, String entryUrl, String summaryText, Map<String, String> customMetadataMap) {
 		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
@@ -153,6 +150,9 @@ public class Feeds {
 			transformer.transform(source, result);
 			return writer.toString();
 		}
+	}
+
+	static record Image(String url, String contentType, long length) {
 	}
 
 }

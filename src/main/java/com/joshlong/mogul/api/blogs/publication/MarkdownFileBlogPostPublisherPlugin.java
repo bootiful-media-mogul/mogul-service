@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 import java.util.UUID;
 
-import static com.joshlong.mogul.api.blogs.publication.BlogPostMarkdownFilePublisherPlugin.PLUGIN_NAME;
+import static com.joshlong.mogul.api.blogs.publication.MarkdownFileBlogPostPublisherPlugin.PLUGIN_NAME;
 
 @Component(value = PLUGIN_NAME)
-class BlogPostMarkdownFilePublisherPlugin implements PublisherPlugin<Post> {
+class MarkdownFileBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
 	static final String PLUGIN_NAME = "blogPostMarkdownFile";
 
@@ -30,7 +30,7 @@ class BlogPostMarkdownFilePublisherPlugin implements PublisherPlugin<Post> {
 
 	private final ManagedFileService managedFileService;
 
-	BlogPostMarkdownFilePublisherPlugin(BlogService blogService, PostPreviewsService postPreviewsService,
+	MarkdownFileBlogPostPublisherPlugin(BlogService blogService, PostPreviewsService postPreviewsService,
 			ManagedFileService managedFileService) {
 		this.blogService = blogService;
 		this.postPreviewsService = postPreviewsService;

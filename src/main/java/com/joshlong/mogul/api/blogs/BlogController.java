@@ -24,6 +24,8 @@ class BlogController {
 
 	private final MogulService mogulService;
 
+	private final Logger log = LoggerFactory.getLogger(BlogController.class);
+
 	BlogController(BlogService service, MogulService mogulService) {
 		this.service = service;
 		this.mogulService = mogulService;
@@ -50,8 +52,6 @@ class BlogController {
 		}
 		return true;
 	}
-
-	private final Logger log = LoggerFactory.getLogger(BlogController.class);
 
 	@SchemaMapping
 	Composition descriptionComposition(Post post) {

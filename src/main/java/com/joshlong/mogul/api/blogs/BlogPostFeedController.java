@@ -7,7 +7,6 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,11 +24,10 @@ import java.util.UUID;
 @ResponseBody
 class BlogPostFeedController {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	private static final String BLOG_FEED_URL = "/public/feeds/moguls/{mogulId}/blogs/{blogId}/posts.atom";
 
 	// GET /public/feeds/moguls/16386/blogs/2/posts.atom
-
-	private static final String BLOG_FEED_URL = "/public/feeds/moguls/{mogulId}/blogs/{blogId}/posts.atom";
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Feeds feeds;
 
@@ -47,8 +45,13 @@ class BlogPostFeedController {
 		this.blogService = blogService;
 	}
 
-	@GetMapping(value = BLOG_FEED_URL) // , produces =
-										// MediaType.APPLICATION_ATOM_XML_VALUE)
+	private static UUID longToUuid(long id) {
+		return new UUID(0, id);
+	}
+
+	@GetMapping(value = BLOG_FEED_URL)
+	// , produces =
+	// MediaType.APPLICATION_ATOM_XML_VALUE)
 	String feed(@PathVariable long mogulId, @PathVariable long blogId)
 			throws IOException, ParserConfigurationException, TransformerException {
 		this.log.debug("producing the RSS feed for " + BLOG_FEED_URL + " for mogulId {} and blogId {}", mogulId,
@@ -60,10 +63,6 @@ class BlogPostFeedController {
 		var posts = this.blogService.getPostsForBlog(blogId);
 		return this.feeds.createMogulAtomFeed(blog.title(), BLOG_FEED_URL, blog.created().toInstant(),
 				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);
-	}
-
-	private static UUID longToUuid(long id) {
-		return new UUID(0, id);
 	}
 
 	private static class BlogPostEntryMapper implements EntryMapper<Post> {
