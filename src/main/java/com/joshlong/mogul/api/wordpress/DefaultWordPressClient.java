@@ -32,8 +32,8 @@ class DefaultWordPressClient implements WordPressClient {
 
     @Override
     public WordPressStatus status() {
+        // todo is it possible to get here without fully configured settings?
         var wpToken = WordPressToken.get();
-        log.info("wordpress token: {}", wpToken);
         if (StringUtils.hasText(wpToken)  ) {
             this.log.info("calling HTTP endpoint with token: {}", wpToken);
             var jsonNode = this.restClient() //

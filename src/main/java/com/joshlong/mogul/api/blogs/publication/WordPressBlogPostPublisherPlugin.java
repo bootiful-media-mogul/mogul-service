@@ -35,8 +35,8 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
     @Override
     public boolean isConfigurationValid(Map<String, String> context) {
-        log.info ("isConfigurationValid called with context {}", context);
-        if (!PublisherPlugin.super.isConfigurationValid(context)) {
+       var parentSaysYes = PublisherPlugin.super.isConfigurationValid(context);
+        if (!parentSaysYes) {
             log.info("isConfigurationValid returned false");
             return false;
         }
