@@ -7,15 +7,15 @@ import org.springframework.stereotype.Controller;
 @Controller
 class WordPressController {
 
-    private final WordPressClient client;
+	private final WordPressClient client;
 
-    WordPressController(WordPressClient client) {
-        this.client = client;
-    }
+	WordPressController(WordPressClient client) {
+		this.client = client;
+	}
 
-    @QueryMapping
-    WordPressStatus wordPressStatus() {
-        return this.client.status();
-    }
+	@QueryMapping
+	WordPressStatus wordPressStatus() {
+		return this.client.status();
+	}
 
 }

@@ -18,59 +18,59 @@ import java.util.Set;
 @Component(value = WordPressBlogPostPublisherPlugin.PLUGIN_NAME)
 class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
-    static final String PLUGIN_NAME = "wordpress";
+	static final String PLUGIN_NAME = "wordpress";
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final WordPressClient wordPressClient;
+	private final WordPressClient wordPressClient;
 
-    WordPressBlogPostPublisherPlugin(WordPressClient wordPressClient) {
-        this.wordPressClient = wordPressClient;
-    }
+	WordPressBlogPostPublisherPlugin(WordPressClient wordPressClient) {
+		this.wordPressClient = wordPressClient;
+	}
 
-    @Override
-    public String name() {
-        return PLUGIN_NAME;
-    }
+	@Override
+	public String name() {
+		return PLUGIN_NAME;
+	}
 
-    @Override
-    public boolean isConfigurationValid(Map<String, String> context) {
-       var parentSaysYes = PublisherPlugin.super.isConfigurationValid(context);
-        if (!parentSaysYes) {
-            log.info("isConfigurationValid returned false");
-            return false;
-        }
+	@Override
+	public boolean isConfigurationValid(Map<String, String> context) {
+		var parentSaysYes = PublisherPlugin.super.isConfigurationValid(context);
+		if (!parentSaysYes) {
+			log.info("isConfigurationValid returned false");
+			return false;
+		}
 
-        var good = true;
-        for (var c : context.entrySet()) {
-            if (!StringUtils.hasText(c.getValue()))
-                good = false;
-        }
-        return good;
-    }
+		var good = true;
+		for (var c : context.entrySet()) {
+			if (!StringUtils.hasText(c.getValue()))
+				good = false;
+		}
+		return good;
+	}
 
-    public Set<String> requiredSettingKeys() {
-        return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret", "baseUrl", "siteId");
-    }
+	public Set<String> requiredSettingKeys() {
+		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret", "baseUrl", "siteId");
+	}
 
-    @Override
-    public void publish(PublishContext<Post> publishContext) {
+	@Override
+	public void publish(PublishContext<Post> publishContext) {
 
-        var payload = publishContext.payload();
-        // todo what's a slug? excerpt? those other values?
-        var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
-                payload.content(), WordPressPost.Status.DRAFT, "", List.of(), List.of(), ""));
-        Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");
-        this.log.info("published post to WordPress at {}", wordPressPostResponse.link());
-        publishContext.success(PLUGIN_NAME, UriUtils.uri(wordPressPostResponse.link()));
+		var payload = publishContext.payload();
+		// todo what's a slug? excerpt? those other values?
+		var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
+				payload.content(), WordPressPost.Status.DRAFT, "", List.of(), List.of(), ""));
+		Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");
+		this.log.info("published post to WordPress at {}", wordPressPostResponse.link());
+		publishContext.success(PLUGIN_NAME, UriUtils.uri(wordPressPostResponse.link()));
 
-    }
+	}
 
-    // todo should we make post == publish and then unpublish == draft ?
-    @Override
-    public boolean unpublish(UnpublishContext<Post> uc) {
-        // todo implement this
-        return false;
-    }
+	// todo should we make post == publish and then unpublish == draft ?
+	@Override
+	public boolean unpublish(UnpublishContext<Post> uc) {
+		// todo implement this
+		return false;
+	}
 
 }
