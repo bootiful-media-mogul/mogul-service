@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.wordpress;
 
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.security.TokenPropagatingFilter;
 import org.jspecify.annotations.Nullable;

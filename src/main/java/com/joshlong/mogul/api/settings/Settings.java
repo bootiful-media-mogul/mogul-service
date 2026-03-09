@@ -1,4 +1,4 @@
-package com.joshlong.mogul.api;
+package com.joshlong.mogul.api.settings;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;

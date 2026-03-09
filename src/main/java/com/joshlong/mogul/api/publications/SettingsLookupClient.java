@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.publications;
 
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 
 import java.util.Map;
 import java.util.function.Function;

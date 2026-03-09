@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.ApiProperties;
-import com.joshlong.mogul.api.SettingWrittenEvent;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
