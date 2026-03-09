@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.PublisherPlugin;
+import com.joshlong.mogul.api.SettingWrittenEvent;
 import com.joshlong.mogul.api.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;

@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.ApiProperties;
+import com.joshlong.mogul.api.SettingWrittenEvent;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -64,10 +65,9 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 		var routingKey = apiProperties.amqp().settingsEvents();
 		log.info("routing key is {}.", routingKey);
 		return IntegrationFlow.from(authenticationAndSettingsEventApplicationEventListeningMessageProducer)
-			.transform((GenericTransformer<AuthenticationAndSettingsEvent, Map<String, String>>) source -> {
-				return Map.of("authenticationName", source.authentication().getName(), "category", source.category(),
-						"key", source.key());
-			})
+			.transform((GenericTransformer<AuthenticationAndSettingsEvent, Map<String, String>>) source -> Map.of(
+					"authenticationName", source.authentication().getName(), "category", source.category(), "key",
+					source.key()))
 			.transform((GenericTransformer<Map<String, String>, String>) jsonMap -> {
 				var jsonResult = json.writeValueAsString(jsonMap);
 				log.info("sending {}", jsonResult);
