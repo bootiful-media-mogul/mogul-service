@@ -7,7 +7,10 @@ import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
 public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Podcasts podcasts, Cache cache,
-		Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
+		Feeds feeds, Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
+
+	public record Feeds(String elementPrefix, String namespace) {
+	}
 
 	public record Amqp(String settingsEvents) {
 	}

@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.feeds;
 
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -22,23 +21,21 @@ import java.util.Map;
 
 /**
  * Adapter to create ATOM 1.0-compliant and public feeds for content in Mogul.
- *
- * @author Josh Long
  */
-@Component
 @RegisterReflectionForBinding(Entry.class)
 public class Feeds {
 
-	private static final String MOGUL_FEEDS_NS = "http://api.mogul.tools";
+	private final String mogulFeedsElementPrefix;
 
-	private static final String MOGUL_FEEDS_ELEMENT_PREFIX = "mogul-feeds";
+	private final String mogulFeedsNs;
 
-	private static String formatInstant(Instant instant) {
-		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
+	public Feeds(String mogulFeedsElementPrefix, String mogulFeedsNs) {
+		this.mogulFeedsElementPrefix = mogulFeedsElementPrefix;
+		this.mogulFeedsNs = mogulFeedsNs;
 	}
 
-	private static Element createEntry(Document doc, String entryId, Instant updatedInstant, Image image,
-			String titleTxt, String entryUrl, String summaryText, Map<String, String> customMetadataMap) {
+	private Element createEntry(Document doc, String entryId, Instant updatedInstant, Image image, String titleTxt,
+			String entryUrl, String summaryText, Map<String, String> customMetadataMap) {
 		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
 
 		if (image != null) {
@@ -72,15 +69,19 @@ public class Feeds {
 		summary.setTextContent(summaryText);
 		entry.appendChild(summary);
 
-		var customMetadata = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":metadata");
+		var customMetadata = doc.createElementNS(this.mogulFeedsNs, this.mogulFeedsElementPrefix + ":metadata");
 
 		customMetadataMap.forEach((key, value) -> {
-			var element = doc.createElementNS(MOGUL_FEEDS_NS, MOGUL_FEEDS_ELEMENT_PREFIX + ":" + key);
+			var element = doc.createElementNS(this.mogulFeedsNs, this.mogulFeedsElementPrefix + ":" + key);
 			element.setTextContent(value);
 			customMetadata.appendChild(element);
 		});
 		entry.appendChild(customMetadata);
 		return entry;
+	}
+
+	private static String formatInstant(Instant instant) {
+		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
 	}
 
 	public <T> String createMogulAtomFeed(String feedTitle, String feedUrl, Instant published, String feedAuthor,
@@ -96,7 +97,8 @@ public class Feeds {
 		var atomNamespace = "http://www.w3.org/2005/Atom";
 
 		var feedElement = doc.createElementNS(atomNamespace, "feed");
-		feedElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:mogul-feeds", MOGUL_FEEDS_NS);
+		feedElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + this.mogulFeedsElementPrefix,
+				this.mogulFeedsNs);
 		doc.appendChild(feedElement);
 
 		var title = doc.createElementNS(atomNamespace, "title");
