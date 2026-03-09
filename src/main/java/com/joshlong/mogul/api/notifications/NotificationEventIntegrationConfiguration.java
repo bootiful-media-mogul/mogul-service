@@ -7,6 +7,7 @@ import io.ably.lib.realtime.AblyRealtime;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
@@ -27,8 +28,11 @@ import org.springframework.messaging.support.MessageBuilder;
 @ImportRuntimeHints(NotificationEventIntegrationConfiguration.Hints.class)
 class NotificationEventIntegrationConfiguration {
 
-	@Bean
-	ApplicationEventListeningMessageProducer applicationEventListeningMessageProducer() {
+	private final static String NOTIFICATION_EVENT_MESSAGE_PRODUCER = //
+			"notificationEventApplicationEventListeningMessageProducer";
+
+	@Bean(NOTIFICATION_EVENT_MESSAGE_PRODUCER)
+	ApplicationEventListeningMessageProducer notificationEventApplicationEventListeningMessageProducer() {
 		var applicationEventListeningMessageProducer = new ApplicationEventListeningMessageProducer();
 		applicationEventListeningMessageProducer.setEventTypes(NotificationEvent.class);
 		return applicationEventListeningMessageProducer;
@@ -40,10 +44,11 @@ class NotificationEventIntegrationConfiguration {
 	}
 
 	@Bean
-	IntegrationFlow notificationEventsToAblyOutbundIntegrationFlow(ApplicationEventListeningMessageProducer aemp,
+	IntegrationFlow notificationEventsToAblyOutbundIntegrationFlow(
+			@Qualifier(NOTIFICATION_EVENT_MESSAGE_PRODUCER) ApplicationEventListeningMessageProducer eventListeningMessageProducer,
 			AblyMessageHandler messageHandler) {
 		return IntegrationFlow //
-			.from(aemp) //
+			.from(eventListeningMessageProducer) //
 			.filter(source -> source instanceof NotificationEvent)
 			.transform((Transformer) message -> {
 				var notificationEvent = (NotificationEvent) message.getPayload();

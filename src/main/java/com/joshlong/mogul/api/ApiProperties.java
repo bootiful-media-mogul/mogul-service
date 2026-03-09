@@ -7,13 +7,15 @@ import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
 public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Podcasts podcasts, Cache cache,
-		Notifications notifications, Settings settings, boolean debug) {
+		Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
+
+	public record Amqp(String settingsEvents) {
+	}
 
 	public record Cache(int maxEntries) {
 	}
 
 	public record Notifications(Ably ably) {
-
 		public record Ably(String apiKey) {
 		}
 
@@ -31,18 +33,14 @@ public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts tran
 	}
 
 	public record ManagedFiles(S3 s3) {
-
 		public record S3(String bucket) {
 		}
 	}
 
 	public record Podcasts(Producer production) {
-
 		public record Producer(Amqp amqp) {
-
 			public record Amqp(String requests, String replies) {
 			}
-
 		}
 	}
 }

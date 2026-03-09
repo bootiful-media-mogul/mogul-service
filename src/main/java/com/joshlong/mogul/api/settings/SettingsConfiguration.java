@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.ApiProperties;
-import com.joshlong.mogul.api.Settings;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

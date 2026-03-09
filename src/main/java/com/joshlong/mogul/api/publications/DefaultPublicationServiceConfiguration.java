@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api.publications;
 
 import com.joshlong.mogul.api.PublishableResolver;
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;

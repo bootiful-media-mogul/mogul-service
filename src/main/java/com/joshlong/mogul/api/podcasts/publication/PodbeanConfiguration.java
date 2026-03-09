@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.mogul.Mogul;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.podbean.token.ClientCredentialsTokenProvider;

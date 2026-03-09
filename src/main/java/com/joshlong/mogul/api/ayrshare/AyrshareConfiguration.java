@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api.ayrshare;
 
 import com.joshlong.mogul.api.ApiProperties;
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.publications.PublicationService;

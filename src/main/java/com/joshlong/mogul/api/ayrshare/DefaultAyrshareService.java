@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.ayrshare;
 
-import com.joshlong.mogul.api.Settings;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
@@ -27,7 +27,7 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
 /**
  * warning! do <em>not</em> make this class {@link Transactional transactional}, as a lot
  * of the implementations involve network calls and stuff that doesn't interact with a SQL
- * DB. no use hogging up a connection just to do HTTP IO.
+ * DB. no use hogging up a DB connection just to do HTTP IO.
  */
 
 class DefaultAyrshareService implements AyrshareService {
