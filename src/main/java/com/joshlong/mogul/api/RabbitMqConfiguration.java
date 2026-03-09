@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import org.springframework.amqp.core.*;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,17 @@ class RabbitMqConfiguration {
 
 	RabbitMqConfiguration(ApiProperties properties) {
 		this.queueName = properties.amqp().settingsEvents();
+	}
+
+	@Bean
+	InitializingBean mogulSettingsEventsAmqpInitializer(AmqpAdmin amqpAdmin,
+			@Qualifier(QUEUE_NAME) Queue mogulEventsQueue, @Qualifier(EXCHANGE_NAME) Exchange mogulEventsExchange,
+			@Qualifier(BINDING_NAME) Binding mogulSettingsEventsBinding) {
+		return () -> {
+			amqpAdmin.declareQueue(mogulEventsQueue);
+			amqpAdmin.declareExchange(mogulEventsExchange);
+			amqpAdmin.declareBinding(mogulSettingsEventsBinding);
+		};
 	}
 
 	@Bean(BINDING_NAME)
