@@ -23,7 +23,10 @@ import java.util.Map;
 @Configuration
 class SettingsWrittenOutboundIntegrationFlowConfiguration {
 
+	static final String AUTHENTICATION_AND_SETTINGS_EVENT_LISTENER_BEAN_NAME = "authenticationAndSettingsEventApplicationEventListeningMessageProducer";
+
 	record AuthenticationAndSettingsEvent(String category, String key, Authentication authentication) {
+
 	}
 
 	@Component
@@ -43,8 +46,6 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 		}
 
 	}
-
-	static final String AUTHENTICATION_AND_SETTINGS_EVENT_LISTENER_BEAN_NAME = "authenticationAndSettingsEventApplicationEventListeningMessageProducer";
 
 	// NOTE: there are two of these in the application context,
 	// so make sure u inject the right one by the right name
