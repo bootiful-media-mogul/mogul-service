@@ -30,9 +30,9 @@ class WordPressConfiguration {
 
 	static final String WORDPRESS_TOKEN_HEADER = "X-WordPress-Token";
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	static final String WORDPRESS_SETTINGS_CATEGORY = "wordpress";
 
-	private final String wordpressSettingsCategory = "wordpress";
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Bean
 	DefaultWordPressClient wordPressClient(MogulService mogulService, Settings settings,
@@ -40,31 +40,15 @@ class WordPressConfiguration {
 		var supplier = (Supplier<RestClient>) () -> wordPressRestClient.mutate()
 			.baseUrl(this.baseUrlFor(settings, "/", mogulService.getCurrentMogul().id()))
 			.build();
-		var hasValidConfiguration = (Supplier<Boolean>) () -> this.hasValidConfiguration(settings,
-				mogulService.getCurrentMogul().id(), wordpressSettingsCategory);
-		return new DefaultWordPressClient(hasValidConfiguration, supplier);
-	}
-
-	private boolean hasValidConfiguration(Settings settings, Long mogulId, String category) {
-		var allSettingsByCategory = settings.getAllValuesByCategory(mogulId, category);
-		var valid = true;
-		for (var s : allSettingsByCategory.values()) {
-			var good = allSettingsByCategory.containsKey(s) && allSettingsByCategory.get(s) != null
-					&& StringUtils.hasText(allSettingsByCategory.get(s).trim());
-			if (!good) {
-				log.info("the setting {} is not valid", s);
-				valid = false;
-			}
-		}
-		return valid;
+		return new DefaultWordPressClient(supplier);
 	}
 
 	private String baseUrlFor(Settings settings, String forwardSlash, Long mogulId) {
-		var base = settings.getValue(mogulId, this.wordpressSettingsCategory, "baseUrl");
+		var base = settings.getValue(mogulId, WORDPRESS_SETTINGS_CATEGORY, "baseUrl");
 		if (!base.endsWith(forwardSlash)) {
 			base = base + forwardSlash;
 		}
-		var siteId = settings.getValue(mogulId, this.wordpressSettingsCategory, "siteId");
+		var siteId = settings.getValue(mogulId, WORDPRESS_SETTINGS_CATEGORY, "siteId");
 		var baseUrl = base + siteId;
 		this.log.info("the base URL is {} for Mogul #{}", baseUrl, mogulId);
 		return baseUrl;
@@ -107,12 +91,8 @@ class WordPressConfiguration {
 		@Override
 		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 
-			for (var clazz : Set.of(WordPressStatus.class,
-
-					WordPressPostResponse.class, WordPressPostResponse.RenderedField.class,
-
-					WordPressPost.class, WordPressPost.Status.class,
-
+			for (var clazz : Set.of(WordPressStatus.class, WordPressPostResponse.class,
+					WordPressPostResponse.RenderedField.class, WordPressPost.class, WordPressPost.Status.class,
 					WordPressMediaResponse.class)) {
 				hints.reflection().registerType(clazz, MemberCategory.values());
 			}

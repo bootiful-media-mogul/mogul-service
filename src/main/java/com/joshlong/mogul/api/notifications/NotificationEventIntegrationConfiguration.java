@@ -28,7 +28,7 @@ import org.springframework.messaging.support.MessageBuilder;
 class NotificationEventIntegrationConfiguration {
 
 	@Bean
-	ApplicationEventListeningMessageProducer applicationEventListeningMessageProducer() {
+	ApplicationEventListeningMessageProducer notificationEventApplicationEventListeningMessageProducer() {
 		var applicationEventListeningMessageProducer = new ApplicationEventListeningMessageProducer();
 		applicationEventListeningMessageProducer.setEventTypes(NotificationEvent.class);
 		return applicationEventListeningMessageProducer;
@@ -40,10 +40,11 @@ class NotificationEventIntegrationConfiguration {
 	}
 
 	@Bean
-	IntegrationFlow notificationEventsToAblyOutbundIntegrationFlow(ApplicationEventListeningMessageProducer aemp,
+	IntegrationFlow notificationEventsToAblyOutbundIntegrationFlow(
+			ApplicationEventListeningMessageProducer notificationEventApplicationEventListeningMessageProducer,
 			AblyMessageHandler messageHandler) {
 		return IntegrationFlow //
-			.from(aemp) //
+			.from(notificationEventApplicationEventListeningMessageProducer) //
 			.filter(source -> source instanceof NotificationEvent)
 			.transform((Transformer) message -> {
 				var notificationEvent = (NotificationEvent) message.getPayload();

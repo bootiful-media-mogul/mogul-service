@@ -22,11 +22,8 @@ class DefaultWordPressClient implements WordPressClient {
 
 	private final Supplier<RestClient> restClient;
 
-	private final Supplier<Boolean> hasValidConfiguration;
-
-	DefaultWordPressClient(Supplier<Boolean> hasValidConfiguration, Supplier<RestClient> wordPressRestClient) {
+	DefaultWordPressClient(Supplier<RestClient> wordPressRestClient) {
 		this.restClient = wordPressRestClient;
-		this.hasValidConfiguration = hasValidConfiguration;
 	}
 
 	@Override
@@ -74,25 +71,5 @@ class DefaultWordPressClient implements WordPressClient {
 	private RestClient restClient() {
 		return this.restClient.get();
 	}
-	/*
-	 *
-	 * @Override public WordPressPostResponse saveDraft(WordPressPost post) { var draft =
-	 * new WordPressPost(post.title(), post.content(), WordPressPost.Status.PUBLISH,
-	 * post.slug(), post.categories(), post.tags(), post.excerpt()); return
-	 * this.restClient().post().uri("/posts").body(draft).retrieve().body(
-	 * WordPressPostResponse.class); }
-	 *
-	 * @Override public WordPressPostResponse updatePost(int postId, WordPressPost post) {
-	 * return this.restClient() .post() // WordPress uses POST for updates too (or PUT)
-	 * .uri("/posts/{id}", postId) .body(post) .retrieve()
-	 * .body(WordPressPostResponse.class); }
-	 */
-
-	/*
-	 * @Override public WordPressMediaResponse uploadMedia(String filename, Resource data,
-	 * MediaType mimeType) { return this.restClient() .post() .uri("/media")
-	 * .contentType(mimeType) .header("Content-Disposition", "attachment; filename=\"" +
-	 * filename + "\"") .body(data) .retrieve() .body(WordPressMediaResponse.class); }
-	 */
 
 }

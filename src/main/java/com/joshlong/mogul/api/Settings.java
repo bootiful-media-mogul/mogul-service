@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api;
 
+import com.joshlong.mogul.api.settings.SettingWrittenEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -52,17 +53,17 @@ public class Settings {
 	}
 
 	private Setting get(Long mogulId, String category, String key) {
-		var settings = this.db//
-			.sql("select * from settings where mogul_id  = ? and category =? and key = ? ")
-			.params(mogulId, category, key)
-			.query(this.rowMapper)
+		var settings = this.db //
+			.sql("select * from settings where mogul_id  = ? and category =? and key = ? ") //
+			.params(mogulId, category, key) //
+			.query(this.rowMapper) //
 			.list();
 		Assert.state(settings.size() <= 1, "there should never be more than one setting configured.");
 		return settings.isEmpty() ? null : settings.getFirst();
 	}
 
 	public String getValue(Long mogulId, String category, String key) {
-		var v = get(mogulId, category, key);
+		var v = this.get(mogulId, category, key);
 		if (v != null)
 			return v.value();
 		return null;
@@ -78,9 +79,7 @@ public class Settings {
 				""") //
 			.params(mogulId, category, key, this.encryptor.encrypt(value))//
 			.update();
-
 		this.publisher.publishEvent(new SettingWrittenEvent(mogulId, category, key, value));
-
 	}
 
 	public record Setting(String category, String key, String value) {
