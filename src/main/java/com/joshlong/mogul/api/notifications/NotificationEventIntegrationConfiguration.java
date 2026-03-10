@@ -53,7 +53,7 @@ class NotificationEventIntegrationConfiguration {
 			.transform((Transformer) message -> {
 				var notificationEvent = (NotificationEvent) message.getPayload();
 				var json = JsonUtils.write(notificationEvent);
-				var topic = AblyNotificationsUtils.ablyNoticationsChannelFor(notificationEvent.mogulId());
+				var topic = AblyNotificationsUtils.ablyNotificationsChannelFor(notificationEvent.mogulId());
 				return MessageBuilder //
 					.withPayload(json) //
 					.setHeader(AblyHeaders.ABLY_NAME, notificationEvent.category())//
