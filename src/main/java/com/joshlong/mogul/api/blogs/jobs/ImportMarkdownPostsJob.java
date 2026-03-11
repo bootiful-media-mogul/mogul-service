@@ -6,13 +6,20 @@ import com.joshlong.mogul.api.archives.Zip;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.jobs.Job;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 class ImportMarkdownPostsJob implements Job {
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final BlogService blogService;
 
@@ -21,6 +28,14 @@ class ImportMarkdownPostsJob implements Job {
 	private final ArchiveExtractor zip;
 
 	private final ArchiveExtractor tgz;
+
+	@Override
+	public @NonNull Set<String> requiredContextAttributes() {
+		var attrs = Job.super.requiredContextAttributes();
+		var all = new HashSet<>(attrs);
+		all.add(Job.BLOG_ID_KEY);
+		return all;
+	}
 
 	ImportMarkdownPostsJob(@Zip ArchiveExtractor zip, @Tgz ArchiveExtractor tgz, BlogService blogService,
 			ManagedFileService managedFileService) {
@@ -32,7 +47,16 @@ class ImportMarkdownPostsJob implements Job {
 
 	@Override
 	public Result run(Map<String, Object> context) throws Exception {
-		return null;
+		var msg = new StringBuilder();
+		msg.append(String.format("running %s", getClass().getName()));
+		context.forEach((k, v) -> msg.append(String.format(" context %s=%s\n", k, v)));
+		this.log.info(msg.toString());
+
+		// todo:
+		// deduce the content type
+		// run the appropriate ArchiveExtractor
+		// extract / create posts for each file
+		return Result.ok(context);
 	}
 
 	static class FrontMatter {

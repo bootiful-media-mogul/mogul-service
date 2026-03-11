@@ -23,6 +23,8 @@ public interface Job {
 
 	String PODCAST_ID_KEY = "podcastId";
 
+	String BLOG_ID_KEY = "blogId";
+
 	@NonNull
 	default Set<String> requiredContextAttributes() {
 		return new HashSet<>(Set.of(MOGUL_ID_KEY));
