@@ -14,5 +14,4 @@ public abstract class AblyNotificationsUtils {
 		return "notifications-" + mogulId;
 	}
 
-
 }
