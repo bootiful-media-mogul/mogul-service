@@ -22,12 +22,12 @@ class HelloWorldJob implements Job {
 	}
 
 	@Override
-	public Result run(Map<String, Object> context) throws Exception {
+	public JobExecutionResult run(Map<String, Object> context) throws Exception {
 		var name = (String) context.getOrDefault("name", "world");
 		this.log.info("start: hello, {}", name);
 		Thread.sleep(10_000);
 		this.log.info("stop: hello, {}", name);
-		return Result.ok(context);
+		return JobExecutionResult.ok(context);
 	}
 
 }

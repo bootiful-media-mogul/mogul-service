@@ -42,16 +42,14 @@ class JobsController {
 			var mogulId = this.mogulService.getCurrentMogul().id();
 			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
 			this.log.info("launching job with mogul # {}, context # {}", mogulId, context);
-			this.jobs.launch(jobName, context) //
-				.thenAccept(result -> {
-					var jobCompletionEvent = new JobCompletedEvent(mogulId, result.success(), jobName);
-					this.emit(jobName, true, mogulId, jobCompletionEvent);
-				}) //
-				.exceptionally(throwable -> {
-					var jce = new JobCompletedEvent(mogulId, false, jobName);
-					this.emit(jobName, true, mogulId, jce);
-					return null;
-				});
+			// todo fix this
+			/*
+			 * this.jobs.launchJobExecution(jobName, context) // .thenAccept(result -> {
+			 * var jobCompletionEvent = new JobCompletedEvent(mogulId, result.success(),
+			 * jobName); this.emit(jobName, true, mogulId, jobCompletionEvent); }) //
+			 * .exceptionally(throwable -> { var jce = new JobCompletedEvent(mogulId,
+			 * false, jobName); this.emit(jobName, true, mogulId, jce); return null; });
+			 */
 			this.log.info("launched {} with {}", jobName, context);
 		} //
 		catch (Throwable jobLaunchException) {

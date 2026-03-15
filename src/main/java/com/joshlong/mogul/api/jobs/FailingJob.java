@@ -9,9 +9,9 @@ import java.util.Map;
 class FailingJob implements Job {
 
 	@Override
-	public Result run(Map<String, Object> context) throws Exception {
+	public JobExecutionResult run(Map<String, Object> context) throws Exception {
 		Thread.sleep(10_000);
-		return Result.error(context, new RuntimeException("oops"));
+		return JobExecutionResult.error(context, new RuntimeException("oops"));
 	}
 
 }

@@ -23,11 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 @Transactional
-class EventPublicationJobs implements Jobs {
+class EventPublicationJobs /* implements Jobs */ {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Map<String, CompletableFuture<Job.Result>> jobsInFlight = new ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<JobExecutionResult>> jobsInFlight = new ConcurrentHashMap<>();
 
 	private final ApplicationEventPublisher publisher;
 
@@ -44,12 +44,12 @@ class EventPublicationJobs implements Jobs {
 		var job = this.jobs.get(jobs.jobName());
 		var context = jobs.context();
 		this.log.info("Received job launch request for job '{}' with context: {}", jobs.jobName(), jobs.context());
-		var result = (Job.Result) null;
+		var result = (JobExecutionResult) null;
 		try {
 			result = job.run(context);
 		} //
 		catch (Throwable e) {
-			result = Job.Result.error(context, e);
+			result = JobExecutionResult.error(context, e);
 		} //
 		finally {
 			if (this.jobsInFlight.containsKey(jobs.key())) {
@@ -65,7 +65,7 @@ class EventPublicationJobs implements Jobs {
 		}
 	}
 
-	@Override
+	// @Override
 	public Map<String, Job> jobs() {
 		return CollectionUtils.sortedMap(this.jobs, Comparator.naturalOrder());
 	}
@@ -98,14 +98,15 @@ class EventPublicationJobs implements Jobs {
 		return true;
 	}
 
-	@Override
-	public CompletableFuture<Job.Result> launch(String jobName, Map<String, Object> context) throws JobLaunchException {
+	// @Override
+	public CompletableFuture<JobExecutionResult> launch(String jobName, Map<String, Object> context)
+			throws JobLaunchException {
 		if (!this.validate(jobName, context))
-			return CompletableFuture.completedFuture(Job.Result.error(context, null));
+			return CompletableFuture.completedFuture(JobExecutionResult.error(context, null));
 		var mogulId = (Long) context.get(Job.MOGUL_ID_KEY);
 		var key = this.keyFor(mogulId, jobName, context);
 		return this.jobsInFlight.computeIfAbsent(key, _ -> {
-			var cf = new CompletableFuture<Job.Result>();
+			var cf = new CompletableFuture<JobExecutionResult>();
 			publisher.publishEvent(new JobRunEvent(key, jobName, context));
 			return cf;
 		});
