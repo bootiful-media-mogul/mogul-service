@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.jobs;
 
 import com.joshlong.mogul.api.mogul.MogulService;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,17 +12,34 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+class TestHelloWorldJob implements Job {
+
+	@Override
+	public @NonNull Set<String> requiredContextAttributes() {
+		return Set.of("managedFileId", "name", "blogId");
+	}
+
+	@Override
+	public JobExecutionResult run(JobExecutionContext context) throws Exception {
+		Assertions.assertNotNull(context, "context cannot be null");
+		Assertions.assertTrue(context.getMogulId() > 0, "context must contain mogul id");
+		return JobExecutionResult.ok(Map.of());
+	}
+
+}
+
 @Configuration
 class DefaultJobsConfiguration {
 
 	@Bean
-	DefaultJobs defaultJobs(Map<String, Job> jobMap, JdbcClient db) {
-		return new DefaultJobs(jobMap, db);
+	TestHelloWorldJob testHelloWorldJob() {
+		return new TestHelloWorldJob();
 	}
 
 }
@@ -47,11 +65,11 @@ class DefaultJobsTest {
 		this.db = db;
 		this.mogulService = mogulService;
 		for (var v : this.jobMap.entrySet()) {
-			if (v.getValue() instanceof HelloWorldJob hw) {
+			if (v.getValue() instanceof TestHelloWorldJob hw) {
 				this.helloWorldJob.set(v.getKey());
 			}
 		}
-		Assertions.assertNotNull(this.helloWorldJob.get(), "the hello world job should not be null");
+		Assertions.assertNotNull(this.helloWorldJob.get(), "the test hello world job should not be null");
 	}
 
 	@Test
@@ -61,7 +79,7 @@ class DefaultJobsTest {
 		IO.println("the mogul is " + mogul.id() + ".");
 		var jobName = this.helloWorldJob.get();
 		Assertions.assertNotNull(jobName, "the job name should not be null");
-		var context = Map.<String, Supplier<Object>>of("name", () -> "bob");
+		var context = Map.<String, Supplier<Object>>of("managedFileId", () -> 1L, "name", () -> "bob");
 		var jobExecution = this.jobs.prepareJobExecution(mogul.id(), jobName, context);
 		var firstId = jobExecution.id();
 		var secondJobExecution = this.jobs.prepareJobExecution(mogul.id(), jobName, context);
@@ -69,6 +87,9 @@ class DefaultJobsTest {
 		Assertions.assertNotNull(jobExecution, "the name should not be null");
 		Assertions.assertEquals(jobName, jobExecution.jobName(), "the job names should be the same");
 		Assertions.assertEquals("bob", jobExecution.getContextAttribute("name", String.class));
+		Assertions.assertEquals(1L, jobExecution.getContextAttribute("managedFileId", Long.class));
+
+		// todo figure out how to test that something was launched asynchronously
 
 	}
 

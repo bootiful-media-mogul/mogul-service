@@ -1,5 +1,8 @@
-package com.joshlong.mogul.api.jobs;
+package com.joshlong.mogul.api.jobs.misc;
 
+import com.joshlong.mogul.api.jobs.Job;
+import com.joshlong.mogul.api.jobs.JobExecutionContext;
+import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,12 +25,12 @@ class HelloWorldJob implements Job {
 	}
 
 	@Override
-	public JobExecutionResult run(Map<String, Object> context) throws Exception {
-		var name = (String) context.getOrDefault("name", "world");
+	public JobExecutionResult run(JobExecutionContext executionContext) throws Exception {
+		var name = executionContext.getContextAttributeOrDefault("name", String.class, () -> "world");
 		this.log.info("start: hello, {}", name);
 		Thread.sleep(10_000);
 		this.log.info("stop: hello, {}", name);
-		return JobExecutionResult.ok(context);
+		return JobExecutionResult.ok();
 	}
 
 }

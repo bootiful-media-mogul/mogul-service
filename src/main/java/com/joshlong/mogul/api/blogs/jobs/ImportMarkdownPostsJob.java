@@ -5,6 +5,7 @@ import com.joshlong.mogul.api.archives.Tgz;
 import com.joshlong.mogul.api.archives.Zip;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.jobs.Job;
+import com.joshlong.mogul.api.jobs.JobExecutionContext;
 import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.jspecify.annotations.NonNull;
@@ -47,17 +48,16 @@ class ImportMarkdownPostsJob implements Job {
 	}
 
 	@Override
-	public JobExecutionResult run(Map<String, Object> context) throws Exception {
+	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		var msg = new StringBuilder();
 		msg.append(String.format("running %s", getClass().getName()));
-		context.forEach((k, v) -> msg.append(String.format(" context %s=%s\n", k, v)));
 		this.log.info(msg.toString());
 
 		// todo:
 		// deduce the content type
 		// run the appropriate ArchiveExtractor
 		// extract / create posts for each file
-		return JobExecutionResult.ok(context);
+		return JobExecutionResult.ok(Map.of());
 	}
 
 	static class FrontMatter {

@@ -5,9 +5,12 @@ import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
@@ -16,7 +19,6 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -52,6 +54,8 @@ import java.util.function.Supplier;
 @Transactional
 class DefaultJobs implements InitializingBean, Jobs {
 
+	private final ApplicationEventPublisher publisher;
+
 	private final JdbcClient db;
 
 	private final JobsRowMapper jobsRowMapper;
@@ -66,9 +70,10 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	DefaultJobs(Map<String, com.joshlong.mogul.api.jobs.Job> jobs, JdbcClient db) {
+	DefaultJobs(Map<String, com.joshlong.mogul.api.jobs.Job> jobs, JdbcClient db, ApplicationEventPublisher publisher) {
 		this.db = db;
 		this.jobs = jobs;
+		this.publisher = publisher;
 		this.jobParamRowMapper = new JobParamRowMapper();
 		this.jobsRowMapper = new JobsRowMapper(this::getJobParamDefinitionCollection);
 		this.jobExecutionRowMapper = new JobExecutionRowMapper(this::getJobExecutionParams);
@@ -96,6 +101,26 @@ class DefaultJobs implements InitializingBean, Jobs {
 		return map;
 	}
 
+	@Override
+	public JobExecution getJobExecution(Long id) {
+		return this.db.sql(" select * from job_execution where id = ? ")
+			.params(id) //
+			.query(this.jobExecutionRowMapper) //
+			.single();
+	}
+
+	@Override
+	@Transactional
+	public void launchJobExecution(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context)
+			throws JobLaunchException {
+
+		this.log.debug("launching job execution {} for mogul {}", jobExecutionId, mogulId);
+
+		this.writeContextAttributesForJobExecution(jobExecutionId, context);
+		this.db.sql("update job_execution set start  = NOW() where id = ?").params(jobExecutionId).update();
+		this.publisher.publishEvent(new JobExecutionLaunchedEvent(jobExecutionId));
+	}
+
 	/**
 	 * there should never be more than one instance of a prepared job type for a given
 	 * mogul. so we'll always find the existing instance or create a new one
@@ -104,6 +129,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 	@Transactional
 	public JobExecution prepareJobExecution(Long mogulId, String jobName, Map<String, Supplier<Object>> context) {
 		var jobExecution = this.findJobExecution(mogulId, jobName);
+		var id = (Long) null;
 		if (jobExecution == null) {
 			var gkh = new GeneratedKeyHolder();
 			this.db.sql("""
@@ -114,27 +140,28 @@ class DefaultJobs implements InitializingBean, Jobs {
 					""") //
 				.params(mogulId, jobName)//
 				.update(gkh);
-			var id = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
+			id = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 			Assert.state(id > 0L, "the id is invalid");
-
-			if (context != null) {
-				for (var entry : context.entrySet()) {
-					var paramName = entry.getKey();
-					var value = null == entry.getValue() ? null : entry.getValue().get();
-					var write = null == value ? null : JsonUtils.write(value);
-					this.createJobExecutionParameter(id, paramName, write);
-				}
-			}
-			jobExecution = this.findJobExecution(id);
 		}
-		return jobExecution;
-	}
-
-	private JobExecution findJobExecution(Long jobExecutionId) {
+		else {
+			id = jobExecution.id();
+		}
+		this.writeContextAttributesForJobExecution(id, context);
 		return this.db.sql(" select * from job_execution where id = ? ")
-			.params(jobExecutionId) //
+			.params(id) //
 			.query(this.jobExecutionRowMapper) //
 			.single();
+	}
+
+	private void writeContextAttributesForJobExecution(Long jobExecutionId, Map<String, Supplier<Object>> context) {
+		if (context != null) {
+			for (var entry : context.entrySet()) {
+				var paramName = entry.getKey();
+				var value = null == entry.getValue() ? null : entry.getValue().get();
+				var write = null == value ? null : JsonUtils.write(value);
+				this.createJobExecutionParameter(jobExecutionId, paramName, write);
+			}
+		}
 	}
 
 	private JobExecution findJobExecution(Long mogulId, String jobName) {
@@ -159,28 +186,25 @@ class DefaultJobs implements InitializingBean, Jobs {
 		return map;
 	}
 
-	private void createJobExecutionParameter(Long jobExecutionId, String paramName, Object value) {
+	private void createJobExecutionParameter(Long jobExecutionId, String paramName, String value) {
 		if (value == null) {
-			db.sql("""
-					                insert into job_execution_param (job_execution_id, param_name ) values (?,?)
-					                on conflict (job_execution_id, param_name) do nothing
-					""").params(jobExecutionId, paramName).update();
+			this.db.sql("""
+					insert into job_execution_param (job_execution_id, param_name  ) values (?,?)
+					on conflict (job_execution_id, param_name) do update set param_value = null
+					""") //
+				.params(jobExecutionId, paramName) //
+				.update();
 		} //
 		else {
-			this.db.sql("""
-					    insert into job_execution_param (job_execution_id, param_name, param_value) values (?,?,?)
-					    on conflict (job_execution_id, param_name) do nothing
-					""").params(jobExecutionId, paramName, value).update();
+			this.db //
+				.sql("""
+						    insert into job_execution_param (job_execution_id, param_name, param_value) values (?,?,?)
+						    on conflict (job_execution_id, param_name) do update  set param_value = excluded.param_value
+						""") //
+				.params(jobExecutionId, paramName, value) //
+				.update();
 		}
 		this.log.debug("preparing execution parameter {} = {}", paramName, "" + value);
-	}
-
-	@Override
-	public CompletableFuture<JobExecutionResult> launchJobExecution(Long mogulId, Long jobExecutionId,
-			Map<String, Object> context) throws JobLaunchException {
-		this.log.debug("launching job execution {} for mogul {}", jobExecutionId, mogulId);
-		// todo copy this from the other implementation. or farm it out to JobRunr lol?
-		return null;
 	}
 
 	private void createJobDefinition(String jobName) {
@@ -293,6 +317,75 @@ class DefaultJobs implements InitializingBean, Jobs {
 		public Job mapRow(ResultSet rs, int rowNum) throws SQLException {
 			var jobId = rs.getLong("id");
 			return new Job(this.function.apply(jobId), rs.getString("job_name"), jobId);
+		}
+
+	}
+
+}
+
+record JobExecutionLaunchedEvent(Long jobExecutionId) {
+}
+
+@Component
+@Transactional
+class JobsProcessor {
+
+	private final Jobs jobs;
+
+	JobsProcessor(Jobs jobs) {
+		this.jobs = jobs;
+	}
+
+	@ApplicationModuleListener
+	void onJobLaunchedEvent(JobExecutionLaunchedEvent job) throws Exception {
+		var jobExecution = this.jobs.getJobExecution(job.jobExecutionId());
+		var context = new JobExecutionWrappingJobExecutionContext(jobExecution);
+		try {
+			Assert.state(jobs.jobs().containsKey(jobExecution.jobName()), "the job doesn't exist in the jobs map!");
+			var jobsInstance = jobs.jobs().get(jobExecution.jobName());
+			var result = jobsInstance.run(context);
+			this.recordJobExecutionResult(result);
+		} //
+		catch (Exception e) {
+			// oops
+			var ex = JobExecutionResult.error(e);
+			this.recordJobExecutionResult(ex);
+		}
+	}
+
+	private void recordJobExecutionResult(JobExecutionResult executionResult) {
+		// todo record the output context values, the finish time, etc.
+		// todo publish a JobExecutionResultEvent or something so other components might
+		// listen when they want
+	}
+
+	// todo have a while loop that re-submits imcomplete spring modulith events
+
+	static class JobExecutionWrappingJobExecutionContext implements JobExecutionContext {
+
+		private final JobExecution delegate;
+
+		JobExecutionWrappingJobExecutionContext(JobExecution delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public <T> T getContextAttribute(String paramName, Class<T> type) {
+			return this.delegate.getContextAttribute(paramName, type);
+		}
+
+		@Override
+		public <T> T getContextAttributeOrDefault(String paramName, Class<T> type, Supplier<T> defaultValue) {
+			var result = this.delegate.getContextAttribute(paramName, type);
+			if (null == result) {
+				return defaultValue.get();
+			}
+			return result;
+		}
+
+		@Override
+		public Long getMogulId() {
+			return this.getContextAttribute(Job.MOGUL_ID_KEY, Long.class);
 		}
 
 	}

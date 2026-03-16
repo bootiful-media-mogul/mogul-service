@@ -5,20 +5,6 @@ import com.joshlong.mogul.api.utils.JsonUtils;
 import java.util.Map;
 import java.util.Objects;
 
-//record JobExecution(
-//         Long id,
-//        Long mogulId, String jobName, Map<String, Object> context) {
-//
-//
-//    public <T> T getParameter (String paramName, Class<T> type) {
-//        var value = context.get(paramName);
-//        if (null == value) {
-//            return null;
-//        }
-//        return (T) JsonUtils.read(value,type );
-//
-//    }
-//}
 public class JobExecution {
 
 	private final Long id;

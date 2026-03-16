@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts.jobs;
 
 import com.joshlong.mogul.api.jobs.Job;
+import com.joshlong.mogul.api.jobs.JobExecutionContext;
 import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.Podcast;
@@ -35,26 +36,21 @@ class PodcastIndexerJob implements Job {
 		this.searchService = searchService;
 	}
 
-	private long from(Map<String, Object> ctx, String k) {
-		var num = ctx.containsKey(k) ? (Number) ctx.get(k) : 0;
-		return num.longValue();
-	}
-
 	@Override
-	public JobExecutionResult run(Map<String, Object> context) throws Exception {
+	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		this.log.info("running for context {}", context);
-		var mogulId = this.from(context, Job.MOGUL_ID_KEY);
-		var podcastId = this.from(context, Job.PODCAST_ID_KEY);
+		var mogulId = context.getMogulId();
+		var podcastId = context.getContextAttribute(PODCAST_ID_KEY, Long.class);
 		this.log.info("running for mogulId # {} and podcastId # {}", mogulId, podcastId);
 		this.doRun(mogulId, podcastId);
-		return JobExecutionResult.ok(context);
+		return JobExecutionResult.ok();
 	}
 
 	@Override
 	public @NonNull Set<String> requiredContextAttributes() {
 		var attrs = Job.super.requiredContextAttributes();
 		var all = new HashSet<>(attrs);
-		all.add(Job.PODCAST_ID_KEY);
+		all.add(PODCAST_ID_KEY);
 		return all;
 	}
 
