@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.jobs;
 
-import com.joshlong.mogul.api.utils.JsonUtils;
+import org.springframework.util.Assert;
 
 import java.util.Map;
 import java.util.Objects;
@@ -13,9 +13,9 @@ public class JobExecution {
 
 	private final String jobName;
 
-	private final Map<String, String> context;
+	private final Map<String, JobExecutionParam> context;
 
-	JobExecution(Long id, Long mogulId, String jobName, Map<String, String> context) {
+	JobExecution(Long id, Long mogulId, String jobName, Map<String, JobExecutionParam> context) {
 		this.id = id;
 		this.mogulId = mogulId;
 		this.jobName = jobName;
@@ -34,27 +34,32 @@ public class JobExecution {
 		return jobName;
 	}
 
+	public Map<String, JobExecutionParam> context() {
+		return context;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (o == null || getClass() != o.getClass())
 			return false;
-		JobExecution that = (JobExecution) o;
-		return Objects.equals(id, that.id) && Objects.equals(mogulId, that.mogulId)
-				&& Objects.equals(jobName, that.jobName) && Objects.equals(context, that.context);
+		var that = (JobExecution) o;
+		return Objects.equals(this.id, that.id) && Objects.equals(this.mogulId, that.mogulId)
+				&& Objects.equals(this.jobName, that.jobName) && Objects.equals(this.context, that.context);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(id, mogulId, jobName, context);
+		return Objects.hash(this.id, this.mogulId, this.jobName, this.context);
 	}
 
 	public <T> T getContextAttribute(String paramName, Class<T> type) {
-		var param = this.context.get(paramName);
-		if (param == null) {
+		Assert.notNull(paramName, "paramName must not be null");
+		Assert.notNull(type, "type must not be null");
+		if (!this.context.containsKey(paramName) || this.context.get(paramName) == null)
 			return null;
-		}
 
-		return (T) JsonUtils.read(param, type);
+		var je = this.context.get(paramName);
+		return (T) je.value();
 	}
 
 }

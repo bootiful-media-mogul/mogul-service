@@ -89,8 +89,11 @@ class DefaultJobsTest {
 		Assertions.assertEquals("bob", jobExecution.getContextAttribute("name", String.class));
 		Assertions.assertEquals(1L, jobExecution.getContextAttribute("managedFileId", Long.class));
 
-		// todo figure out how to test that something was launched asynchronously
-
+		var msg = new StringBuilder().append(System.lineSeparator());
+		jobExecution.context().forEach((key, value) -> {
+			msg.append('\t').append(key).append(": ").append(value).append(System.lineSeparator());
+		});
+		IO.println("the job is " + jobExecution.id() + "." + msg);
 	}
 
 	@Test

@@ -27,6 +27,7 @@ CREATE TABLE job_execution_param
     id               SERIAL PRIMARY KEY,
     job_execution_id BIGINT NOT NULL REFERENCES job_execution (id),
     param_name       TEXT   NOT NULL,
+    param_class      TEXT   NULL,
     param_value      TEXT,
     unique (job_execution_id, param_name)
 );

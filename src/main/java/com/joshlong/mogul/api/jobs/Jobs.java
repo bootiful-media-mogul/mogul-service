@@ -7,7 +7,8 @@ public interface Jobs {
 
 	Map<String, Job> jobs();
 
-	JobExecution prepareJobExecution(Long mogulId, String jobName, Map<String, Supplier<Object>> context);
+	JobExecution prepareJobExecution(Long mogulId, String jobName, Map<String, Supplier<Object>> context)
+			throws Exception;
 
 	JobExecution getJobExecution(Long id);
 
