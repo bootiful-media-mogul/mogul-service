@@ -18,10 +18,7 @@ import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -92,7 +89,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	@Override
 	@Transactional
-	public JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context) throws Exception {
+	public JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context) {
 
 		if (this.findUnusedJobExecutionForMogul(mogulId, jobName) == null) {
 			var gkh = new GeneratedKeyHolder();
@@ -105,7 +102,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 		} //
 
 		var jobExecution = this.findUnusedJobExecutionForMogul(mogulId, jobName);
-		var jobExecutionId = jobExecution.id();
+		var jobExecutionId = Objects.requireNonNull(jobExecution).id();
 		Assert.notNull(jobExecution, "jobExecution is null");
 		this.writeContextAttributesForJobExecution(jobExecutionId, context);
 		jobExecution = this.findUnusedJobExecutionForMogul(mogulId, jobName);

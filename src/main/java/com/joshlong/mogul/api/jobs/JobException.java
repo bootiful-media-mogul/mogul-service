@@ -1,15 +1,15 @@
 package com.joshlong.mogul.api.jobs;
 
-public class JobLaunchException extends Exception {
+public class JobException extends Exception {
 
 	private final String message;
 
-	JobLaunchException(String message) {
+	JobException(String message) {
 		super(message);
 		this.message = message;
 	}
 
-	JobLaunchException(String message, Throwable cause) {
+	JobException(String message, Throwable cause) {
 		super(message, cause);
 		this.message = message;
 	}
