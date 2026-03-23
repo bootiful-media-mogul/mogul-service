@@ -12,14 +12,16 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -92,22 +94,21 @@ class DefaultJobs implements InitializingBean, Jobs {
 	@Transactional
 	public JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context) throws Exception {
 
-		if (this.findJobExecution(mogulId, jobName) == null) {
+		if (this.findUnusedJobExecutionForMogul(mogulId, jobName) == null) {
 			var gkh = new GeneratedKeyHolder();
 			this.db.sql("""
-					            insert into job_execution (mogul_id, job_name)
-					            values (?,?)
-					            on conflict (mogul_id, job_name ) do nothing
-					            returning  id
+					    insert into job_execution(mogul_id, job_name)
+					    values(?,?)
 					""") //
 				.params(mogulId, jobName)//
 				.update(gkh);
 		} //
 
-		var jobExecution = this.findJobExecution(mogulId, jobName);
+		var jobExecution = this.findUnusedJobExecutionForMogul(mogulId, jobName);
+		var jobExecutionId = jobExecution.id();
 		Assert.notNull(jobExecution, "jobExecution is null");
-		this.writeContextAttributesForJobExecution(jobExecution.id(), context);
-		jobExecution = this.findJobExecution(mogulId, jobName);
+		this.writeContextAttributesForJobExecution(jobExecutionId, context);
+		jobExecution = this.findUnusedJobExecutionForMogul(mogulId, jobName);
 		Assert.notNull(jobExecution, "jobExecution is null");
 		var aggregate = new HashMap<String, Supplier<Object>>();
 		for (var prep : this.jobParamPreparers) {
@@ -122,7 +123,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 			}
 		} //
 		this.writeContextAttributesForJobExecution(jobExecution.id(), aggregate);
-		return this.findJobExecution(mogulId, jobExecution.jobName());
+		return this.getJobExecution(jobExecutionId);
 	}
 
 	@Override
@@ -147,9 +148,13 @@ class DefaultJobs implements InitializingBean, Jobs {
 		}
 	}
 
-	private JobExecution findJobExecution(Long mogulId, String jobName) {
+	private JobExecution findUnusedJobExecutionForMogul(Long mogulId, String jobName) {
 		var list = this.db//
-			.sql("select * from job_execution where job_name = ? and mogul_id = ?") //
+			.sql("""
+					        select * from job_execution where job_name = ? and mogul_id = ?
+					            and "start" is null
+					            and "stop" is null
+					""") //
 			.params(jobName, mogulId) //
 			.query(this.jobExecutionRowMapper) //
 			.list();
@@ -189,7 +194,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 				.params(jobExecutionId, paramName, value, clzz.getName()) //
 				.update();
 		}
-		this.log.debug("preparing execution parameter {} = {}", paramName, "" + value);
+		this.log.debug("preparing execution parameter {} = {}", paramName, value);
 	}
 
 	private void createJob(String jobName) {
@@ -279,13 +284,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	}
 
-	private static class JobExecutionRowMapper implements RowMapper<JobExecution> {
-
-		private final Function<Long, Map<String, JobExecutionParam>> function;
-
-		JobExecutionRowMapper(Function<Long, Map<String, JobExecutionParam>> function) {
-			this.function = function;
-		}
+	private record JobExecutionRowMapper(
+			Function<Long, Map<String, JobExecutionParam>> function) implements RowMapper<JobExecution> {
 
 		@Override
 		public JobExecution mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -295,13 +295,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	}
 
-	private static class JobsRowMapper implements RowMapper<Job> {
-
-		private final Function<Long, Collection<JobParam>> function;
-
-		JobsRowMapper(Function<Long, Collection<JobParam>> function) {
-			this.function = function;
-		}
+	private record JobsRowMapper(Function<Long, Collection<JobParam>> function) implements RowMapper<Job> {
 
 		@Override
 		public Job mapRow(ResultSet rs, int rowNum) throws SQLException {

@@ -49,9 +49,7 @@ class ImportMarkdownPostsJob implements Job {
 
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
-		var msg = new StringBuilder();
-		msg.append(String.format("running %s", getClass().getName()));
-		this.log.info(msg.toString());
+		this.log.info(String.format("running %s", getClass().getName()));
 
 		// todo:
 		// deduce the content type

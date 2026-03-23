@@ -10,7 +10,6 @@ import org.springframework.modulith.events.IncompleteEventPublications;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 @Configuration

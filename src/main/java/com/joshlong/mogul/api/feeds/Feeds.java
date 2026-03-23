@@ -154,7 +154,7 @@ public class Feeds {
 		}
 	}
 
-	static record Image(String url, String contentType, long length) {
+	record Image(String url, String contentType, long length) {
 	}
 
 }

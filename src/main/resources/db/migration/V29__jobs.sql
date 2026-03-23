@@ -15,12 +15,12 @@ CREATE TABLE job_param
 CREATE TABLE job_execution
 (
     id       SERIAL PRIMARY KEY,
-    mogul_id BIGINT NOT NULL references mogul (id),
-    job_name TEXT   NOT NULL,
-    start    timestamp,
-    stop     timestamp,
-    success boolean default false ,
-    unique (mogul_id, job_name)
+    mogul_id BIGINT    NOT NULL references mogul (id),
+    job_name TEXT      NOT NULL,
+    start    timestamp NULL,
+    stop     timestamp NULL,
+    success  boolean default false,
+    unique (mogul_id, job_name, start)
 );
 
 CREATE TABLE job_execution_param

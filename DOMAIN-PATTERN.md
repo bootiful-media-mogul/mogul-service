@@ -346,7 +346,7 @@ When testing components using the Domain Pattern:
 ```java
 @Test
 void testPublishableResolution() {
-    var episode = new Episode(1L, "Test Episode", ...);
+    var episode = new Episode(1L, "Test Episode", ...)
     var repository = new PodcastPublishableRepository(podcastService);
 
     assertTrue(repository.supports(Episode.class));

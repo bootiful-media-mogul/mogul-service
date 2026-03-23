@@ -65,13 +65,7 @@ class BlogPostFeedController {
 				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);
 	}
 
-	private static class BlogPostEntryMapper implements EntryMapper<Post> {
-
-		private final Map<Long, String> urls;
-
-		private BlogPostEntryMapper(Map<Long, String> urls) {
-			this.urls = urls;
-		}
+	private record BlogPostEntryMapper(Map<Long, String> urls) implements EntryMapper<Post> {
 
 		@Override
 		public Entry map(Post post) {

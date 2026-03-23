@@ -59,7 +59,7 @@ public class JobExecution {
 			return null;
 
 		var je = this.context.get(paramName);
-		return (T) je.value();
+		return je.value();
 	}
 
 }
