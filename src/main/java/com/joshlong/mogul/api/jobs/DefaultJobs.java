@@ -1,12 +1,10 @@
 package com.joshlong.mogul.api.jobs;
 
-import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -83,7 +81,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 		this.publisher = publisher;
 		this.jobParamPreparers = jobParamPreparers;
 		this.jobParamRowMapper = new JobParamRowMapper();
-		this.jobsRowMapper = new JobsRowMapper(this::getJobParamDefinitionCollection);
+		this.jobsRowMapper = new JobsRowMapper(this::getJobParamCollection);
 		this.jobExecutionRowMapper = new JobExecutionRowMapper(this::getJobExecutionParams);
 		this.jobExecutionParamRowMapper = new JobExecutionParamRowMapper();
 	}
@@ -92,7 +90,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 	@Transactional
 	public void afterPropertiesSet() {
 		for (var jobName : this.jobs.keySet()) {
-			this.createJobDefinition(jobName);
+			this.createJob(jobName);
 		}
 	}
 
@@ -121,12 +119,10 @@ class DefaultJobs implements InitializingBean, Jobs {
 	@Override
 	@Transactional
 	public void launchJobExecution(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context) {
-
-		this.log.debug("launching job execution {} for mogul {}", jobExecutionId, mogulId);
-
 		this.writeContextAttributesForJobExecution(jobExecutionId, context);
-		this.db.sql("update job_execution set start  = NOW() where id = ?").params(jobExecutionId).update();
-		this.publisher.publishEvent(new JobExecutionLaunchedEvent(jobExecutionId));
+		this.db.sql(" update job_execution set start = NOW() where id = ? ").params(jobExecutionId).update();
+		this.publisher.publishEvent(new JobLaunchedEvent(jobExecutionId));
+
 	}
 
 	/**
@@ -182,13 +178,6 @@ class DefaultJobs implements InitializingBean, Jobs {
 		}
 	}
 
-	private JobExecution findJobExecution(Long jobExecutionId) {
-		return this.db.sql(" select * from job_execution where id = ? ")
-			.params(jobExecutionId) //
-			.query(this.jobExecutionRowMapper) //
-			.single();
-	}
-
 	private JobExecution findJobExecution(Long mogulId, String jobName) {
 		var list = this.db//
 			.sql("select * from job_execution where job_name = ? and mogul_id = ?") //
@@ -234,7 +223,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 		this.log.debug("preparing execution parameter {} = {}", paramName, "" + value);
 	}
 
-	private void createJobDefinition(String jobName) {
+	private void createJob(String jobName) {
 		var job = this.jobs.get(jobName);
 		Assert.notNull(job, "the job named [" + jobName + "] does not exist!");
 		var sql = """
@@ -245,10 +234,10 @@ class DefaultJobs implements InitializingBean, Jobs {
 				""";
 		this.db.sql(sql).params(jobName).update();
 		var requiredContextAttributes = job.requiredContextAttributes();
-		var jobDefinition = this.findJobDefinition(jobName);
+		var jobDefinition = this.findJob(jobName);
 		Assert.notNull(jobDefinition, "the job named [" + jobName + "] does not exist!");
 		this.db.sql("delete from job_param where job_id = ?").params(jobDefinition.id()).update();
-		var existingJobParamsInDb = this.getJobParamDefinitionCollection(jobDefinition.id());
+		var existingJobParamsInDb = this.getJobParamCollection(jobDefinition.id());
 		this.log.debug("got {} job params from the DB.", existingJobParamsInDb.size());
 		for (var existingJobParamInDb : existingJobParamsInDb) {
 			if (!requiredContextAttributes.contains(existingJobParamInDb.paramName())) {
@@ -273,7 +262,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 		this.log.info("created job param {} for job {}", parameterName, jobId);
 	}
 
-	private Job findJobDefinition(String jobName) {
+	private Job findJob(String jobName) {
 		return this.db //
 			.sql("select * from job where job_name =  ?") //
 			.params(jobName) //
@@ -281,7 +270,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 			.single();
 	}
 
-	private Collection<JobParam> getJobParamDefinitionCollection(long jobId) {
+	private Collection<JobParam> getJobParamCollection(long jobId) {
 		return this.db.sql("select * from job_param where job_id = ?")
 			.params(jobId)
 			.query(this.jobParamRowMapper)
@@ -355,26 +344,6 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 }
 
-class JobExecutionLaunchedEvent extends ApplicationEvent {
-
-	private final Long jobExecutionId;
-
-	JobExecutionLaunchedEvent(Long jobExecutionId) {
-		super(jobExecutionId);
-		this.jobExecutionId = jobExecutionId;
-	}
-
-	Long jobExecutionId() {
-		return this.jobExecutionId;
-	}
-
-	@Override
-	public Object getSource() {
-		return this.jobExecutionId;
-	}
-
-}
-
 @Component
 @Transactional
 class JobsProcessor {
@@ -385,20 +354,23 @@ class JobsProcessor {
 
 	private final JdbcClient db;
 
-	JobsProcessor(Jobs jobs, IncompleteEventPublications eventPublications, JdbcClient jdbcClient) {
+	private final ApplicationEventPublisher applicationEventPublisher;
+
+	JobsProcessor(Jobs jobs, IncompleteEventPublications eventPublications, JdbcClient jdbcClient,
+			ApplicationEventPublisher applicationEventPublisher) {
 		this.jobs = jobs;
 		this.eventPublications = eventPublications;
 		this.db = jdbcClient;
+		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
 	@Scheduled(fixedRate = 10, timeUnit = TimeUnit.SECONDS)
 	void checkForIncompleteEvents() {
-		this.eventPublications
-			.resubmitIncompletePublications(e -> e.getApplicationEvent() instanceof JobExecutionLaunchedEvent);
+		this.eventPublications.resubmitIncompletePublications(e -> e.getApplicationEvent() instanceof JobLaunchedEvent);
 	}
 
 	@ApplicationModuleListener
-	void onJobLaunchedEvent(JobExecutionLaunchedEvent job) {
+	void onJobLaunchedEvent(JobLaunchedEvent job) {
 		var jobExecution = this.jobs.getJobExecution(job.jobExecutionId());
 		var context = new JobExecutionWrappingJobExecutionContext(jobExecution);
 		try {
@@ -414,11 +386,12 @@ class JobsProcessor {
 		}
 	}
 
-	private void recordJobExecutionResult(JobExecutionLaunchedEvent jobExecutionLaunchedEvent,
-			JobExecutionResult executionResult) {
-		this.db.sql("update job_execution set stop = ? , success = ? where job_execution_id = ?")
-			.params(new Date(), executionResult.success(), jobExecutionLaunchedEvent.jobExecutionId())
+	private void recordJobExecutionResult(JobLaunchedEvent jobLaunchedEvent, JobExecutionResult executionResult) {
+		this.db //
+			.sql("update job_execution set stop = ? , success = ? where job_execution_id = ?") //
+			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
 			.update();
+		applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
 	}
 
 	static class JobExecutionWrappingJobExecutionContext implements JobExecutionContext {

@@ -34,8 +34,27 @@ class TestHelloWorldJob implements Job {
 
 }
 
+class TestHelloWorldJobDefaultJobExecutionParamProvider implements DefaultJobExecutionParamProvider {
+
+	@Override
+	public boolean supports(Job job) {
+		return job instanceof TestHelloWorldJob;
+	}
+
+	@Override
+	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) throws Exception {
+		return Map.of("managedFileId", () -> 1L);
+	}
+
+}
+
 @Configuration
 class DefaultJobsConfiguration {
+
+	@Bean
+	TestHelloWorldJobDefaultJobExecutionParamProvider testHelloWorldJobDefaultJobExecutionParamProvider() {
+		return new TestHelloWorldJobDefaultJobExecutionParamProvider();
+	}
 
 	@Bean
 	TestHelloWorldJob testHelloWorldJob() {
@@ -88,12 +107,18 @@ class DefaultJobsTest {
 		Assertions.assertEquals(jobName, jobExecution.jobName(), "the job names should be the same");
 		Assertions.assertEquals("bob", jobExecution.getContextAttribute("name", String.class));
 		Assertions.assertEquals(1L, jobExecution.getContextAttribute("managedFileId", Long.class));
-
 		var msg = new StringBuilder().append(System.lineSeparator());
 		jobExecution.context().forEach((key, value) -> {
 			msg.append('\t').append(key).append(": ").append(value).append(System.lineSeparator());
+			if (value.type().isAssignableFrom(Long.class)) {
+				var id = (Long) value.value();
+				Assertions.assertNotNull(id, "the id should not be null");
+			}
 		});
 		IO.println("the job is " + jobExecution.id() + "." + msg);
+
+		this.jobs.launchJobExecution(mogul.id(), jobExecution.id(), Map.of("message", () -> "hello world!"));
+
 	}
 
 	@Test
