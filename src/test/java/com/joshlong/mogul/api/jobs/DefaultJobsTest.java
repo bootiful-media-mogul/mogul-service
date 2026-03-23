@@ -9,10 +9,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -61,6 +64,31 @@ class DefaultJobsConfiguration {
 		return new TestHelloWorldJob();
 	}
 
+	@Bean
+	Listener listener() {
+		return new Listener();
+	}
+
+}
+
+class Listener {
+
+	private final AtomicInteger events = new AtomicInteger(0);
+
+	@EventListener
+	void on(JobLaunchedEvent jobLaunchedEvent) {
+		events.incrementAndGet();
+	}
+
+	@EventListener
+	void on(JobCompletedEvent jobCompletedEvent) {
+		events.incrementAndGet();
+	}
+
+	int count() {
+		return events.get();
+	}
+
 }
 
 @SpringBootTest
@@ -77,8 +105,10 @@ class DefaultJobsTest {
 
 	private final AtomicReference<String> helloWorldJob = new AtomicReference<>();
 
-	DefaultJobsTest(@Autowired Map<String, Job> jobMap, @Autowired Jobs jobs, @Autowired JdbcClient db,
-			@Autowired MogulService mogulService) {
+	private final Listener listener;
+
+	DefaultJobsTest(@Autowired Listener listener, @Autowired Map<String, Job> jobMap, @Autowired Jobs jobs,
+			@Autowired JdbcClient db, @Autowired MogulService mogulService) {
 		this.jobs = jobs;
 		this.jobMap = jobMap;
 		this.db = db;
@@ -89,6 +119,7 @@ class DefaultJobsTest {
 			}
 		}
 		Assertions.assertNotNull(this.helloWorldJob.get(), "the test hello world job should not be null");
+		this.listener = listener;
 	}
 
 	@Test
@@ -119,6 +150,9 @@ class DefaultJobsTest {
 
 		this.jobs.launchJobExecution(mogul.id(), jobExecution.id(), Map.of("message", () -> "hello world!"));
 
+		Thread.sleep(Duration.ofSeconds(10));
+
+		Assertions.assertEquals(2, this.listener.count(), "there should be exactly 2 events (start and stop)");
 	}
 
 	@Test

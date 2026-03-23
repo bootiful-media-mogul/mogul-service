@@ -388,7 +388,7 @@ class JobsProcessor {
 
 	private void recordJobExecutionResult(JobLaunchedEvent jobLaunchedEvent, JobExecutionResult executionResult) {
 		this.db //
-			.sql("update job_execution set stop = ? , success = ? where job_execution_id = ?") //
+			.sql("update job_execution set stop = ? , success = ? where  id  = ?") //
 			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
 			.update();
 		applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));

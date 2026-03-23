@@ -19,6 +19,7 @@ CREATE TABLE job_execution
     job_name TEXT   NOT NULL,
     start    timestamp,
     stop     timestamp,
+    success boolean default false ,
     unique (mogul_id, job_name)
 );
 
