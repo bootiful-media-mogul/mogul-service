@@ -332,7 +332,8 @@ class JobExecutor {
 
 	@Scheduled(fixedRate = 10, timeUnit = TimeUnit.SECONDS)
 	void checkForIncompleteEvents() {
-		this.eventPublications.resubmitIncompletePublications(e -> e.getApplicationEvent() instanceof JobLaunchedEvent);
+		this.eventPublications.resubmitIncompletePublications( //
+				e -> e.getApplicationEvent() instanceof JobLaunchedEvent);
 	}
 
 	@ApplicationModuleListener
@@ -357,8 +358,7 @@ class JobExecutor {
 			.sql("update job_execution set stop = ? , success = ? where  id  = ?") //
 			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
 			.update();
-
-		Long jobExecutionId = jobLaunchedEvent.jobExecutionId();
+		var jobExecutionId = jobLaunchedEvent.jobExecutionId();
 		this.contextAttributeWriterLambda.apply(jobExecutionId, executionResult.context());
 		this.applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
 	}
