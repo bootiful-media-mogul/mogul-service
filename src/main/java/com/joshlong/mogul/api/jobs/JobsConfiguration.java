@@ -5,9 +5,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.IncompleteEventPublications;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 @Configuration
 class JobsConfiguration {
@@ -17,6 +21,20 @@ class JobsConfiguration {
 			@Autowired(required = false) Collection<DefaultJobExecutionParamProvider> jobParamPreparers,
 			ApplicationEventPublisher publisher) {
 		return new DefaultJobs(jobsMap, db, publisher, jobParamPreparers);
+	}
+
+	@Bean
+	JobExecutor jobExecutor(DefaultJobs jobs, ApplicationEventPublisher publisher, JdbcClient jdbcClient,
+			IncompleteEventPublications eventPublications) {
+		return new JobExecutor(jobs, eventPublications, jdbcClient, publisher,
+				(jobExecutionId, outputContextAttributes) -> {
+					var outputAttributesButAsSuppliers = new HashMap<String, Supplier<Object>>();
+					for (var key : outputContextAttributes.keySet()) {
+						outputAttributesButAsSuppliers.put(key, () -> outputContextAttributes.get(key));
+					}
+					jobs.writeContextAttributesForJobExecution(jobExecutionId, outputAttributesButAsSuppliers);
+					return null;
+				});
 	}
 
 }

@@ -21,38 +21,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * maybe if i designed the tables i could have a way to prepopulate a table for each of
- * the required parameters? eg, for every user + job name, there'd be rows in a
- * job_parameters table with, e.g.: name == 'managedFileId' and value = null | number.
- * this way, the ManagedFile machinery could point to this int and everything would work.
- * the second somebody launches the job, those pre-populated instances get created anew.
- * after all, each user only gets one job run at a time.
- * <p>
- * so: anytime a user does anything with any job, wed realuate a loop that would iterate
- * through all the jobs, and ensure that there's a pristine job in the jobs table, and
- * pristine rows for each of the job_params. there'd be custom logic for how to initialie
- * those job_params. for the case of managedFileId, we'd create one and store the value
- * there.
- */
-// todo we have the metadata to articulate a given jobs makeup
-// no we need to build the runtime infrastructure to launch a job and preservee all of its
-// state in the db. and of course
-// to do this well need to have a pre-allocated instance of each ojb for each user. as we
-// pre-allocate, we'll involve some
-// customization logic by allowing some registered spring beans to handle the defaults for
-// the parameters. namely, the ManagedFiles.
-// well listen for the user authenticated signal to run this pre-allocation logic the
-// first time. then we'll re-run the logic every singlew time a
-// user launches a job of any type (this way well ensure that the job is again ready to go
-// for a new job run)
-// todo make this a spring components
-
-// todo refactor this to use the ResultSetExtractor for things like the params
-// or anything that produces more than one result
 @Transactional
 class DefaultJobs implements InitializingBean, Jobs {
 
@@ -118,21 +90,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	@Override
 	@Transactional
-	public void launchJobExecution(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context) {
-		this.writeContextAttributesForJobExecution(jobExecutionId, context);
-		this.db.sql(" update job_execution set start = NOW() where id = ? ").params(jobExecutionId).update();
-		this.publisher.publishEvent(new JobLaunchedEvent(jobExecutionId));
-
-	}
-
-	/**
-	 * there should never be more than one instance of a prepared job type for a given
-	 * mogul. so we'll always find the existing instance or create a new one
-	 */
-	@Override
-	@Transactional
-	public JobExecution prepareJobExecution(Long mogulId, String jobName, Map<String, Supplier<Object>> context)
-			throws Exception {
+	public JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context) throws Exception {
 
 		if (this.findJobExecution(mogulId, jobName) == null) {
 			var gkh = new GeneratedKeyHolder();
@@ -167,7 +125,18 @@ class DefaultJobs implements InitializingBean, Jobs {
 		return this.findJobExecution(mogulId, jobExecution.jobName());
 	}
 
-	private void writeContextAttributesForJobExecution(Long jobExecutionId, Map<String, Supplier<Object>> context) {
+	@Override
+	@Transactional
+	public void launch(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context) {
+
+		this.writeContextAttributesForJobExecution(jobExecutionId, context);
+
+		this.db.sql(" update job_execution set start = NOW() where id = ? ").params(jobExecutionId).update();
+
+		this.publisher.publishEvent(new JobLaunchedEvent(jobExecutionId));
+	}
+
+	void writeContextAttributesForJobExecution(Long jobExecutionId, Map<String, Supplier<Object>> context) {
 		if (context != null) {
 			for (var entry : context.entrySet()) {
 				var paramName = entry.getKey();
@@ -344,9 +313,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 }
 
-@Component
 @Transactional
-class JobsProcessor {
+class JobExecutor {
 
 	private final Jobs jobs;
 
@@ -356,12 +324,16 @@ class JobsProcessor {
 
 	private final ApplicationEventPublisher applicationEventPublisher;
 
-	JobsProcessor(Jobs jobs, IncompleteEventPublications eventPublications, JdbcClient jdbcClient,
-			ApplicationEventPublisher applicationEventPublisher) {
+	private final BiFunction<Long, Map<String, Object>, Void> attrWriter;
+
+	JobExecutor(Jobs jobs, IncompleteEventPublications eventPublications, JdbcClient jdbcClient,
+			ApplicationEventPublisher applicationEventPublisher,
+			BiFunction<Long, Map<String, Object>, Void> attrWriter) {
 		this.jobs = jobs;
 		this.eventPublications = eventPublications;
 		this.db = jdbcClient;
 		this.applicationEventPublisher = applicationEventPublisher;
+		this.attrWriter = attrWriter;
 	}
 
 	@Scheduled(fixedRate = 10, timeUnit = TimeUnit.SECONDS)
@@ -380,7 +352,7 @@ class JobsProcessor {
 			var result = jobsInstance.run(context);
 			this.recordJobExecutionResult(job, result);
 		} //
-		catch (Exception e) {
+		catch (Throwable e) {
 			var ex = JobExecutionResult.error(e);
 			this.recordJobExecutionResult(job, ex);
 		}
@@ -391,7 +363,15 @@ class JobsProcessor {
 			.sql("update job_execution set stop = ? , success = ? where  id  = ?") //
 			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
 			.update();
-		applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
+
+		this.handleWritingAttrs(jobLaunchedEvent.jobExecutionId(), executionResult.context());
+
+		// todo write out any context values
+		this.applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
+	}
+
+	private void handleWritingAttrs(Long jobExecutionId, Map<String, Object> context) {
+		this.attrWriter.apply(jobExecutionId, context);
 	}
 
 	static class JobExecutionWrappingJobExecutionContext implements JobExecutionContext {
@@ -418,7 +398,7 @@ class JobsProcessor {
 
 		@Override
 		public Long getMogulId() {
-			return this.getContextAttribute(Job.MOGUL_ID_KEY, Long.class);
+			return this.getContextAttribute(com.joshlong.mogul.api.jobs.Job.MOGUL_ID_KEY, Long.class);
 		}
 
 	}

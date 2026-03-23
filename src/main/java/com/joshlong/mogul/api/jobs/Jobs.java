@@ -7,12 +7,10 @@ public interface Jobs {
 
 	Map<String, Job> jobs();
 
-	JobExecution prepareJobExecution(Long mogulId, String jobName, Map<String, Supplier<Object>> context)
-			throws Exception;
+	JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context) throws Exception;
 
 	JobExecution getJobExecution(Long id);
 
-	void launchJobExecution(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context)
-			throws JobLaunchException;
+	void launch(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context) throws JobLaunchException;
 
 }

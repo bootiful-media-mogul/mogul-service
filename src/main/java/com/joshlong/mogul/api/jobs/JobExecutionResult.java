@@ -2,8 +2,6 @@ package com.joshlong.mogul.api.jobs;
 
 import java.util.Map;
 
-import static com.joshlong.mogul.api.jobs.ResultUtils.validate;
-
 public record JobExecutionResult(boolean success, Map<String, Object> context) {
 
 	public static JobExecutionResult error(Throwable throwable) {
@@ -16,6 +14,6 @@ public record JobExecutionResult(boolean success, Map<String, Object> context) {
 	}
 
 	public static JobExecutionResult ok(Map<String, Object> context) {
-		return new JobExecutionResult(true, validate(context));
+		return new JobExecutionResult(true, context);
 	}
 }

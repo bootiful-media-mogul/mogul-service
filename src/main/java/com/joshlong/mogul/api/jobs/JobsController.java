@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api.jobs;
 
-import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
-import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.JsonUtils;
@@ -14,7 +12,6 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.*;
-import java.util.function.Supplier;
 
 @Controller
 class JobsController {
@@ -75,7 +72,7 @@ class JobsController {
 	// that inspects the jobs and provides the defaults
 	private JobView buildJobView(Long mogul, Map.Entry<String, Job> jobEntry) throws Exception {
 
-		var preparedJob = this.jobs.prepareJobExecution(mogul, jobEntry.getKey(), Map.of());
+		var preparedJob = this.jobs.prepare(mogul, jobEntry.getKey(), Map.of());
 		// .filter(s -> !Objects.equals(s, Job.MOGUL_ID_KEY))
 		return new JobView(jobEntry.getKey(), preparedJob.context(),
 				jobEntry.getValue().requiredContextAttributes().toArray(String[]::new));

@@ -13,6 +13,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +33,7 @@ class TestHelloWorldJob implements Job {
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		Assertions.assertNotNull(context, "context cannot be null");
 		Assertions.assertTrue(context.getMogulId() > 0, "context must contain mogul id");
-		return JobExecutionResult.ok(Map.of());
+		return JobExecutionResult.ok(Map.of("uploaded", new Date()));
 	}
 
 }
@@ -130,9 +131,9 @@ class DefaultJobsTest {
 		var jobName = this.helloWorldJob.get();
 		Assertions.assertNotNull(jobName, "the job name should not be null");
 		var context = Map.<String, Supplier<Object>>of("managedFileId", () -> 1L, "name", () -> "bob");
-		var jobExecution = this.jobs.prepareJobExecution(mogul.id(), jobName, context);
+		var jobExecution = this.jobs.prepare(mogul.id(), jobName, context);
 		var firstId = jobExecution.id();
-		var secondJobExecution = this.jobs.prepareJobExecution(mogul.id(), jobName, context);
+		var secondJobExecution = this.jobs.prepare(mogul.id(), jobName, context);
 		Assertions.assertEquals(firstId, secondJobExecution.id(), "the ids should be the same");
 		Assertions.assertNotNull(jobExecution, "the name should not be null");
 		Assertions.assertEquals(jobName, jobExecution.jobName(), "the job names should be the same");
@@ -148,7 +149,7 @@ class DefaultJobsTest {
 		});
 		IO.println("the job is " + jobExecution.id() + "." + msg);
 
-		this.jobs.launchJobExecution(mogul.id(), jobExecution.id(), Map.of("message", () -> "hello world!"));
+		this.jobs.launch(mogul.id(), jobExecution.id(), Map.of("message", () -> "hello world!"));
 
 		Thread.sleep(Duration.ofSeconds(10));
 
