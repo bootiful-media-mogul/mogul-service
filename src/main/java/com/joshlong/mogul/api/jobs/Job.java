@@ -20,6 +20,8 @@ public interface Job {
 
 	String BLOG_ID_KEY = "blogId";
 
+	String MANAGED_FILE_ID_KEY = "managedFileId";
+
 	@NonNull
 	default Set<String> requiredContextAttributes() {
 		return new HashSet<>(Set.of(MOGUL_ID_KEY));

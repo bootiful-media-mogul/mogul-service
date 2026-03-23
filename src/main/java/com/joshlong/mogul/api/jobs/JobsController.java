@@ -11,9 +11,11 @@ import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 @Controller
 class JobsController {
@@ -32,23 +34,27 @@ class JobsController {
 		this.managedFileService = managedFileService;
 	}
 
+	private Map<String, Supplier<Object>> buildMapOfSuppliers(Map<String, Object> map) {
+		var m = new HashMap<String, Supplier<Object>>();
+		for (var k : map.keySet()) {
+			m.put(k, () -> map.get(k));
+		}
+		return m;
+	}
+
 	@MutationMapping
-	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) {
+	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) throws JobException {
 		// @formatter:off
         var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
         // @formatter:on
-		var context = JsonUtils.read(contextAsJson, typeReference);
-		try {
-			context = context == null ? new HashMap<>() : new HashMap<>(context);
+		if (JsonUtils.read(contextAsJson, typeReference) instanceof Map<String, Object> context) {
 			var mogulId = this.mogulService.getCurrentMogul().id();
 			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
-			this.log.info("launching job with mogul # {}, context # {}", mogulId, context);
-			this.log.info("launched {} with {}", jobName, context);
-		} //
-		catch (Throwable jobLaunchException) {
-			this.log.warn("could not launch the job {} with context {}", jobName, context);
-			return false;
+			var ctx = this.buildMapOfSuppliers(context);
+			var je = this.jobs.prepare(mogulId, jobName, ctx);
+			this.jobs.launch(mogulId, je.id(), ctx);
 		}
+
 		return true;
 	}
 
@@ -59,28 +65,41 @@ class JobsController {
 			.jobs()
 			.entrySet()//
 			.stream() //
-			.map(x -> {
-				try {
-					return this.buildJobView(mogul, x);
-				}
-				catch (Exception e) {
-					throw new RuntimeException(e);
-				}
-			})
+			.map(stringJobEntry -> this.buildJobView(mogul, stringJobEntry))
 			.toList();
 	}
 
-	// todo have some strategy interface or something
-	// that inspects the jobs and provides the defaults
-	private JobView buildJobView(Long mogul, Map.Entry<String, Job> jobEntry) throws Exception {
-
+	private JobView buildJobView(Long mogul, Map.Entry<String, Job> jobEntry) {
+		// todo could we have some convention by which to
+		// default values from the Settings object?
 		var preparedJob = this.jobs.prepare(mogul, jobEntry.getKey(), Map.of());
-		// .filter(s -> !Objects.equals(s, Job.MOGUL_ID_KEY))
-		return new JobView(jobEntry.getKey(), preparedJob.context(),
-				jobEntry.getValue().requiredContextAttributes().toArray(String[]::new));
+		var contextAttributes = this.paramMapToParamsCollection(preparedJob.context());
+		return new JobView(jobEntry.getKey(), contextAttributes,
+				this.requiredContextAttributesFrom(jobEntry.getValue()));
 	}
 
-	record JobView(String name, Map<String, JobExecutionParam> contextAttributes, String[] requiredContextAttributes) {
+	private String[] requiredContextAttributesFrom(Job execution) {
+		if (execution == null || execution.requiredContextAttributes() == null) {
+			return new String[0];
+		}
+		return execution.requiredContextAttributes()
+			.stream()
+			.filter(attributeName -> !attributeName.equals(Job.MOGUL_ID_KEY))
+			.toArray(String[]::new);
+	}
+
+	private Collection<JobParam> paramMapToParamsCollection(Map<String, JobExecutionParam> paramMap) {
+		var jobParamArrayList = new ArrayList<JobParam>();
+		paramMap.forEach((paramName, jobExecutionParam) -> {
+			jobParamArrayList.add(new JobParam(paramMap.get(paramName).name(), jobExecutionParam.jsonValue()));
+		});
+		return jobParamArrayList;
+	}
+
+	record JobView(String name, Collection<JobParam> contextAttributes, String[] requiredContextAttributes) {
+	}
+
+	record JobParam(String name, String value) {
 	}
 
 }

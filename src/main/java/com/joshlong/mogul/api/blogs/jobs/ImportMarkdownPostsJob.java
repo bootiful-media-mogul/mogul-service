@@ -36,6 +36,7 @@ class ImportMarkdownPostsJob implements Job {
 		var attrs = Job.super.requiredContextAttributes();
 		var all = new HashSet<>(attrs);
 		all.add(Job.BLOG_ID_KEY);
+		all.add(Job.MANAGED_FILE_ID_KEY);
 		return all;
 	}
 

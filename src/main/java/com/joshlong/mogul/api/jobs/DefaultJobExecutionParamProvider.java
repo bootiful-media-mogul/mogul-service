@@ -7,6 +7,6 @@ public interface DefaultJobExecutionParamProvider {
 
 	boolean supports(Job job);
 
-	Map<String, Supplier<Object>> prepare(JobExecution jobExecution) throws Exception;
+	Map<String, Supplier<Object>> prepare(JobExecution jobExecution);
 
 }

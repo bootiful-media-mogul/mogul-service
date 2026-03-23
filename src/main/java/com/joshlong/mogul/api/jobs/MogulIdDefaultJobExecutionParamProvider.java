@@ -21,7 +21,7 @@ class MogulIdDefaultJobExecutionParamProvider implements DefaultJobExecutionPara
 	}
 
 	@Override
-	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) throws Exception {
+	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) {
 		return Map.of(Job.MOGUL_ID_KEY, jobExecution::mogulId);
 	}
 

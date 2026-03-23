@@ -2,9 +2,9 @@ package com.joshlong.mogul.api.jobs;
 
 import org.springframework.context.ApplicationEvent;
 
-public class JobCompletedEvent extends ApplicationEvent {
+public class JobStoppedEvent extends ApplicationEvent {
 
-	public JobCompletedEvent(Long jobExecutionId) {
+	public JobStoppedEvent(Long jobExecutionId) {
 		super(jobExecutionId);
 	}
 

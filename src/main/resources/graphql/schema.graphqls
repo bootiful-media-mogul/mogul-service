@@ -3,10 +3,7 @@
 scalar DateTime
 scalar JSON
 
-type Job {
-    name : String
-    requiredContextAttributes : [String]
-}
+
 
 type Setting {
     name: String
@@ -193,6 +190,17 @@ type WordPressStatus {
     displayName: String
     connected: Boolean
     id: Int
+}
+
+type Job {
+    name : String
+    requiredContextAttributes : [String]
+    contextAttributes: [JobParam]
+}
+
+type JobParam {
+    name : String
+    value : String
 }
 
 type Mutation {

@@ -131,7 +131,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 		this.db.sql(" update job_execution set start = NOW() where id = ? ").params(jobExecutionId).update();
 
-		this.publisher.publishEvent(new JobLaunchedEvent(jobExecutionId));
+		this.publisher.publishEvent(new JobStartedEvent(jobExecutionId));
 	}
 
 	void writeContextAttributesForJobExecution(Long jobExecutionId, Map<String, Supplier<Object>> context) {
@@ -263,7 +263,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 			var hv = hasValue(paramClass, paramValue);
 			var clazz = (Class<?>) (hv ? ReflectionUtils.classForName(paramClass) : null);
 			var obj = hv ? JsonUtils.read(paramValue, clazz) : null;
-			return new JobExecutionParam(rs.getLong("job_execution_id"), rs.getString("param_name"), obj, clazz);
+			return new JobExecutionParam(rs.getLong("job_execution_id"), rs.getString("param_name"), obj, paramValue,
+					clazz);
 		}
 
 		private boolean hasValue(String type, String value) {
@@ -327,14 +328,14 @@ class JobExecutor {
 		this.contextAttributeWriterLambda = contextAttributeWriterLambda;
 	}
 
-	@Scheduled(fixedRate = 10, timeUnit = TimeUnit.SECONDS)
+	@Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
 	void checkForIncompleteEvents() {
 		this.eventPublications.resubmitIncompletePublications( //
-				e -> e.getApplicationEvent() instanceof JobLaunchedEvent);
+				e -> e.getApplicationEvent() instanceof JobStartedEvent);
 	}
 
 	@ApplicationModuleListener
-	void onJobLaunchedEvent(JobLaunchedEvent job) {
+	void onJobStartedEvent(JobStartedEvent job) {
 		var jobExecution = this.jobs.getJobExecution(job.jobExecutionId());
 		var context = new JobExecutionWrappingJobExecutionContext(jobExecution);
 		try {
@@ -350,14 +351,14 @@ class JobExecutor {
 		}
 	}
 
-	private void recordJobExecutionResult(JobLaunchedEvent jobLaunchedEvent, JobExecutionResult executionResult) {
+	private void recordJobExecutionResult(JobStartedEvent jobStartedEvent, JobExecutionResult executionResult) {
 		this.db //
 			.sql("update job_execution set stop = ? , success = ? where  id  = ?") //
-			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
+			.params(new Date(), executionResult.success(), jobStartedEvent.jobExecutionId()) //
 			.update();
-		var jobExecutionId = jobLaunchedEvent.jobExecutionId();
+		var jobExecutionId = jobStartedEvent.jobExecutionId();
 		this.contextAttributeWriterLambda.apply(jobExecutionId, executionResult.context());
-		this.applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
+		this.applicationEventPublisher.publishEvent(new JobStoppedEvent(jobStartedEvent.jobExecutionId()));
 	}
 
 	static class JobExecutionWrappingJobExecutionContext implements JobExecutionContext {

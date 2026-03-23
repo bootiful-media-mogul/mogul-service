@@ -77,12 +77,12 @@ class Listener {
 	private final AtomicInteger events = new AtomicInteger(0);
 
 	@EventListener
-	void on(JobLaunchedEvent jobLaunchedEvent) {
+	void on(JobStartedEvent jobStartedEvent) {
 		events.incrementAndGet();
 	}
 
 	@EventListener
-	void on(JobCompletedEvent jobCompletedEvent) {
+	void on(JobStoppedEvent jobStoppedEvent) {
 		events.incrementAndGet();
 	}
 
