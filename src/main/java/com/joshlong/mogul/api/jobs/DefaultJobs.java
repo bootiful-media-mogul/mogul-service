@@ -318,16 +318,16 @@ class JobExecutor {
 
 	private final ApplicationEventPublisher applicationEventPublisher;
 
-	private final BiFunction<Long, Map<String, Object>, Void> attrWriter;
+	private final BiFunction<Long, Map<String, Object>, Void> contextAttributeWriterLambda;
 
 	JobExecutor(Jobs jobs, IncompleteEventPublications eventPublications, JdbcClient jdbcClient,
 			ApplicationEventPublisher applicationEventPublisher,
-			BiFunction<Long, Map<String, Object>, Void> attrWriter) {
+			BiFunction<Long, Map<String, Object>, Void> contextAttributeWriterLambda) {
 		this.jobs = jobs;
 		this.eventPublications = eventPublications;
 		this.db = jdbcClient;
 		this.applicationEventPublisher = applicationEventPublisher;
-		this.attrWriter = attrWriter;
+		this.contextAttributeWriterLambda = contextAttributeWriterLambda;
 	}
 
 	@Scheduled(fixedRate = 10, timeUnit = TimeUnit.SECONDS)
@@ -358,14 +358,9 @@ class JobExecutor {
 			.params(new Date(), executionResult.success(), jobLaunchedEvent.jobExecutionId()) //
 			.update();
 
-		this.handleWritingAttrs(jobLaunchedEvent.jobExecutionId(), executionResult.context());
-
-		// todo write out any context values
+		Long jobExecutionId = jobLaunchedEvent.jobExecutionId();
+		this.contextAttributeWriterLambda.apply(jobExecutionId, executionResult.context());
 		this.applicationEventPublisher.publishEvent(new JobCompletedEvent(jobLaunchedEvent.jobExecutionId()));
-	}
-
-	private void handleWritingAttrs(Long jobExecutionId, Map<String, Object> context) {
-		this.attrWriter.apply(jobExecutionId, context);
 	}
 
 	static class JobExecutionWrappingJobExecutionContext implements JobExecutionContext {
