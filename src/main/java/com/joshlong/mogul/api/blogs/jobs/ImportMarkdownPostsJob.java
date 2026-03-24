@@ -51,13 +51,12 @@ class ImportMarkdownPostsJob implements Job {
 
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
-		var mogul = context.getContextAttribute(Job.MOGUL_ID_KEY, Long.class);
-		var blog = context.getContextAttribute(Job.BLOG_ID_KEY, Long.class);
-		var managedFile = context.getContextAttribute(Job.MANAGED_FILE_ID_KEY, Long.class);
+		var mogul = context.mogulId();
+		var blog = context.getContextAttribute(Job.BLOG_ID_KEY, Number.class);
+		var managedFile = context.getContextAttribute(Job.MANAGED_FILE_ID_KEY, Number.class);
 		var data = JsonUtils
 			.write(Map.of("jobName", getClass().getName(), "mogul", mogul, "blog", blog, "managedFile", managedFile));
 		this.log.info(data);
-
 		// todo:
 		// deduce the content type
 		// run the appropriate ArchiveExtractor

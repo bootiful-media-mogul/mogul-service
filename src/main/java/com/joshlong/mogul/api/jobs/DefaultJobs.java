@@ -190,8 +190,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 						""") //
 				.params(jobExecutionId, paramName, value, clzz.getName()) //
 				.update();
+			this.log.debug("preparing execution parameter {} = {}", paramName, value);
 		}
-		this.log.debug("preparing execution parameter {} = {}", paramName, value);
 	}
 
 	private void createJob(String jobName) {
@@ -385,7 +385,7 @@ class JobExecutor {
 		}
 
 		@Override
-		public Long getMogulId() {
+		public Long mogulId() {
 			return this.getContextAttribute(com.joshlong.mogul.api.jobs.Job.MOGUL_ID_KEY, Long.class);
 		}
 

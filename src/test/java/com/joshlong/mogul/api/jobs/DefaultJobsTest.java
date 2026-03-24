@@ -32,7 +32,7 @@ class TestHelloWorldJob implements Job {
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		Assertions.assertNotNull(context, "context cannot be null");
-		Assertions.assertTrue(context.getMogulId() > 0, "context must contain mogul id");
+		Assertions.assertTrue(context.mogulId() > 0, "context must contain mogul id");
 		return JobExecutionResult.ok(Map.of("uploaded", new Date()));
 	}
 
@@ -46,7 +46,7 @@ class TestHelloWorldJobDefaultJobExecutionParamProvider implements DefaultJobExe
 	}
 
 	@Override
-	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) throws Exception {
+	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) {
 		return Map.of("managedFileId", () -> 1L);
 	}
 

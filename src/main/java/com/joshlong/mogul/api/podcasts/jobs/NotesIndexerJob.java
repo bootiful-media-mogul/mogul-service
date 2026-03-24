@@ -33,7 +33,7 @@ class NotesIndexerJob implements Job {
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		try {
-			this.indexNotesFor(context.getMogulId());
+			this.indexNotesFor(context.mogulId());
 		} //
 		catch (Throwable throwable) {
 			this.log.info(throwable.getMessage(), throwable);

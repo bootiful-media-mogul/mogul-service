@@ -39,7 +39,7 @@ class PodcastIndexerJob implements Job {
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		this.log.info("running for context {}", context);
-		var mogulId = context.getMogulId();
+		var mogulId = context.mogulId();
 		var podcastId = context.getContextAttribute(PODCAST_ID_KEY, Long.class);
 		this.log.info("running for mogulId # {} and podcastId # {}", mogulId, podcastId);
 		this.doRun(mogulId, podcastId);
