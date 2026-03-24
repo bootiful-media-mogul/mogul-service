@@ -15,9 +15,12 @@ public class JobExecution {
 
 	private final Map<String, JobExecutionParam> context;
 
-	JobExecution(Long id, Long mogulId, String jobName, Map<String, JobExecutionParam> context) {
+	private final boolean success;
+
+	JobExecution(Long id, Long mogulId, String jobName, boolean success, Map<String, JobExecutionParam> context) {
 		this.id = id;
 		this.mogulId = mogulId;
+		this.success = success;
 		this.jobName = jobName;
 		this.context = context;
 	}
@@ -32,6 +35,10 @@ public class JobExecution {
 
 	public String jobName() {
 		return jobName;
+	}
+
+	public boolean success() {
+		return this.success;
 	}
 
 	public Map<String, JobExecutionParam> context() {

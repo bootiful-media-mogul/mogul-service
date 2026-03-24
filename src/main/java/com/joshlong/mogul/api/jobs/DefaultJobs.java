@@ -288,7 +288,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 		@Override
 		public JobExecution mapRow(ResultSet rs, int rowNum) throws SQLException {
 			var paramsMap = this.function.apply(rs.getLong("id"));
-			return new JobExecution(rs.getLong("id"), rs.getLong("mogul_id"), rs.getString("job_name"), paramsMap);
+			return new JobExecution(rs.getLong("id"), rs.getLong("mogul_id"), rs.getString("job_name"),
+					rs.getBoolean("success"), paramsMap);
 		}
 
 	}

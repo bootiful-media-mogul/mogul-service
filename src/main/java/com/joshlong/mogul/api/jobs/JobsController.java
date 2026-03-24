@@ -1,14 +1,16 @@
 package com.joshlong.mogul.api.jobs;
 
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 
 import java.util.ArrayList;
@@ -26,12 +28,44 @@ class JobsController {
 
 	private final MogulService mogulService;
 
-	private final ManagedFileService managedFileService;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
-	JobsController(Jobs jobs, MogulService mogulService, ManagedFileService managedFileService) {
+	JobsController(Jobs jobs, MogulService mogulService, ApplicationEventPublisher applicationEventPublisher) {
 		this.jobs = jobs;
 		this.mogulService = mogulService;
-		this.managedFileService = managedFileService;
+		this.applicationEventPublisher = applicationEventPublisher;
+	}
+
+	@MutationMapping
+	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) throws JobException {
+		// @formatter:off
+		var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
+		// @formatter:on
+		if (JsonUtils.read(contextAsJson, typeReference) instanceof Map<String, Object> context) {
+			var mogulId = this.mogulService.getCurrentMogul().id();
+			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
+			var ctx = this.buildMapOfSuppliers(context);
+			var je = this.jobs.prepare(mogulId, jobName, ctx);
+			this.jobs.launch(mogulId, je.id(), ctx);
+		}
+		return true;
+	}
+
+	void emit(Object event, long jobExecutionId) {
+		var jobExecution = this.jobs.getJobExecution(jobExecutionId);
+		this.applicationEventPublisher
+			.publishEvent(NotificationEvent.visibleNotificationEventFor(jobExecution.mogulId(), event,
+					jobExecution.jobName(), JsonUtils.write(Map.of("success", jobExecution.success()))));
+	}
+
+	@ApplicationModuleListener
+	void on(JobStartedEvent startedEvent) {
+		this.emit(startedEvent, startedEvent.jobExecutionId());
+	}
+
+	@ApplicationModuleListener
+	void on(JobStoppedEvent stoppedEvent) {
+		this.emit(stoppedEvent, stoppedEvent.jobExecutionId());
 	}
 
 	private Map<String, Supplier<Object>> buildMapOfSuppliers(Map<String, Object> map) {
@@ -40,22 +74,6 @@ class JobsController {
 			m.put(k, () -> map.get(k));
 		}
 		return m;
-	}
-
-	@MutationMapping
-	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) throws JobException {
-		// @formatter:off
-        var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
-        // @formatter:on
-		if (JsonUtils.read(contextAsJson, typeReference) instanceof Map<String, Object> context) {
-			var mogulId = this.mogulService.getCurrentMogul().id();
-			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
-			var ctx = this.buildMapOfSuppliers(context);
-			var je = this.jobs.prepare(mogulId, jobName, ctx);
-			this.jobs.launch(mogulId, je.id(), ctx);
-		}
-
-		return true;
 	}
 
 	@QueryMapping
