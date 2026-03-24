@@ -8,6 +8,7 @@ import com.joshlong.mogul.api.jobs.Job;
 import com.joshlong.mogul.api.jobs.JobExecutionContext;
 import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
+import com.joshlong.mogul.api.utils.JsonUtils;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,12 @@ class ImportMarkdownPostsJob implements Job {
 
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
-		this.log.info(String.format("running %s", getClass().getName()));
+		var mogul = context.getContextAttribute(Job.MOGUL_ID_KEY, Long.class);
+		var blog = context.getContextAttribute(Job.BLOG_ID_KEY, Long.class);
+		var managedFile = context.getContextAttribute(Job.MANAGED_FILE_ID_KEY, Long.class);
+		var data = JsonUtils
+			.write(Map.of("jobName", getClass().getName(), "mogul", mogul, "blog", blog, "managedFile", managedFile));
+		this.log.info(data);
 
 		// todo:
 		// deduce the content type
