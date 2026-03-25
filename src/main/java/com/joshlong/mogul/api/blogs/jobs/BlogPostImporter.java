@@ -32,9 +32,10 @@ class BlogPostImporter {
 		var archive = this.managedFileService.getManagedFileById(managedFileId);
 		Assert.notNull(archive, "managed file id " + managedFileId + " not found");
 		var blog = this.blogService.getBlogById(blogId);
-		Assert.notNull(blog, "blog id " + blogId + ", not found");
+		Assert.notNull(blog, "blog id " + blogId + " not found");
 		var resourceForArchive = this.managedFileService.read(managedFileId);
 		var mediaType = CommonMediaTypes.guess(resourceForArchive);
+		Assert.state(CommonMediaTypes.isArchive(mediaType), "archive is invalid");
 
 	}
 
