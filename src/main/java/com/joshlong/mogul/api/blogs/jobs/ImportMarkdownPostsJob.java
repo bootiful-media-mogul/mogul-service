@@ -1,13 +1,9 @@
 package com.joshlong.mogul.api.blogs.jobs;
 
-import com.joshlong.mogul.api.archives.ArchiveExtractor;
-import com.joshlong.mogul.api.archives.Tgz;
-import com.joshlong.mogul.api.archives.Zip;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.jobs.*;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.utils.JsonUtils;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,17 +16,13 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 @Component
-class ImportMarkdownPostsJob implements Job, DefaultJobExecutionParamProvider {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
+class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
 
 	private final BlogService blogService;
 
 	private final ManagedFileService managedFileService;
 
-	private final ArchiveExtractor zip;
-
-	private final ArchiveExtractor tgz;
+	private final BlogPostImporter importer;
 
 	@Override
 	public @NonNull Set<String> requiredContextAttributes() {
@@ -41,12 +33,10 @@ class ImportMarkdownPostsJob implements Job, DefaultJobExecutionParamProvider {
 		return all;
 	}
 
-	ImportMarkdownPostsJob(@Zip ArchiveExtractor zip, @Tgz ArchiveExtractor tgz, BlogService blogService,
-			ManagedFileService managedFileService) {
+	ImportMarkdownPostsJob(BlogService blogService, ManagedFileService managedFileService, BlogPostImporter importer) {
 		this.blogService = blogService;
 		this.managedFileService = managedFileService;
-		this.zip = zip;
-		this.tgz = tgz;
+		this.importer = importer;
 	}
 
 	@Override
@@ -54,14 +44,8 @@ class ImportMarkdownPostsJob implements Job, DefaultJobExecutionParamProvider {
 		var mogul = context.mogulId();
 		var blog = context.getContextAttributeAsLong(Job.BLOG_ID_KEY);
 		var managedFile = context.getContextAttributeAsLong(Job.MANAGED_FILE_ID_KEY);
-		var data = JsonUtils
-			.write(Map.of("jobName", getClass().getName(), "mogul", mogul, "blog", blog, "managedFile", managedFile));
-		this.log.info(data);
-		// todo:
-		// deduce the content type
-		// run the appropriate ArchiveExtractor
-		// extract / create posts for each file
-		return JobExecutionResult.ok(Map.of());
+		this.importer.importBlogPostsFromArchive(mogul, blog, managedFile);
+		return JobExecutionResult.ok();
 	}
 
 	@Override

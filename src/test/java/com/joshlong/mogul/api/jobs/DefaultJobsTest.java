@@ -38,7 +38,7 @@ class TestHelloWorldJob implements Job {
 
 }
 
-class TestHelloWorldJobDefaultJobExecutionParamProvider implements DefaultJobExecutionParamProvider {
+class TestHelloWorldJobJobExecutionParamProvider implements JobExecutionParamProvider {
 
 	@Override
 	public boolean supports(Job job) {
@@ -56,8 +56,8 @@ class TestHelloWorldJobDefaultJobExecutionParamProvider implements DefaultJobExe
 class DefaultJobsConfiguration {
 
 	@Bean
-	TestHelloWorldJobDefaultJobExecutionParamProvider testHelloWorldJobDefaultJobExecutionParamProvider() {
-		return new TestHelloWorldJobDefaultJobExecutionParamProvider();
+	TestHelloWorldJobJobExecutionParamProvider testHelloWorldJobDefaultJobExecutionParamProvider() {
+		return new TestHelloWorldJobJobExecutionParamProvider();
 	}
 
 	@Bean

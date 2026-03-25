@@ -41,12 +41,12 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	private final Map<String, com.joshlong.mogul.api.jobs.Job> jobs;
 
-	private final Collection<DefaultJobExecutionParamProvider> jobParamPreparers;
+	private final Collection<JobExecutionParamProvider> jobParamPreparers;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	DefaultJobs(Map<String, com.joshlong.mogul.api.jobs.Job> jobs, JdbcClient db, ApplicationEventPublisher publisher,
-			Collection<DefaultJobExecutionParamProvider> jobParamPreparers) {
+			Collection<JobExecutionParamProvider> jobParamPreparers) {
 		this.db = db;
 		this.jobs = jobs;
 		this.publisher = publisher;

@@ -17,7 +17,7 @@ class JobsConfiguration {
 
 	@Bean
 	DefaultJobs jobs(JdbcClient db, Map<String, Job> jobsMap,
-			@Autowired(required = false) Collection<DefaultJobExecutionParamProvider> jobParamPreparers,
+			@Autowired(required = false) Collection<JobExecutionParamProvider> jobParamPreparers,
 			ApplicationEventPublisher publisher) {
 		return new DefaultJobs(jobsMap, db, publisher, jobParamPreparers);
 	}

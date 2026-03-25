@@ -7,11 +7,11 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @Component
-class MogulIdDefaultJobExecutionParamProvider implements DefaultJobExecutionParamProvider {
+class MogulIdJobExecutionParamProvider implements JobExecutionParamProvider {
 
 	private final MogulService mogulService;
 
-	MogulIdDefaultJobExecutionParamProvider(MogulService mogulService) {
+	MogulIdJobExecutionParamProvider(MogulService mogulService) {
 		this.mogulService = mogulService;
 	}
 

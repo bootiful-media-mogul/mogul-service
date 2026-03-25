@@ -6,6 +6,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +38,7 @@ class CommonMediaTypesTest {
 
 	private InputStream text() {
 		var text = "# hello world! \n\nthis is a new paragraph".getBytes(StandardCharsets.UTF_8);
-		return new ByteArrayInputStream(text);
+		return new ByteArrayInputStream(text); // supports marking as well
 	}
 
 	private InputStream image() {
@@ -50,7 +51,9 @@ class CommonMediaTypesTest {
 
 	private InputStream from(Resource resource) {
 		try {
-			return resource.getInputStream();
+			return new BufferedInputStream(resource.getInputStream()); // supports marking
+																		// which tika will
+																		// honor
 		} //
 		catch (IOException e) {
 			throw new RuntimeException(e);
