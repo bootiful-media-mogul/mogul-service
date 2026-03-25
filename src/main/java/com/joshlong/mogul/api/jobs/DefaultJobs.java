@@ -376,6 +376,40 @@ class JobExecutor {
 		}
 
 		@Override
+		public long getContextAttributeAsLong(String paramName) {
+			return this.numberForParameter(paramName).longValue();
+		}
+
+		private Number numberForParameter(String paramName) {
+			return this.delegate.getContextAttribute(paramName, Number.class);
+		}
+
+		@Override
+		public int getContextAttributeAsInteger(String paramName) {
+			return this.numberForParameter(paramName).intValue();
+		}
+
+		@Override
+		public boolean getContextAttributeAsBoolean(String paramName) {
+			return this.getContextAttribute(paramName, Boolean.class);
+		}
+
+		@Override
+		public float getContextAttributeAsFloat(String paramName) {
+			return this.numberForParameter(paramName).floatValue();
+		}
+
+		@Override
+		public double getContextAttributeAsDouble(String paramName) {
+			return this.numberForParameter(paramName).doubleValue();
+		}
+
+		@Override
+		public String getContextAttributeAsString(String paramName) {
+			return getContextAttribute(paramName, String.class);
+		}
+
+		@Override
 		public <T> T getContextAttributeOrDefault(String paramName, Class<T> type, Supplier<T> defaultValue) {
 			var result = this.delegate.getContextAttribute(paramName, type);
 			if (null == result) {

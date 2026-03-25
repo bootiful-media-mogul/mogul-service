@@ -4,9 +4,8 @@ import com.joshlong.mogul.api.archives.ArchiveExtractor;
 import com.joshlong.mogul.api.archives.Tgz;
 import com.joshlong.mogul.api.archives.Zip;
 import com.joshlong.mogul.api.blogs.BlogService;
-import com.joshlong.mogul.api.jobs.Job;
-import com.joshlong.mogul.api.jobs.JobExecutionContext;
-import com.joshlong.mogul.api.jobs.JobExecutionResult;
+import com.joshlong.mogul.api.jobs.*;
+import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.jspecify.annotations.NonNull;
@@ -18,9 +17,10 @@ import org.yaml.snakeyaml.Yaml;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Component
-class ImportMarkdownPostsJob implements Job {
+class ImportMarkdownPostsJob implements Job, DefaultJobExecutionParamProvider {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -52,8 +52,8 @@ class ImportMarkdownPostsJob implements Job {
 	@Override
 	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		var mogul = context.mogulId();
-		var blog = context.getContextAttribute(Job.BLOG_ID_KEY, Number.class);
-		var managedFile = context.getContextAttribute(Job.MANAGED_FILE_ID_KEY, Number.class);
+		var blog = context.getContextAttributeAsLong(Job.BLOG_ID_KEY);
+		var managedFile = context.getContextAttributeAsLong(Job.MANAGED_FILE_ID_KEY);
 		var data = JsonUtils
 			.write(Map.of("jobName", getClass().getName(), "mogul", mogul, "blog", blog, "managedFile", managedFile));
 		this.log.info(data);
@@ -62,6 +62,20 @@ class ImportMarkdownPostsJob implements Job {
 		// run the appropriate ArchiveExtractor
 		// extract / create posts for each file
 		return JobExecutionResult.ok(Map.of());
+	}
+
+	@Override
+	public boolean supports(Job job) {
+		return job instanceof ImportMarkdownPostsJob;
+	}
+
+	@Override
+	public Map<String, Supplier<Object>> prepare(JobExecution jobExecution) {
+		return Map.of("managedFileId", () -> {
+			var managedFile = this.managedFileService.createManagedFile(jobExecution.mogulId(),
+					jobExecution.jobName() + "/" + jobExecution.id(), "archive.zip", 0, CommonMediaTypes.BINARY, false);
+			return managedFile.id();
+		});
 	}
 
 	static class FrontMatter {
