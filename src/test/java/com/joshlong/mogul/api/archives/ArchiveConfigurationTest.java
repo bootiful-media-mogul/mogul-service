@@ -19,12 +19,13 @@ class ArchiveConfigurationTest {
 			@Value("classpath:/samples/test.tar.gz") Resource tgz, //
 			@Autowired ArchiveExtractor archiveExtractor) {
 		for (var r : new Resource[] { zip, tgz }) {
-			Assertions.assertTrue(r.exists(), "the resource " + r.getFilename() + " does not exist");
-			Assertions.assertTrue(contains(archiveExtractor, r), "the archive extractor failed for " + r.getFilename());
+			var extractedSuccessfully = this.extract(archiveExtractor, r);
+			Assertions.assertTrue(extractedSuccessfully, "the archive extractor failed for " + r.getFilename());
 		}
 	}
 
-	private boolean contains(ArchiveExtractor archiveExtractor, Resource resource) {
+	private boolean extract(ArchiveExtractor archiveExtractor, Resource resource) {
+		Assertions.assertTrue(resource.exists(), "the resource " + resource.getFilename() + " does not exist");
 		var counter = new AtomicBoolean(false);
 		try (var in = resource.getInputStream()) {
 			archiveExtractor.extract(in, (Consumer<ArchiveFile>) it -> {
