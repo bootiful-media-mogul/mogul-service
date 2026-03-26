@@ -1,14 +1,10 @@
 package com.joshlong.mogul.api.blogs.jobs;
 
-import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.jobs.*;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.yaml.snakeyaml.Yaml;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -17,8 +13,6 @@ import java.util.function.Supplier;
 
 @Component
 class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
-
-	private final BlogService blogService;
 
 	private final ManagedFileService managedFileService;
 
@@ -33,8 +27,7 @@ class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
 		return all;
 	}
 
-	ImportMarkdownPostsJob(BlogService blogService, ManagedFileService managedFileService, BlogPostImporter importer) {
-		this.blogService = blogService;
+	ImportMarkdownPostsJob(ManagedFileService managedFileService, BlogPostImporter importer) {
 		this.managedFileService = managedFileService;
 		this.importer = importer;
 	}
@@ -60,29 +53,6 @@ class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
 					jobExecution.jobName() + "/" + jobExecution.id(), "archive.zip", 0, CommonMediaTypes.BINARY, false);
 			return managedFile.id();
 		});
-	}
-
-	static class FrontMatter {
-
-		private static Map<String, Object> parse(String content) {
-			if (!content.startsWith("---"))
-				return Map.of();
-
-			var end = content.indexOf("---", 3);
-			if (end == -1)
-				return Map.of();
-
-			var yaml = content.substring(3, end).trim();
-			return new Yaml().load(yaml);
-		}
-
-		private static String body(String content) {
-			if (!content.startsWith("---"))
-				return content;
-			var end = content.indexOf("---", 3);
-			return end == -1 ? content : content.substring(end + 3).trim();
-		}
-
 	}
 
 }

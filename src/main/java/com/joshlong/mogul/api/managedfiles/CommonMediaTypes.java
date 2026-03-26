@@ -10,6 +10,7 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -115,21 +116,18 @@ public abstract class CommonMediaTypes {
 		return mediaType.isCompatibleWith(MediaType.TEXT_PLAIN);
 	}
 
-	// private InputStream from (Resource resource) {
-	// try {
-	// return resource.getInputStream() ;
-	// } //
-	// catch (IOException e) {
-	// throw new RuntimeException(e);
-	// }
-	// }
-	public static MediaType guess(InputStream inputStream) {
+	public static MediaType guess(InputStream inputStream, String fileName) {
 		try {
-			return MediaType.parseMediaType(TIKA.detect(inputStream));
+			var guess = StringUtils.hasText(fileName) ? TIKA.detect(inputStream, fileName) : TIKA.detect(inputStream);
+			return MediaType.parseMediaType(guess);
 		} //
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public static MediaType guess(InputStream inputStream) {
+		return guess(inputStream, null);
 	}
 
 	public static boolean isArchive(MediaType mt) {

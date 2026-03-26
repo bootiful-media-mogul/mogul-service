@@ -62,7 +62,7 @@ class DefaultBlogServiceTest {
 		Assertions.assertEquals(blog, this.blogService.getBlogById(blog.id()));
 
 		// now let's create a post
-		var post = this.blogService.createPost(blog.id(), "this is a post for my new blog!  ",
+		var post = this.blogService.createPost(blog.id(), null, "this is a post for my new blog!  ",
 				"this is some sample content that Im sure will be double dope indeed", "this is a summary");
 		Assertions.assertFalse(post.complete());
 		Assertions.assertNotNull(post.created());
