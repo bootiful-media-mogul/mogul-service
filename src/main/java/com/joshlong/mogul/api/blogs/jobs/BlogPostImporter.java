@@ -12,9 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 import java.io.BufferedInputStream;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 @Component
 class BlogPostImporter {
@@ -44,7 +41,7 @@ class BlogPostImporter {
 		var blog = this.blogService.getBlogById(blogId);
 		Assert.notNull(blog, "blog id " + blogId + " not found");
 		var resourceForArchive = this.managedFileService.read(managedFileId);
-		try (var bufferedInputStream = new BufferedInputStream(resourceForArchive.getInputStream());) {
+		try (var bufferedInputStream = new BufferedInputStream(resourceForArchive.getInputStream())) {
 			var mediaType = CommonMediaTypes.guess(bufferedInputStream);
 			Assert.state(CommonMediaTypes.isArchive(mediaType), "archive is invalid");
 			this.archiveExtractor.extract(bufferedInputStream,

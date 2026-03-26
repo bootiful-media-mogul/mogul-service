@@ -34,6 +34,10 @@ public class Feeds {
 		this.mogulFeedsNs = mogulFeedsNs;
 	}
 
+	private static String formatInstant(Instant instant) {
+		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
+	}
+
 	private Element createEntry(Document doc, String entryId, Instant updatedInstant, Image image, String titleTxt,
 			String entryUrl, String summaryText, Map<String, String> customMetadataMap) {
 		var entry = doc.createElementNS("http://www.w3.org/2005/Atom", "entry");
@@ -78,10 +82,6 @@ public class Feeds {
 		});
 		entry.appendChild(customMetadata);
 		return entry;
-	}
-
-	private static String formatInstant(Instant instant) {
-		return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
 	}
 
 	public <T> String createMogulAtomFeed(String feedTitle, String feedUrl, Instant published, String feedAuthor,

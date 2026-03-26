@@ -18,6 +18,8 @@ import java.util.Set;
 @Component
 class MarkdownDocuments {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	MarkdownDocument parse(String content) {
 		var headerMap = this.headerMapFromString(content);
 		var markdownDocumentHeader = this.markdownDocumentHeaderFromFromMap(headerMap);
@@ -52,12 +54,10 @@ class MarkdownDocuments {
 		return null;
 	}
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	private OffsetDateTime extractPublishedDate(String value, DateTimeFormatter formatter) {
 		this.log.info("going to parse {}", value);
 		var temporal = formatter.parseBest(value, OffsetDateTime::from, // full datetime
-																		// with offset
+				// with offset
 				LocalDateTime::from, // datetime, no offset
 				LocalDate::from // date only
 		);

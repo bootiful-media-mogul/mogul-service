@@ -18,6 +18,11 @@ class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
 
 	private final BlogPostImporter importer;
 
+	ImportMarkdownPostsJob(ManagedFileService managedFileService, BlogPostImporter importer) {
+		this.managedFileService = managedFileService;
+		this.importer = importer;
+	}
+
 	@Override
 	public @NonNull Set<String> requiredContextAttributes() {
 		var attrs = Job.super.requiredContextAttributes();
@@ -25,11 +30,6 @@ class ImportMarkdownPostsJob implements Job, JobExecutionParamProvider {
 		all.add(Job.BLOG_ID_KEY);
 		all.add(Job.MANAGED_FILE_ID_KEY);
 		return all;
-	}
-
-	ImportMarkdownPostsJob(ManagedFileService managedFileService, BlogPostImporter importer) {
-		this.managedFileService = managedFileService;
-		this.importer = importer;
 	}
 
 	@Override
