@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 @Component
 class BlogPostImporter {
@@ -32,6 +33,10 @@ class BlogPostImporter {
 
 	private final MarkdownDocuments markdownDocuments;
 
+	private final int availableProcessors = Runtime.getRuntime().availableProcessors();
+
+	private final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+
 	BlogPostImporter(ManagedFileService managedFileService, BlogService blogService, ArchiveExtractor archiveExtractor,
 			MarkdownDocuments markdownDocuments) {
 		this.managedFileService = managedFileService;
@@ -39,9 +44,6 @@ class BlogPostImporter {
 		this.blogService = blogService;
 		this.archiveExtractor = archiveExtractor;
 	}
-
-	/* testing */
-	private final Executor executor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
 
 	void importBlogPostsFromArchive(long mogulId, long blogId, long managedFileId) throws Exception {
 		var archive = this.managedFileService.getManagedFileById(managedFileId);
@@ -55,8 +57,11 @@ class BlogPostImporter {
 			var files = new ArrayList<ArchiveFile>();
 			this.archiveExtractor.extract(bufferedInputStream, Consumers.readableTextOnly(files::add));
 			var cdl = new CountDownLatch(files.size());
+
+			var semaphore = new Semaphore(availableProcessors);
 			log.info("there are {} files in the archive to ingest.", files.size());
 			for (var it : files) {
+				semaphore.acquire();
 				this.executor.execute(() -> {
 					try {
 						this.ingest(mogulId, blogId, it);
@@ -66,6 +71,7 @@ class BlogPostImporter {
 								throwable);
 					}
 					finally {
+						semaphore.release();
 						cdl.countDown();
 					}
 				});
