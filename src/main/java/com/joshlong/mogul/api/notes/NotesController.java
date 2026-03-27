@@ -55,7 +55,8 @@ class NotesController {
 	@QueryMapping
 	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id) {
 		var currentMogul = this.mogulService.getCurrentMogul();
-		return this.noteService.notes(currentMogul.id(), id, type)//
+		return this.noteService //
+			.notes(currentMogul.id(), id, type)//
 			.stream()//
 			.map(note -> this.note(type, note))//
 			.toList();

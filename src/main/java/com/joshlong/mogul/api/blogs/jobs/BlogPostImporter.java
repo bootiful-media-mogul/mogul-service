@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 import java.io.BufferedInputStream;
+import java.sql.Date;
+import java.time.ZoneId;
 
 @Component
 class BlogPostImporter {
@@ -64,7 +66,6 @@ class BlogPostImporter {
 	private void ingest(long mogulId, long blogId, ArchiveFile archiveFile) {
 		this.log.info("ingesting {}/{} for {}", mogulId, blogId, archiveFile);
 		var contents = new String(archiveFile.content());
-		// var dateTimeFormatter = DateTimeFormatter.ofPattern(dateTimeFormat);
 		var markdownDocument = this.markdownDocuments.parse(contents);
 
 		if (this.log.isDebugEnabled())
@@ -73,7 +74,7 @@ class BlogPostImporter {
 		var published = markdownDocument.header().publishedAt();
 		var post = this.blogService.createPost( //
 				blogId, //
-				published, //
+				Date.from(published.atStartOfDay(ZoneId.systemDefault()).toInstant()), //
 				this.trim(markdownDocument.header().title()), //
 				this.trim(markdownDocument.body()), //
 				null //

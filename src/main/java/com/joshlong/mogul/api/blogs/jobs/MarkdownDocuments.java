@@ -6,13 +6,10 @@ import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -27,13 +24,10 @@ class MarkdownDocuments {
 		return new MarkdownDocument(markdownDocumentHeader, body);
 	}
 
-	private String trimmedStringFromObject(Object hv) {
-		if (hv == null) {
-			return null;
-		}
-		if (hv instanceof String string)
-			return string;
-		return hv.toString();
+	private Yaml yaml() {
+		// var rep = new Representer(new DumperOptions());
+		// rep.setTimeZone(TimeZone.getTimeZone("UTC"));
+		return new Yaml();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -44,38 +38,27 @@ class MarkdownDocuments {
 		return null;
 	}
 
-	private Date extractPossiblePublishedDate(Map<String, Object> map) {
+	private LocalDate dateToLocalDate(Map<String, Object> map) {
+		Date raw = null;
 		var popularDateNames = Set.of("publishedAt", "pubDate", "date");
 		for (var k : popularDateNames) {
 			var possibleMatch = (Date) valueForKey(map, k);
-			if (possibleMatch != null)
-				return possibleMatch;
+			if (possibleMatch != null) {
+				raw = possibleMatch;
+				break;
+			}
 		}
-		return null;
-	}
-
-	private OffsetDateTime extractPublishedDate(String value, DateTimeFormatter formatter) {
-		this.log.info("going to parse {}", value);
-		var temporal = formatter.parseBest(value, OffsetDateTime::from, // full datetime
-				// with offset
-				LocalDateTime::from, // datetime, no offset
-				LocalDate::from // date only
-		);
-		return switch (temporal) {
-			case OffsetDateTime odt -> odt;
-			case LocalDateTime ldt -> ldt.atOffset(ZoneOffset.UTC);
-			case LocalDate ld -> ld.atStartOfDay().atOffset(ZoneOffset.UTC);
-			default -> throw new DateTimeParseException("Unparseable date", value, 0);
-		};
+		return Objects.requireNonNull(raw).toInstant().atZone(ZoneOffset.UTC).toLocalDate();
 	}
 
 	private MarkdownDocumentHeader markdownDocumentHeaderFromFromMap(Map<String, Object> rawHeader) {
-		var publishedAt = this.extractPossiblePublishedDate(rawHeader);
+		var localDate = this.dateToLocalDate(rawHeader);
+		IO.println("published at: " + localDate);
 		return new MarkdownDocumentHeader(rawHeader, //
 				this.valueForKey(rawHeader, "author"), //
 				this.valueForKey(rawHeader, "title"), //
 				this.valueForKey(rawHeader, "category"), //
-				publishedAt //
+				localDate //
 		);
 	}
 
@@ -88,7 +71,7 @@ class MarkdownDocuments {
 			return Map.of();
 
 		var yaml = content.substring(3, end).trim();
-		return new Yaml().load(yaml);
+		return this.yaml().load(yaml);
 	}
 
 	private String body(String content) {
@@ -101,7 +84,7 @@ class MarkdownDocuments {
 }
 
 record MarkdownDocumentHeader(Map<String, Object> rawHeader, String author, String title, String category,
-		Date publishedAt) {
+		LocalDate publishedAt) {
 }
 
 record MarkdownDocument(MarkdownDocumentHeader header, String body) {

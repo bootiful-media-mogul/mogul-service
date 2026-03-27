@@ -24,10 +24,7 @@ import org.springframework.web.client.RestClient;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Transactional
@@ -162,6 +159,11 @@ class DefaultMogulService implements MogulService {
 		});
 		this.logMogulCacheAttempt(name, "name", resolved.get());
 		return res;
+	}
+
+	@Override
+	public Collection<Mogul> getMogulByEmail(String email) {
+		return db.sql("select * from mogul where email = ? ").params(email).query(this.mogulRowMapper).list();
 	}
 
 	private void logMogulCacheAttempt(Object input, String type, boolean resolved) {

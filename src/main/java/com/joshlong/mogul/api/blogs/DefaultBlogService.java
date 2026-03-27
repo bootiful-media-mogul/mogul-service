@@ -61,7 +61,7 @@ class DefaultBlogService implements BlogService {
 	@Override
 	public Collection<Post> getPostsForBlog(long blogId) {
 		return this.db //
-			.sql("select * from blog_post where blog_id = ? ") //
+			.sql(" select * from blog_post where blog_id = ? order by created desc ") //
 			.params(blogId) //
 			.query(this.postRowMapper) //
 			.list();
