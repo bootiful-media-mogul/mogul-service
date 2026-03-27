@@ -14,6 +14,8 @@ import org.springframework.util.Assert;
 import java.io.BufferedInputStream;
 import java.sql.Date;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -50,8 +52,26 @@ class BlogPostImporter {
 		try (var bufferedInputStream = new BufferedInputStream(resourceForArchive.getInputStream())) {
 			var mediaType = CommonMediaTypes.guess(bufferedInputStream);
 			Assert.state(CommonMediaTypes.isArchive(mediaType), "archive is invalid");
-			this.archiveExtractor.extract(bufferedInputStream,
-					Consumers.readableTextOnly(it -> /* this.executor.execute */ this.ingest(mogulId, blogId, it)));
+			var files = new ArrayList<ArchiveFile>();
+			this.archiveExtractor.extract(bufferedInputStream, Consumers.readableTextOnly(files::add));
+			var cdl = new CountDownLatch(files.size());
+			log.info("there are {} files in the archive to ingest.", files.size());
+			for (var it : files) {
+				this.executor.execute(() -> {
+					try {
+						this.ingest(mogulId, blogId, it);
+					} //
+					catch (Throwable throwable) {
+						this.log.error("failed to ingest blog post for blog id {} and mogul id {}", blogId, mogulId,
+								throwable);
+					}
+					finally {
+						cdl.countDown();
+					}
+				});
+			}
+			cdl.await();
+			this.log.info("finished importing blog posts for blog" + " id {} and mogul id {}", blogId, mogulId);
 		}
 	}
 
