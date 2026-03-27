@@ -14,6 +14,8 @@ import org.springframework.util.Assert;
 import java.io.BufferedInputStream;
 import java.sql.Date;
 import java.time.ZoneId;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Component
 class BlogPostImporter {
@@ -37,6 +39,8 @@ class BlogPostImporter {
 	}
 
 	/* testing */
+	private final Executor executor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+
 	void importBlogPostsFromArchive(long mogulId, long blogId, long managedFileId) throws Exception {
 		var archive = this.managedFileService.getManagedFileById(managedFileId);
 		Assert.notNull(archive, "managed file id " + managedFileId + " not found");
@@ -47,20 +51,8 @@ class BlogPostImporter {
 			var mediaType = CommonMediaTypes.guess(bufferedInputStream);
 			Assert.state(CommonMediaTypes.isArchive(mediaType), "archive is invalid");
 			this.archiveExtractor.extract(bufferedInputStream,
-					Consumers.readableTextOnly(it -> this.ingest(mogulId, blogId, it)));
+					Consumers.readableTextOnly(it -> /* this.executor.execute */ this.ingest(mogulId, blogId, it)));
 		}
-	}
-
-	private void debug(MarkdownDocument markdownDocument) {
-		var thickLine = "=========";
-		var smallLine = "---------";
-		var content = new StringBuilder();
-		var nl = System.lineSeparator();
-		content.append(nl).append(thickLine).append(nl);
-		markdownDocument.header().rawHeader().forEach((k, v) -> content.append('\t').append(k).append('=').append(v));
-		content.append(nl).append(smallLine).append(nl);
-		content.append(markdownDocument.body());
-		this.log.info(content.toString());
 	}
 
 	private void ingest(long mogulId, long blogId, ArchiveFile archiveFile) {
@@ -80,6 +72,18 @@ class BlogPostImporter {
 				null //
 		);
 		Assert.notNull(post, "post could not be created");
+	}
+
+	private void debug(MarkdownDocument markdownDocument) {
+		var thickLine = "=========";
+		var smallLine = "---------";
+		var content = new StringBuilder();
+		var nl = System.lineSeparator();
+		content.append(nl).append(thickLine).append(nl);
+		markdownDocument.header().rawHeader().forEach((k, v) -> content.append('\t').append(k).append('=').append(v));
+		content.append(nl).append(smallLine).append(nl);
+		content.append(markdownDocument.body());
+		this.log.info(content.toString());
 	}
 
 	private String trim(String input) {

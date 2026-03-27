@@ -14,18 +14,6 @@ import org.springframework.core.io.ClassPathResource;
 @SpringBootTest
 class BlogPostImporterTest {
 
-	@Autowired
-	private BlogPostImporter blogPostImporter;
-
-	private Mogul resolve(MogulService service) {
-		var mail = "josh@joshlong.com";
-		var joshAt = service.getMogulByEmail(mail);
-		if (!joshAt.isEmpty()) {
-			return joshAt.iterator().next();
-		}
-		return service.login("jlong", "jlong", mail, "josh", "long");
-	}
-
 	@Test
 	void importBlogPost(@Autowired MogulService mogulService, @Autowired BlogService blogService,
 			@Autowired ManagedFileService managedFileService, @Autowired BlogPostImporter blogPostImporter)
@@ -43,6 +31,15 @@ class BlogPostImporterTest {
 		Assertions.assertEquals(archive.size(), resource.contentLength(),
 				"there should be the same number of bytes written");
 		blogPostImporter.importBlogPostsFromArchive(mogul.id(), blog.id(), archive.id());
+	}
+
+	private Mogul resolve(MogulService service) {
+		var mail = "josh@joshlong.com";
+		var joshAt = service.getMogulByEmail(mail);
+		if (!joshAt.isEmpty()) {
+			return joshAt.iterator().next();
+		}
+		return service.login("jlong", "jlong", mail, "josh", "long");
 	}
 
 }
