@@ -82,7 +82,7 @@ class BlogPostImporter {
 	}
 
 	private void ingest(long mogulId, long blogId, ArchiveFile archiveFile) {
-		this.log.info("ingesting {}/{} for {}", mogulId, blogId, archiveFile);
+		this.log.info("ingesting {}/{} for {}", mogulId, blogId, archiveFile.fileName());
 		var contents = new String(archiveFile.content());
 		var markdownDocument = this.markdownDocuments.parse(contents);
 
@@ -101,6 +101,8 @@ class BlogPostImporter {
 	}
 
 	private void debug(MarkdownDocument markdownDocument) {
+		if (!this.log.isTraceEnabled())
+			return;
 		var thickLine = "=========";
 		var smallLine = "---------";
 		var content = new StringBuilder();
@@ -109,7 +111,7 @@ class BlogPostImporter {
 		markdownDocument.header().rawHeader().forEach((k, v) -> content.append('\t').append(k).append('=').append(v));
 		content.append(nl).append(smallLine).append(nl);
 		content.append(markdownDocument.body());
-		this.log.info(content.toString());
+		this.log.trace(content.toString());
 	}
 
 	private String trim(String input) {
