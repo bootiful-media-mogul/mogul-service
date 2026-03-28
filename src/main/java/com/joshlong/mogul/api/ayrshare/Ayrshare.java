@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.ayrshare;
 
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -44,6 +46,8 @@ class Ayrshare {
 
 	}
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	private static Response.Status from(String string) {
 		if (string != null) {
 			if (string.equalsIgnoreCase("success")) {
@@ -71,11 +75,11 @@ class Ayrshare {
 		if (contextConsumer != null)
 			contextConsumer.accept(ctx);
 		return this.doPost(ctx.idempotencyKey.get(), post, platforms, ctx.mediaUris.toArray(new URI[0]),
-				ctx.scheduledDate.get());
+				ctx.scheduledDate.get(), ctx.customHeaders);
 	}
 
 	private Response doPost(String idempotencyKey, String post, Platform[] platforms, URI[] mediaUris,
-			Instant scheduledDate) {
+			Instant scheduledDate, final Map<String, String> headers) {
 		Assert.hasText(post, "the post should not be empty!");
 		Assert.state(platforms.length > 0, "there should be at least one platform specified!");
 
@@ -99,7 +103,20 @@ class Ayrshare {
 		if (mediaUrlsArray.length > 0) {
 			body.put("mediaUrls", mediaUrlsArray);
 		}
-		var json = this.http.post().uri("/post").body(body).retrieve().body(JsonNode.class);
+		var json = this.http.post()
+			.uri("/post") //
+			.headers(http -> {
+				for (var customHeader : headers.entrySet()) {
+					if (this.log.isInfoEnabled()) {
+						this.log.info("adding custom header {} for post to {}", customHeader.getKey(),
+								String.join(", ", platformsArray));
+					}
+					http.add(customHeader.getKey(), customHeader.getValue());
+				}
+			}) //
+			.body(body) //
+			.retrieve() //
+			.body(JsonNode.class);
 		Assert.notNull(json, "the json response should not be null");
 		var status = nullOrNode(json, "status", JsonNode::asString);
 		var id = nullOrNode(json, "id", JsonNode::asString);

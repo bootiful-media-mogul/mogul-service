@@ -13,7 +13,11 @@ import org.springframework.stereotype.Component;
 import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+
+import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.TWITTER_OAUTH1_API_KEY;
+import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.TWITTER_OAUTH1_API_SECRET;
 
 /**
  * This will show the user the possible social accounts they could target and, in
@@ -48,7 +52,8 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 
 	@Override
 	public Set<String> requiredSettingKeys() {
-		return Set.of(AyrshareConstants.API_KEY_SETTING_KEY);
+		return Set.of(AyrshareConstants.API_KEY_SETTING_KEY, TWITTER_OAUTH1_API_KEY,
+				AyrshareConstants.TWITTER_OAUTH1_API_SECRET);
 	}
 
 	@Override
@@ -59,11 +64,12 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 		for (var c : drafts) {
 			platformsToCompositions.put(c.platform().platformCode(), c.composition().attachments());
 		}
-		for (var platform : ayrshare.platforms()) {
+		for (var platform : this.ayrshare.platforms()) {
 			var platformKey = platform.platformCode().toLowerCase();
-			if (context.context().containsKey(platformKey)) {
-				var post = context.context().get(platformKey);
-				var response = ayrshare.post(post, new Platform[] { platform }, postContext -> {
+			var pluginExecutionContext = context.context();
+			if (pluginExecutionContext.containsKey(platformKey)) {
+				var post = pluginExecutionContext.get(platformKey);
+				var response = this.ayrshare.post(post, new Platform[] { platform }, postContext -> {
 					var media = platformsToCompositions.getOrDefault(platform.platformCode(), Set.of());
 					var uris = media //
 						.stream() //
@@ -73,6 +79,16 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 						}) //
 						.toArray(URI[]::new);
 					postContext.media(uris);
+
+					// fixes
+					// https://github.com/bootiful-media-mogul/mogul-service/issues/164
+					if (platform.equals(Platform.X)) {
+						var customHeaders = Map.of("X-Twitter-OAuth1-Api-Key",
+								pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), "X-Twitter-OAuth1-Api-Secret",
+								pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET));
+						postContext.customHeaders(customHeaders);
+					}
+
 				});
 				response.postIds()
 					.forEach((platformObj, posted) -> context.success(platformObj.platformCode().toLowerCase(),
