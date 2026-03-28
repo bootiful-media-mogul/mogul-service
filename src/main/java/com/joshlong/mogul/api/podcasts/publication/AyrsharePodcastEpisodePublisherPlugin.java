@@ -79,14 +79,13 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 						}) //
 						.toArray(URI[]::new);
 					postContext.media(uris);
-
 					if (platform.equals(Platform.X)) {
-						var customHeaders = Map.of("X-Twitter-OAuth1-Api-Key",
-								pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), "X-Twitter-OAuth1-Api-Secret",
-								pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET));
+						var customHeaders = Map.of( //
+								"X-Twitter-OAuth1-Api-Key", pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), //
+								"X-Twitter-OAuth1-Api-Secret", pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET) //
+						);
 						postContext.customHeaders(customHeaders);
 					}
-
 				});
 				response.postIds()
 					.forEach((platformObj, posted) -> context.success(platformObj.platformCode().toLowerCase(),
