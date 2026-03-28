@@ -80,8 +80,6 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 						.toArray(URI[]::new);
 					postContext.media(uris);
 
-					// fixes
-					// https://github.com/bootiful-media-mogul/mogul-service/issues/164
 					if (platform.equals(Platform.X)) {
 						var customHeaders = Map.of("X-Twitter-OAuth1-Api-Key",
 								pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), "X-Twitter-OAuth1-Api-Secret",
