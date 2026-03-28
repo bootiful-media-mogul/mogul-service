@@ -37,17 +37,18 @@ Stores the domain-specific data with a reference to the owning entity.
 
 ```java
 public record Publication(
-    Long mogulId,
-    Long id,
-    String plugin,
-    Date created,
-    Date published,
-    Map<String, String> context,
-    String payload,           // Serialized entity ID
-    Class<?> payloadClass,    // Entity class name
-    State state,
-    List<Outcome> outcomes
-) {}
+        Long mogulId,
+        Long id,
+        String plugin,
+        Date created,
+        Date published,
+        Map<String, String> context,
+        String payload,           // Serialized entity ID
+        Class<?> payloadClass,    // Entity class name
+        State state,
+        List<Outcome> outcomes
+) {
+}
 ```
 
 **Key Fields**:
@@ -76,6 +77,7 @@ public interface PublishableRepository<T extends Publishable>
 Implements the strategy for a specific entity type.
 
 ```java
+
 @Component
 class PodcastPublishableRepository extends AbstractPublishableRepository<Episode> {
 
@@ -136,14 +138,15 @@ public interface Notable {
 
 ```java
 public record Note(
-    Long mogulId,
-    Long id,
-    Date created,
-    String url,
-    String note,
-    String payload,
-    Class<?> payloadClass
-) {}
+        Long mogulId,
+        Long id,
+        Date created,
+        String url,
+        String note,
+        String payload,
+        Class<?> payloadClass
+) {
+}
 ```
 
 ### Step 3: Create the Repository Interface
@@ -171,6 +174,7 @@ public abstract class AbstractNotableRepository<T extends Notable>
 ### Step 5: Implement Repositories for Entity Types
 
 ```java
+
 @Component
 class EpisodeNotableRepository extends AbstractNotableRepository<Episode> {
 
@@ -191,6 +195,7 @@ class EpisodeNotableRepository extends AbstractNotableRepository<Episode> {
 ### Step 6: Implement the Service
 
 ```java
+
 @Service
 class NoteService extends AbstractDomainService<Notable, NotableRepository<?>> {
 
@@ -209,9 +214,9 @@ class NoteService extends AbstractDomainService<Notable, NotableRepository<?>> {
 
 ```java
 public record Episode(
-    Long id,
-    String title,
-    // ... other fields
+        Long id,
+        String title,
+        // ... other fields
 ) implements Publishable, Composable, Notable {  // Add Notable
 
     @Override
@@ -301,30 +306,32 @@ public record Episode(
 Domain tables follow a consistent schema:
 
 ```sql
-create table domain_name (
-    id serial primary key,
-    mogul_id bigint not null references mogul(id),
-    created timestamp not null default now(),
+create table domain_name
+(
+    id            serial primary key,
+    mogul_id      bigint    not null references mogul (id),
+    created       timestamp not null default now(),
     -- domain-specific fields
-    payload text not null,          -- JSON serialized entity ID
-    payload_class text not null,    -- Fully qualified class name
-    unique (payload_class, payload, ...)  -- Prevent duplicates
+    payload       text      not null,     -- JSON serialized entity ID
+    payload_class text      not null,     -- Fully qualified class name
+    unique (payload_class, payload, .. .) -- Prevent duplicates
 );
 ```
 
 Example:
 
 ```sql
-create table publication (
-    id serial primary key,
-    mogul_id bigint not null references mogul(id),
-    plugin text not null,
-    created timestamp not null default now(),
-    published timestamp null,
-    context text not null,
-    payload text not null,
-    payload_class text not null,
-    state text not null
+create table publication
+(
+    id            serial primary key,
+    mogul_id      bigint    not null references mogul (id),
+    plugin        text      not null,
+    created       timestamp not null default now(),
+    published     timestamp null,
+    context       text      not null,
+    payload       text      not null,
+    payload_class text      not null,
+    state         text      not null
 );
 ```
 
@@ -344,9 +351,10 @@ create table publication (
 When testing components using the Domain Pattern:
 
 ```java
+
 @Test
 void testPublishableResolution() {
-    var episode = new Episode(1L, "Test Episode", ...);
+    var episode = new Episode(1L, "Test Episode", ...)
     var repository = new PodcastPublishableRepository(podcastService);
 
     assertTrue(repository.supports(Episode.class));

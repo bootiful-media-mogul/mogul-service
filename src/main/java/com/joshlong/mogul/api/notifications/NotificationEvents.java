@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.notifications;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -59,12 +60,12 @@ public class NotificationEvents implements BeanFactoryAware, ApplicationEventPub
 	}
 
 	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+	public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
 		BEAN_FACTORY_ATOMIC_REFERENCE.set(beanFactory);
 	}
 
 	@Override
-	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+	public void setApplicationEventPublisher(@NonNull ApplicationEventPublisher applicationEventPublisher) {
 		PUBLISHER_ATOMIC_REFERENCE.set(applicationEventPublisher);
 	}
 

@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.blogs;
 import com.joshlong.mogul.api.feeds.Entry;
 import com.joshlong.mogul.api.feeds.EntryMapper;
 import com.joshlong.mogul.api.feeds.Feeds;
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,21 +25,16 @@ class BlogPostFeedController {
 
 	private static final String BLOG_FEED_URL = "/public/feeds/moguls/{mogulId}/blogs/{blogId}/posts.atom";
 
-	// GET /public/feeds/moguls/16386/blogs/2/posts.atom
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Feeds feeds;
-
-	private final ManagedFileService managedFileService;
 
 	private final MogulService mogulService;
 
 	private final BlogService blogService;
 
-	BlogPostFeedController(Feeds feeds, ManagedFileService managedFileService, MogulService mogulService,
-			BlogService blogService) {
+	BlogPostFeedController(Feeds feeds, MogulService mogulService, BlogService blogService) {
 		this.feeds = feeds;
-		this.managedFileService = managedFileService;
 		this.mogulService = mogulService;
 		this.blogService = blogService;
 	}
@@ -50,8 +44,6 @@ class BlogPostFeedController {
 	}
 
 	@GetMapping(value = BLOG_FEED_URL)
-	// , produces =
-	// MediaType.APPLICATION_ATOM_XML_VALUE)
 	String feed(@PathVariable long mogulId, @PathVariable long blogId)
 			throws IOException, ParserConfigurationException, TransformerException {
 		this.log.debug("producing the RSS feed for " + BLOG_FEED_URL + " for mogulId {} and blogId {}", mogulId,
@@ -65,13 +57,7 @@ class BlogPostFeedController {
 				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);
 	}
 
-	private static class BlogPostEntryMapper implements EntryMapper<Post> {
-
-		private final Map<Long, String> urls;
-
-		private BlogPostEntryMapper(Map<Long, String> urls) {
-			this.urls = urls;
-		}
+	private record BlogPostEntryMapper(Map<Long, String> urls) implements EntryMapper<Post> {
 
 		@Override
 		public Entry map(Post post) {

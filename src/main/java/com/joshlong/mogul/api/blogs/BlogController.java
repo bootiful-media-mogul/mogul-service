@@ -33,7 +33,7 @@ class BlogController {
 
 	@MutationMapping
 	Post createPost(@Argument Long blogId, @Argument String title, @Argument String content, @Argument String summary) {
-		return this.service.createPost(blogId, title, content, summary);
+		return this.service.createPost(blogId, null, title, content, summary);
 	}
 
 	@MutationMapping
@@ -66,7 +66,7 @@ class BlogController {
 	@MutationMapping
 	boolean updatePost(@Argument Long postId, @Argument String title, @Argument String description,
 			@Argument String summary) {
-		this.service.updatePost(postId, title, description, summary);
+		this.service.updatePost(postId, null, title, description, summary);
 		return true;
 	}
 

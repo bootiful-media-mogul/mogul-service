@@ -28,15 +28,11 @@ class DefaultBlogServiceTest {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final JdbcClient db;
-
 	private final BlogService blogService;
 
-	DefaultBlogServiceTest(@Autowired JdbcClient db, @Autowired BlogService blogService) {
-		this.db = db;
+	DefaultBlogServiceTest(@Autowired BlogService blogService) {
 		this.blogService = blogService;
 		Assertions.assertNotNull(this.blogService, "the blogService should not be null");
-		Assertions.assertNotNull(this.db, "the database should not be null");
 	}
 
 	@BeforeAll
@@ -62,7 +58,7 @@ class DefaultBlogServiceTest {
 		Assertions.assertEquals(blog, this.blogService.getBlogById(blog.id()));
 
 		// now let's create a post
-		var post = this.blogService.createPost(blog.id(), "this is a post for my new blog!  ",
+		var post = this.blogService.createPost(blog.id(), null, "this is a post for my new blog!  ",
 				"this is some sample content that Im sure will be double dope indeed", "this is a summary");
 		Assertions.assertFalse(post.complete());
 		Assertions.assertNotNull(post.created());

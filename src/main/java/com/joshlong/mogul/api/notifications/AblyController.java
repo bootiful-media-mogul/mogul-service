@@ -19,7 +19,7 @@ class AblyController {
 
 	@QueryMapping
 	NotificationContext notificationContext() throws Exception {
-		var topicName = AblyNotificationsUtils.ablyNoticationsChannelFor(this.mogulService.getCurrentMogul().id());
+		var topicName = AblyNotificationsUtils.ablyNotificationsChannelFor(this.mogulService.getCurrentMogul().id());
 		var ttl = 60 * 60 * 1000L; // 1 hour
 		var tokenRequest = this.tokenService.createTokenFor(topicName, ttl);
 		var tr = new TokenRequest(tokenRequest.keyName, tokenRequest.nonce, tokenRequest.mac,

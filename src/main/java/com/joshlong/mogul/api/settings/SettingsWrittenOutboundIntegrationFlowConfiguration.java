@@ -25,28 +25,6 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 
 	static final String AUTHENTICATION_AND_SETTINGS_EVENT_LISTENER_BEAN_NAME = "authenticationAndSettingsEventApplicationEventListeningMessageProducer";
 
-	record AuthenticationAndSettingsEvent(String category, String key, Authentication authentication) {
-
-	}
-
-	@Component
-	@Transactional
-	static class AuthenticatedSettingsEventListener {
-
-		private final ApplicationEventPublisher publisher;
-
-		AuthenticatedSettingsEventListener(ApplicationEventPublisher publisher) {
-			this.publisher = publisher;
-		}
-
-		@EventListener
-		void onSettingsWrittenEvent(SettingWrittenEvent event) {
-			this.publisher.publishEvent(new AuthenticationAndSettingsEvent(event.category(), event.key(),
-					SecurityContextHolder.getContext().getAuthentication()));
-		}
-
-	}
-
 	@Bean(AUTHENTICATION_AND_SETTINGS_EVENT_LISTENER_BEAN_NAME)
 	ApplicationEventListeningMessageProducer authenticationAndSettingsEventApplicationEventListeningMessageProducer() {
 		var messageProducer = new ApplicationEventListeningMessageProducer();
@@ -72,6 +50,28 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 			})
 			.handle(Amqp.outboundAdapter(amqpTemplate).exchangeName(routingKey).routingKey(routingKey))
 			.get();
+	}
+
+	record AuthenticationAndSettingsEvent(String category, String key, Authentication authentication) {
+
+	}
+
+	@Component
+	@Transactional
+	static class AuthenticatedSettingsEventListener {
+
+		private final ApplicationEventPublisher publisher;
+
+		AuthenticatedSettingsEventListener(ApplicationEventPublisher publisher) {
+			this.publisher = publisher;
+		}
+
+		@EventListener
+		void onSettingsWrittenEvent(SettingWrittenEvent event) {
+			this.publisher.publishEvent(new AuthenticationAndSettingsEvent(event.category(), event.key(),
+					SecurityContextHolder.getContext().getAuthentication()));
+		}
+
 	}
 
 }

@@ -1,12 +1,12 @@
 package com.joshlong.mogul.api.ayrshare;
 
-import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.publications.PublicationCompletedEvent;
 import com.joshlong.mogul.api.publications.PublicationService;
+import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.context.event.EventListener;
@@ -31,8 +31,6 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
  */
 
 class DefaultAyrshareService implements AyrshareService {
-
-	// private final PublicationService publicationService;
 
 	private final CompositionService compositionService;
 

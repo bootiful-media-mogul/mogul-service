@@ -15,13 +15,11 @@ import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Transactional
 class DefaultBlogService implements BlogService {
@@ -50,20 +48,17 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Collection<Blog> getBlogsFor(long mogulId) {
-		var all = this.db //
+		return this.db //
 			.sql("select * from blog where mogul_id = ? ") //
 			.params(mogulId) //
 			.query(this.blogRowMapper) //
 			.list();
-		for (var a : all)
-			this.log.info("found blog {}", a);
-		return all;
 	}
 
 	@Override
 	public Collection<Post> getPostsForBlog(long blogId) {
 		return this.db //
-			.sql("select * from blog_post where blog_id = ? ") //
+			.sql(" select * from blog_post where blog_id = ? order by created desc ") //
 			.params(blogId) //
 			.query(this.postRowMapper) //
 			.list();
@@ -90,11 +85,9 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Blog updateBlog(Long mogulId, Long blogId, String title, String description) {
-		// mogul
 		this.db.sql("update blog set title = ?, description = ? where id = ? and mogul_id = ? ") //
 			.params(title, description, blogId, mogulId)//
 			.update();
-		//
 		var blog = this.getBlogById(blogId);
 		this.publisher.publishEvent(new BlogUpdatedEvent(blog));
 		return blog;
@@ -172,10 +165,17 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
-	public Post updatePost(Long postId, String title, String content, String summary) {
+	public Post updatePost(Long postId, Date published, String title, String content, String summary) {
+
+		if (!StringUtils.hasText(summary))
+			summary = "";
+
 		this.db.sql("update  blog_post set title = ? , content = ?, summary = ? where id = ?")//
 			.params(title, content, summary, postId)//
 			.update();
+		if (null != published)
+			this.db.sql("update blog_post set created= ? where id = ? ").params(published, postId).update();
+
 		var postById = this.getPostById(postId);
 		this.publisher.publishEvent(new PostUpdatedEvent(postById));
 		return postById;
@@ -191,10 +191,17 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
-	public Post createPost(Long blogId, String title, String content, String summary) {
+	public Post createPost(Long blogId, Date published, String title, String content, String summary) {
+
+		if (published == null)
+			published = new Date();
+
+		if (!StringUtils.hasText(summary))
+			summary = "";
+
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql(" insert into blog_post(blog_id, title, content ,summary ) values (?,?,?,?) ")
-			.params(blogId, title, content, summary)
+		this.db.sql(" insert into blog_post(blog_id, title, content ,summary, created ) values (?,?,?,?,?) ")
+			.params(blogId, title, content, summary, published)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 		var post = this.getPostById(id);
@@ -202,6 +209,15 @@ class DefaultBlogService implements BlogService {
 		Assert.notNull(descriptionComposition, "description is null");
 		this.publisher.publishEvent(new PostCreatedEvent(post));
 		return post;
+	}
+
+	@Override
+	public Collection<Post> findPostsByTitle(Long blogId, String title) {
+		return this.db //
+			.sql(" select * from blog_post where blog_id = ? and title ilike ? ")//
+			.params(blogId, title)//
+			.query(this.postRowMapper)//
+			.list();
 	}
 
 	@Override

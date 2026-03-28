@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
 class PublicationRowMapper implements RowMapper<Publication> {
 
 	// @formatter:off
-	private final ParameterizedTypeReference<Map<String, String>> mapParameterizedTypeReference = new ParameterizedTypeReference<>() {};
+	private final ParameterizedTypeReference<Map<String, String>> mapParameterizedTypeReference =
+			new ParameterizedTypeReference<>() {};
 	// @formatter:on
 
 	private final Map<Long, List<Publication.Outcome>> publicationToOutcomes = new ConcurrentHashMap<>();

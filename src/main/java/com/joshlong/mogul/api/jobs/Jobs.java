@@ -1,12 +1,16 @@
 package com.joshlong.mogul.api.jobs;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
-interface Jobs {
+public interface Jobs {
 
 	Map<String, Job> jobs();
 
-	CompletableFuture<Job.Result> launch(String jobName, Map<String, Object> context) throws JobLaunchException;
+	JobExecution prepare(Long mogulId, String jobName, Map<String, Supplier<Object>> context);
+
+	JobExecution getJobExecution(Long id);
+
+	void launch(Long mogulId, Long jobExecutionId, Map<String, Supplier<Object>> context) throws JobException;
 
 }

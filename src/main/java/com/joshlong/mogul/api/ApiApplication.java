@@ -3,6 +3,8 @@ package com.joshlong.mogul.api;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import graphql.scalars.ExtendedScalars;
 import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -11,6 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.graphql.execution.RuntimeWiringConfigurer;
@@ -20,9 +23,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
+import java.util.EventObject;
 
 @IntegrationComponentScan
-@ImportRuntimeHints({ ApiApplication.FlywayHints.class })
+@ImportRuntimeHints({ ApiApplication.EventHints.class, ApiApplication.FlywayHints.class })
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
@@ -72,8 +76,19 @@ public class ApiApplication {
 	static class FlywayHints implements RuntimeHintsRegistrar {
 
 		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
 			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
+		}
+
+	}
+
+	static class EventHints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			for (var c : new Class<?>[] { ApplicationEvent.class, EventObject.class })
+				hints.reflection().registerType(c, MemberCategory.values());
+
 		}
 
 	}

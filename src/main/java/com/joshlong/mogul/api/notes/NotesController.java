@@ -3,8 +3,6 @@ package com.joshlong.mogul.api.notes;
 import com.joshlong.mogul.api.Note;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.utils.DateUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -17,8 +15,6 @@ import java.util.Collection;
 
 @Controller
 class NotesController {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final MogulService mogulService;
 
@@ -55,7 +51,8 @@ class NotesController {
 	@QueryMapping
 	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id) {
 		var currentMogul = this.mogulService.getCurrentMogul();
-		return this.noteService.notes(currentMogul.id(), id, type)//
+		return this.noteService //
+			.notes(currentMogul.id(), id, type)//
 			.stream()//
 			.map(note -> this.note(type, note))//
 			.toList();

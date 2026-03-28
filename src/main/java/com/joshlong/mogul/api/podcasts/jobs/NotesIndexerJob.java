@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.podcasts.jobs;
 
 import com.joshlong.mogul.api.jobs.Job;
+import com.joshlong.mogul.api.jobs.JobExecutionContext;
+import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import com.joshlong.mogul.api.notes.NoteService;
 import com.joshlong.mogul.api.search.SearchService;
 import org.jspecify.annotations.NonNull;
@@ -29,15 +31,15 @@ class NotesIndexerJob implements Job {
 	}
 
 	@Override
-	public Result run(Map<String, Object> context) throws Exception {
+	public JobExecutionResult run(JobExecutionContext context) throws Exception {
 		try {
-			this.indexNotesFor(this.from(context, Job.MOGUL_ID_KEY));
+			this.indexNotesFor(context.mogulId());
 		} //
 		catch (Throwable throwable) {
 			this.log.info(throwable.getMessage(), throwable);
 			throw new IllegalStateException(throwable);
 		}
-		return Result.ok(context);
+		return JobExecutionResult.ok();
 	}
 
 	private long from(Map<String, Object> ctx, @NonNull String k) {

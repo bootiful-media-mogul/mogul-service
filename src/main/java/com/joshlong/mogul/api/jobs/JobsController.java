@@ -2,20 +2,22 @@ package com.joshlong.mogul.api.jobs;
 
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
-import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.function.Supplier;
 
 @Controller
 class JobsController {
@@ -26,69 +28,96 @@ class JobsController {
 
 	private final MogulService mogulService;
 
-	JobsController(Jobs jobs, MogulService mogulService) {
+	private final ApplicationEventPublisher applicationEventPublisher;
+
+	JobsController(Jobs jobs, MogulService mogulService, ApplicationEventPublisher applicationEventPublisher) {
 		this.jobs = jobs;
 		this.mogulService = mogulService;
+		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
 	@MutationMapping
-	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) {
+	boolean launchJob(@Argument String jobName, @Argument String contextAsJson) throws JobException {
 		// @formatter:off
-        var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
-        // @formatter:on
-		var context = JsonUtils.read(contextAsJson, typeReference);
-		try {
-			context = context == null ? new HashMap<>() : new HashMap<>(context);
+		var typeReference = new ParameterizedTypeReference<Map<String,Object>>() {};
+		// @formatter:on
+		if (JsonUtils.read(contextAsJson, typeReference) instanceof Map<String, Object> context) {
 			var mogulId = this.mogulService.getCurrentMogul().id();
 			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
-			this.log.info("launching job with mogul # {}, context # {}", mogulId, context);
-			this.jobs.launch(jobName, context) //
-				.thenAccept(result -> {
-					var jobCompletionEvent = new JobCompletedEvent(mogulId, result.success(), jobName);
-					this.emit(jobName, true, mogulId, jobCompletionEvent);
-				}) //
-				.exceptionally(throwable -> {
-					var jce = new JobCompletedEvent(mogulId, false, jobName);
-					this.emit(jobName, true, mogulId, jce);
-					return null;
-				});
-			this.log.info("launched {} with {}", jobName, context);
-		} //
-		catch (Throwable jobLaunchException) {
-			this.log.warn("could not launch the job {} with context {}", jobName, context);
-			return false;
+			var ctx = this.buildMapOfSuppliers(context);
+			var je = this.jobs.prepare(mogulId, jobName, ctx);
+			this.jobs.launch(mogulId, je.id(), ctx);
 		}
 		return true;
 	}
 
-	private void emit(String jobName, boolean success, Long mogulId, JobCompletedEvent event) {
-		var json = JsonUtils.write(Map.of("jobName", jobName, "success", success));
-		var notificationEvent = NotificationEvent //
-			.systemNotificationEventFor(mogulId, event, jobName, json);
-		NotificationEvents.notifyAsync(notificationEvent);
+	void emit(Object event, long jobExecutionId) {
+		var jobExecution = this.jobs.getJobExecution(jobExecutionId);
+		this.applicationEventPublisher
+			.publishEvent(NotificationEvent.visibleNotificationEventFor(jobExecution.mogulId(), event,
+					jobExecution.jobName(), JsonUtils.write(Map.of("success", jobExecution.success()))));
+	}
+
+	@ApplicationModuleListener
+	void on(JobStartedEvent startedEvent) {
+		this.emit(startedEvent, startedEvent.jobExecutionId());
+	}
+
+	@ApplicationModuleListener
+	void on(JobStoppedEvent stoppedEvent) {
+		this.emit(stoppedEvent, stoppedEvent.jobExecutionId());
+	}
+
+	private Map<String, Supplier<Object>> buildMapOfSuppliers(Map<String, Object> map) {
+		var m = new HashMap<String, Supplier<Object>>();
+		for (var k : map.keySet()) {
+			m.put(k, () -> map.get(k));
+		}
+		return m;
 	}
 
 	@QueryMapping
 	Collection<JobView> jobs() {
-		var jobs = this.jobs //
+		var mogul = this.mogulService.getCurrentMogul().id();
+		return this.jobs //
 			.jobs()
 			.entrySet()//
 			.stream() //
-			.map(e -> new JobView(e.getKey(),
-					e.getValue()
-						.requiredContextAttributes()
-						.stream()
-						.filter(s -> !Objects.equals(s, Job.MOGUL_ID_KEY))
-						.toArray(String[]::new)))
+			.map(stringJobEntry -> this.buildJobView(mogul, stringJobEntry))
 			.toList();
-		log.info("jobs:{}", jobs);
-		return jobs;
 	}
 
-	record JobView(String name, String[] requiredContextAttributes) {
+	private JobView buildJobView(Long mogul, Map.Entry<String, Job> jobEntry) {
+		// todo could we have some convention by which to
+		// default values from the Settings object?
+		var preparedJob = this.jobs.prepare(mogul, jobEntry.getKey(), Map.of());
+		var contextAttributes = this.paramMapToParamsCollection(preparedJob.context());
+		return new JobView(jobEntry.getKey(), contextAttributes,
+				this.requiredContextAttributesFrom(jobEntry.getValue()));
 	}
 
-}
+	private String[] requiredContextAttributesFrom(Job execution) {
+		if (execution == null || execution.requiredContextAttributes() == null) {
+			return new String[0];
+		}
+		return execution.requiredContextAttributes()
+			.stream()
+			.filter(attributeName -> !attributeName.equals(Job.MOGUL_ID_KEY))
+			.toArray(String[]::new);
+	}
 
-record JobCompletedEvent(Long mogulId, boolean succeeded, String jobName) {
+	private Collection<JobParam> paramMapToParamsCollection(Map<String, JobExecutionParam> paramMap) {
+		var jobParamArrayList = new ArrayList<JobParam>();
+		paramMap.forEach((paramName, jobExecutionParam) -> {
+			jobParamArrayList.add(new JobParam(paramMap.get(paramName).name(), jobExecutionParam.jsonValue()));
+		});
+		return jobParamArrayList;
+	}
+
+	record JobView(String name, Collection<JobParam> contextAttributes, String[] requiredContextAttributes) {
+	}
+
+	record JobParam(String name, String value) {
+	}
+
 }

@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 
 import java.net.MalformedURLException;
+import java.util.Objects;
 
 class DefaultAiClient implements AiClient {
 
@@ -34,7 +35,9 @@ class DefaultAiClient implements AiClient {
 				.height(imageSize.height())
 				.build();
 			var imageResponse = this.imageModel.call(new ImagePrompt(new ImageMessage(prompt), imageOptions));
-			return new UrlResource(imageResponse.getResult().getOutput().getUrl());
+			return new UrlResource(Objects.requireNonNull(Objects.requireNonNull(imageResponse.getResult())//
+				.getOutput()
+				.getUrl()));
 		} //
 		catch (MalformedURLException e) {
 			throw new RuntimeException(e);

@@ -4,6 +4,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 
 public interface BlogService {
@@ -14,7 +15,6 @@ public interface BlogService {
 
 	void deletePost(Long postId);
 
-	// blog
 	Blog createBlog(Long mogulId, String title, String description);
 
 	Blog updateBlog(Long mogulId, Long blogId, String title, String description);
@@ -29,9 +29,11 @@ public interface BlogService {
 
 	String summarize(String content);
 
-	Post updatePost(Long postId, String title, String content, String summary);
+	Post updatePost(Long postId, Date publishedAt, String title, String content, String summary);
 
-	Post createPost(Long blogId, String title, String content, String summary);
+	Post createPost(Long blogId, Date published, String title, String content, String summary);
+
+	Collection<Post> findPostsByTitle(Long blogId, String title);
 
 	/**
 	 * I imagine a world whereas you type text and reference images that we resolve all
