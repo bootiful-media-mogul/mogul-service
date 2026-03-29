@@ -37,11 +37,6 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 	}
 
 	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of();
-	}
-
-	@Override
 	public boolean isConfigurationValid(Map<String, String> context) {
 		return true;
 	}

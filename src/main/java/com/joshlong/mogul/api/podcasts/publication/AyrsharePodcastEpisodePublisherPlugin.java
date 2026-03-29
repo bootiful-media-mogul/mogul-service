@@ -16,8 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.TWITTER_OAUTH1_API_KEY;
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.TWITTER_OAUTH1_API_SECRET;
+import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.*;
 
 /**
  * This will show the user the possible social accounts they could target and, in
@@ -51,9 +50,10 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of(AyrshareConstants.API_KEY_SETTING_KEY, TWITTER_OAUTH1_API_KEY,
-				AyrshareConstants.TWITTER_OAUTH1_API_SECRET);
+	public Set<PublisherSetting> pluginSettings() {
+		return Set.of(new PublisherSetting(true, API_KEY_SETTING_KEY),
+				new PublisherSetting(false, TWITTER_OAUTH1_API_KEY),
+				new PublisherSetting(false, TWITTER_OAUTH1_API_SECRET));
 	}
 
 	@Override

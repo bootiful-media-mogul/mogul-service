@@ -37,10 +37,10 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 		return PodcastEpisodePublisherPlugin.super.canPublish(context) && context.payload().complete();
 	}
 
-	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of();
-	}
+	// @Override
+	// public Set<String> requiredSettingKeys() {
+	// return Set.of();
+	// }
 
 	@Override
 	public void publish(PublishContext<Episode> payload) {

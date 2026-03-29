@@ -43,7 +43,7 @@ class MarkdownFileBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 	}
 
 	@Override
-	public Set<String> requiredSettingKeys() {
+	public Set<PublisherSetting> pluginSettings() {
 		return Set.of();
 	}
 

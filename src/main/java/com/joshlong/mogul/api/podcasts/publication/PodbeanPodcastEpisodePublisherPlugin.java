@@ -65,9 +65,14 @@ class PodbeanPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlu
 	}
 
 	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of("clientId", "clientSecret");
+	public Set<PublisherSetting> pluginSettings() {
+		return Set.of(new PublisherSetting(true, "clientId"), new PublisherSetting(true, "clientSecret"));
 	}
+
+	// @Override
+	// public Set<String> requiredSettingKeys() {
+	// return Set.of("clientId", "clientSecret");
+	// }
 
 	@Override
 	public void publish(PublishContext<Episode> pc) {
