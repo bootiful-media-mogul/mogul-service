@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component(value = WordPressBlogPostPublisherPlugin.PLUGIN_NAME)
 class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
@@ -51,13 +52,16 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 		return good;
 	}
 
-	public Set<String> requiredSettingKeys() {
-		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret", "baseUrl", "siteId");
+	@Override
+	public Set<PublisherSetting> pluginSettings() {
+		return Set.of("authorizationUri", "tokenUri", "clientId", "clientSecret", "baseUrl", "siteId")
+			.stream()
+			.map(config -> new PublisherSetting(true, config))
+			.collect(Collectors.toSet());
 	}
 
 	@Override
 	public void publish(PublishContext<Post> publishContext) {
-
 		var payload = publishContext.payload();
 		// todo what's a slug? excerpt? those other values?
 		var wordPressPostResponse = this.wordPressClient.publishPost(new WordPressPost(payload.title(),
@@ -65,13 +69,11 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 		Assert.hasText(wordPressPostResponse.link(), "WordPress post link cannot be empty");
 		this.log.info("published post to WordPress at {}", wordPressPostResponse.link());
 		publishContext.success(PLUGIN_NAME, UriUtils.uri(wordPressPostResponse.link()));
-
 	}
 
 	// todo should we make post == publish and then unpublish == draft ?
 	@Override
 	public boolean unpublish(UnpublishContext<Post> uc) {
-		// todo implement this
 		return false;
 	}
 

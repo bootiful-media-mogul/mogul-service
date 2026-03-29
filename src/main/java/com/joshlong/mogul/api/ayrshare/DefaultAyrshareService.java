@@ -29,7 +29,6 @@ import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
  * of the implementations involve network calls and stuff that doesn't interact with a SQL
  * DB. no use hogging up a DB connection just to do HTTP IO.
  */
-
 class DefaultAyrshareService implements AyrshareService {
 
 	private final CompositionService compositionService;

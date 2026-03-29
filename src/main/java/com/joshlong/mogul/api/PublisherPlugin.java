@@ -10,16 +10,19 @@ public interface PublisherPlugin<T extends Publishable> {
 
 	String name();
 
-	Set<String> requiredSettingKeys();
+	default Set<PublisherSetting> pluginSettings() {
+		return Set.of();
+	}
 
 	default boolean isConfigurationValid(Map<String, String> context) {
-		var required = this.requiredSettingKeys();
+		var required = this.pluginSettings()
+			.stream()
+			.filter(PublisherSetting::required)
+			.map(PublisherSetting::name)
+			.toList();
 
 		if (context == null)
 			context = new HashMap<>();
-
-		if (required == null)
-			required = new HashSet<>();
 
 		var good = true;
 		for (var k : required) {
@@ -38,6 +41,9 @@ public interface PublisherPlugin<T extends Publishable> {
 	void publish(PublishContext<T> publishContext);
 
 	boolean unpublish(UnpublishContext<T> uc);
+
+	record PublisherSetting(boolean required, String name) {
+	}
 
 	class Context<T> {
 

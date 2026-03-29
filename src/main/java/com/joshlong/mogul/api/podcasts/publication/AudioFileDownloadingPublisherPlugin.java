@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
-
 /**
  * this plugin doesn't really 'publish' anything. it just lets the user download the
  * produced final audio file. nonetheless, it's useful to have the server-side validation
@@ -35,11 +33,6 @@ class AudioFileDownloadingPublisherPlugin implements PodcastEpisodePublisherPlug
 	@Override
 	public boolean canPublish(PublishContext<Episode> context) {
 		return PodcastEpisodePublisherPlugin.super.canPublish(context) && context.payload().complete();
-	}
-
-	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of();
 	}
 
 	@Override

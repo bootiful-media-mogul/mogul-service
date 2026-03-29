@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.Set;
 
 import static com.joshlong.mogul.api.podcasts.publication.MockPodcastEpisodePublisherPlugin.PLUGIN_NAME;
 
@@ -37,11 +36,6 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 	}
 
 	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of();
-	}
-
-	@Override
 	public boolean isConfigurationValid(Map<String, String> context) {
 		return true;
 	}
@@ -49,7 +43,8 @@ class MockPodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin
 	@Override
 	public void publish(PublishContext<Episode> publishContext) {
 		var payload = publishContext.payload();
-		log.debug("start: publishing episode {} with context {}", payload.id(), publishContext.context());
+		log.debug("start: publishing episode {} with context {}", //
+				payload.id(), publishContext.context());
 		try {
 			Thread.sleep(5_000);
 		} //

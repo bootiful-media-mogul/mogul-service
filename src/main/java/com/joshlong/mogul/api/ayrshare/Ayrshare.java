@@ -30,9 +30,8 @@ class Ayrshare {
 
 	private final RestClient http;
 
-	// todo this code relies heavily on Jackson 2's `JsonNode`. Need to reconfigure the
-	// HttpMessageConverter
-	// for the RestClient, i think.
+	private final Logger log = LoggerFactory.getLogger(getClass());
+
 	Ayrshare(String apiKey) {
 		this.http = RestClient.builder() //
 			.baseUrl("https://api.ayrshare.com/api/") //
@@ -45,8 +44,6 @@ class Ayrshare {
 			.build();
 
 	}
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private static Response.Status from(String string) {
 		if (string != null) {

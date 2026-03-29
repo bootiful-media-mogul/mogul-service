@@ -12,7 +12,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
 import java.util.UUID;
 
 import static com.joshlong.mogul.api.blogs.publication.MarkdownFileBlogPostPublisherPlugin.PLUGIN_NAME;
@@ -40,11 +39,6 @@ class MarkdownFileBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 	@Override
 	public String name() {
 		return PLUGIN_NAME;
-	}
-
-	@Override
-	public Set<String> requiredSettingKeys() {
-		return Set.of();
 	}
 
 	@Override

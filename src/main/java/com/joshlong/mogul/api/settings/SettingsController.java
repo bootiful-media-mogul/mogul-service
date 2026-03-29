@@ -66,19 +66,16 @@ class SettingsController {
 			var pageIsValid = plugin.isConfigurationValid(valuesByCategory);
 			var page = new SettingsPage(pageIsValid, pluginName, new ArrayList<>());
 			pages.add(page);
-			var requiredKeys = new ArrayList<>(plugin.requiredSettingKeys());
-			requiredKeys.sort(Comparator.naturalOrder());
-			for (var requiredKey : requiredKeys) {
-				var value = this.settings.getValue(currentMogulId, pluginName, requiredKey);
-				var valid = StringUtils.hasText(value);
-				var setting = new Setting(requiredKey, valid, value);
-				page.settings().add(setting);
-			}
+			plugin.pluginSettings().stream().map(publisherSetting -> {
+				var value = this.settings.getValue(currentMogulId, pluginName, publisherSetting.name());
+				return new Setting(publisherSetting.name(), StringUtils.hasText(value), value,
+						publisherSetting.required());
+			}).sorted(Comparator.comparing(Setting::name)).forEach(setting -> page.settings().add(setting));
 		}
 		return pages;
 	}
 
-	record Setting(String name, boolean valid, String value) {
+	record Setting(String name, boolean valid, String value, boolean required) {
 	}
 
 	record SettingsPage(boolean valid, String category, List<Setting> settings) {
