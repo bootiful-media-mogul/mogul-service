@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.settings;
 
 import com.joshlong.mogul.api.ApiProperties;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +18,11 @@ class SettingsConfiguration {
 	}
 
 	@Bean
-	Settings settings(JdbcClient jdbcClient, ApplicationEventPublisher publisher, TextEncryptor textEncryptor) {
-		return new Settings(publisher, jdbcClient, textEncryptor);
+	Settings settings(CacheManager cacheManager, JdbcClient jdbcClient, ApplicationEventPublisher publisher,
+			TextEncryptor textEncryptor) {
+		var mogulCategoryCache = cacheManager.getCache("mogulSettingsCategory");
+		var mogulCategoryKeyCache = cacheManager.getCache("mogulSettingsCategoryKey");
+		return new Settings(publisher, jdbcClient, textEncryptor, mogulCategoryCache, mogulCategoryKeyCache);
 	}
 
 }

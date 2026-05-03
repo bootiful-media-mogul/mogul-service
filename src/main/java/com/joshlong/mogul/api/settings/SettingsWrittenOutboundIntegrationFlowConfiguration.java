@@ -39,16 +39,17 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 		var log = LoggerFactory.getLogger(this.getClass());
 		var routingKey = apiProperties.amqp().settingsEvents();
 		log.info("routing key is {}.", routingKey);
-		return IntegrationFlow.from(authenticationAndSettingsEventApplicationEventListeningMessageProducer)
+		return IntegrationFlow //
+			.from(authenticationAndSettingsEventApplicationEventListeningMessageProducer) //
 			.transform((GenericTransformer<AuthenticationAndSettingsEvent, Map<String, String>>) source -> Map.of(
 					"authenticationName", source.authentication().getName(), "category", source.category(), "key",
-					source.key()))
+					source.key())) //
 			.transform((GenericTransformer<Map<String, String>, String>) jsonMap -> {
 				var jsonResult = json.writeValueAsString(jsonMap);
 				log.info("sending {}", jsonResult);
 				return jsonResult;
-			})
-			.handle(Amqp.outboundAdapter(amqpTemplate).exchangeName(routingKey).routingKey(routingKey))
+			}) //
+			.handle(Amqp.outboundAdapter(amqpTemplate).exchangeName(routingKey).routingKey(routingKey)) //
 			.get();
 	}
 

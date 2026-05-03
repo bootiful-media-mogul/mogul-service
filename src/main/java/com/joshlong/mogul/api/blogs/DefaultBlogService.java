@@ -36,8 +36,6 @@ class DefaultBlogService implements BlogService {
 
 	private final AiClient singularity;
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
 	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
 			CompositionService compositionService) {
 		this.db = db;

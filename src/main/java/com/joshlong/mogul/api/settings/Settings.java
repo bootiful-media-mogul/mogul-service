@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.settings;
 
+import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -11,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class Settings {
 
@@ -22,17 +24,24 @@ public class Settings {
 
 	private final SettingsRowMapper rowMapper;
 
-	public Settings(ApplicationEventPublisher publisher, JdbcClient db, TextEncryptor encryptor) {
+	private final Cache mogulCategoryCache, mogulCategoryKeyCache;
+
+	public Settings(ApplicationEventPublisher publisher, JdbcClient db, TextEncryptor encryptor,
+			Cache mogulCategoryCache, Cache mogulCategoryKeyCache) {
 		this.publisher = publisher;
 		this.db = db;
 		this.encryptor = encryptor;
+		this.mogulCategoryCache = mogulCategoryCache;
+		this.mogulCategoryKeyCache = mogulCategoryKeyCache;
+		Assert.notNull(this.mogulCategoryCache, "the mogul/category cache is not null");
+		Assert.notNull(this.mogulCategoryKeyCache, "the mogul/category/key cache is not null");
 		Assert.notNull(this.encryptor, "the encryptor must be non-null");
 		Assert.notNull(this.db, "the db must be non-null");
 		this.rowMapper = new SettingsRowMapper(encryptor);
 	}
 
 	public Map<String, String> getAllValuesByCategory(Long mogulId, String category) {
-		var all = getAllSettingsByCategory(mogulId, category);
+		var all = this.getAllSettingsByCategory(mogulId, category);
 		var res = new HashMap<String, String>();
 		for (var a : all.keySet())
 			res.put(a, all.get(a).value());
@@ -40,24 +49,30 @@ public class Settings {
 	}
 
 	public Map<String, Setting> getAllSettingsByCategory(Long mogulId, String category) {
-		var settings = this.db//
-			.sql("select * from settings where mogul_id  = ? and category = ? ")
-			.params(mogulId, category)
-			.query(this.rowMapper)
-			.list();
-		var map = new HashMap<String, Setting>();
-		for (var s : settings)
-			map.put(s.key(), s);
-		return map;
+		var mogulCategoryCacheKey = this.mogulCategoryCacheKey(mogulId, category);
+		return mogulCategoryCache //
+			.get(mogulCategoryCacheKey, () -> {
+				var settings = db//
+					.sql(" select * from settings where mogul_id  = ? and category = ? ")
+					.params(mogulId, category)
+					.query(rowMapper)
+					.list();
+				var map = new HashMap<String, Setting>();
+				for (var s : settings)
+					map.put(s.key(), s);
+				return map;
+			});
 	}
 
 	private Setting get(Long mogulId, String category, String key) {
-		var settings = this.db //
-			.sql("select * from settings where mogul_id  = ? and category =? and key = ? ") //
+		var cacheKey = this.mogulCategoryKeyCacheKey(mogulId, category, key);
+		var settings = this.mogulCategoryKeyCache.get(cacheKey, () -> this.db //
+			.sql("select * from settings where mogul_id  = ? and category = ? and key = ? ") //
 			.params(mogulId, category, key) //
-			.query(this.rowMapper) //
-			.list();
-		Assert.state(settings.size() <= 1, "there should never be more than one setting configured.");
+			.query(rowMapper) //
+			.list());
+		Assert.state(Objects.requireNonNull(settings).size() <= 1,
+				"there should never be more than one setting configured.");
 		return settings.isEmpty() ? null : settings.getFirst();
 	}
 
@@ -78,7 +93,20 @@ public class Settings {
 				""") //
 			.params(mogulId, category, key, this.encryptor.encrypt(value))//
 			.update();
+		//
+		this.mogulCategoryCache.evictIfPresent(this.mogulCategoryCacheKey(mogulId, category));
+		this.mogulCategoryKeyCache.evictIfPresent(this.mogulCategoryKeyCacheKey(mogulId, category, key));
+		//
 		this.publisher.publishEvent(new SettingWrittenEvent(mogulId, category, key, value));
+
+	}
+
+	private String mogulCategoryCacheKey(Long mogulId, String category) {
+		return mogulId + "::" + category;
+	}
+
+	private String mogulCategoryKeyCacheKey(Long mogulId, String category, String key) {
+		return mogulId + "::" + category + "::" + key;
 	}
 
 	public record Setting(String category, String key, String value) {
