@@ -21,10 +21,16 @@ public interface NoteService {
 
 	<T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz);
 
+	<T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz, boolean includeDone);
+
 	<T extends Notable> Collection<Note> notes(Long mogulId, T payload);
+
+	<T extends Notable> Collection<Note> notes(Long mogulId, T payload, boolean includeDone);
 
 	<T extends Notable> Note create(Long mogulId, T payload, URI url, String note);
 
 	<T extends Notable> Note update(Long noteId, URI url, String note);
+
+	Note setDone(Long mogulId, Long noteId, boolean done);
 
 }

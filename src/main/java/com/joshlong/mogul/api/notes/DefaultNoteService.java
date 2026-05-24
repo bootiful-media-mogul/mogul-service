@@ -30,10 +30,13 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final RowMapper<Note> noteRowMapper = (rs, _) -> new Note(rs.getLong("mogul_id"), rs.getLong("id"),
-			rs.getString("payload"), ReflectionUtils.classForName(rs.getString("payload_class")),
-			new java.util.Date(rs.getTimestamp("created").getTime()), UriUtils.uri(rs.getString("url")),
-			rs.getString("note"));
+	private final RowMapper<Note> noteRowMapper = (rs, _) -> {
+		var done = rs.getTimestamp("done");
+		return new Note(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("payload"),
+				ReflectionUtils.classForName(rs.getString("payload_class")),
+				new java.util.Date(rs.getTimestamp("created").getTime()), UriUtils.uri(rs.getString("url")),
+				done == null ? null : new java.util.Date(done.getTime()), rs.getString("note"));
+	};
 
 	private final JdbcClient db;
 
@@ -88,15 +91,32 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz) {
+		return this.notes(mogulId, id, clazz, true);
+	}
+
+	@Override
+	public <T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz, boolean includeDone) {
 		var payload = this.resolveNotable(mogulId, id, clazz);
-		return this.notes(mogulId, payload);
+		return this.notes(mogulId, payload, includeDone);
 	}
 
 	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, T payload) {
+		return this.notes(mogulId, payload, true);
+	}
+
+	@Override
+	public <T extends Notable> Collection<Note> notes(Long mogulId, T payload, boolean includeDone) {
+		var sql = """
+				select *
+				from note
+				where mogul_id = ?
+				  and payload = ?
+				  and payload_class = ?
+				""" + (includeDone ? "" : " and done is null ") + " order by created ";
 		var list = this.db //
-			.sql("select * from note where payload = ? and payload_class = ? order by created ")//
-			.params(JsonUtils.write(payload.notableKey()), payload.getClass().getName()) //
+			.sql(sql)//
+			.params(mogulId, JsonUtils.write(payload.notableKey()), payload.getClass().getName()) //
 			.query(this.noteRowMapper)//
 			.list();
 		log.info("found {} notes for {} of type {}", list.size(), payload.notableKey(), payload.getClass().getName());
@@ -118,7 +138,7 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 	@Override
 	public <T extends Notable> Note create(Long mogulId, T payload, URI url, String note) {
 		var payloadKeyAsJson = JsonUtils.write(payload.notableKey());
-		var newNote = new Note(mogulId, null, payloadKeyAsJson, payload.getClass(), new Date(), url, note);
+		var newNote = new Note(mogulId, null, payloadKeyAsJson, payload.getClass(), new Date(), url, null, note);
 		var kg = new GeneratedKeyHolder();
 		db.sql("""
 				 insert into note (mogul_id, created, payload, payload_class, url, note)
@@ -132,6 +152,19 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 		var n = this.getNoteById(insertedId);
 		this.publisher.publishEvent(new NoteCreatedEvent(n));
 		return n;
+	}
+
+	@Override
+	public Note setDone(Long mogulId, Long noteId, boolean done) {
+		var updated = this.db.sql("update note set done = ? where id = ? and mogul_id = ?")
+			.params(done ? new Date() : null, noteId, mogulId)
+			.update();
+		if (updated == 0) {
+			return null;
+		}
+		var noteUpdated = this.getNoteById(noteId);
+		this.publisher.publishEvent(new NoteUpdatedEvent(noteUpdated));
+		return noteUpdated;
 	}
 
 }
