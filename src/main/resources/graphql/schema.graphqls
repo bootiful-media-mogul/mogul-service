@@ -186,6 +186,7 @@ type Post {
     summary:String
     rssSlug:String
     complete :Boolean
+    visible :Boolean
     descriptionComposition: Composition
 }
 
@@ -219,6 +220,8 @@ type Mutation {
     createPost(blogId:Int, title:String, content:String, summary:String, rssSlug:String): Post
 
     updatePost(postId:Int, title:String, description:String, summary:String, rssSlug:String): Boolean
+
+    setBlogPostVisibility(postId:Int, visible:Boolean): Boolean
 
     deletePost(postId:Int): Boolean
 

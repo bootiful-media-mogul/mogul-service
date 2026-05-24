@@ -58,7 +58,7 @@ class BlogPostFeedController {
 		var mogul = this.mogulService.getMogulById(mogulId);
 		var blog = this.blogService.getBlogById(blogId);
 		Assert.state(blog.mogulId() == mogulId, "the blog's mogulId does not match the mogulId in the path");
-		var posts = this.blogService.getPostsForBlog(blogId);
+		var posts = this.blogService.getVisiblePostsForBlog(blogId);
 		var blogPostRowMapper = new BlogPostEntryMapper(blog, Map.of());
 		return this.feeds.createMogulAtomFeed(blog.title(), BLOG_FEED_URL, blog.created().toInstant(),
 				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);

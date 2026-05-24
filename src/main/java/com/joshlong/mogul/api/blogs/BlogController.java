@@ -54,6 +54,12 @@ class BlogController {
 		return true;
 	}
 
+	@MutationMapping
+	boolean setBlogPostVisibility(@Argument Long postId, @Argument Boolean visible) {
+		this.service.setPostVisibility(postId, Boolean.TRUE.equals(visible));
+		return true;
+	}
+
 	@SchemaMapping
 	Composition descriptionComposition(Post post) {
 		return this.service.getBlogPostDescriptionComposition(post.id());

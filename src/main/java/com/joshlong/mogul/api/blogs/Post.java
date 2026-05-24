@@ -9,7 +9,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import java.util.Date;
 import java.util.Map;
 
-public record Post(Long mogulId, Long id, String title, Date created, String content, boolean complete,
+public record Post(Long mogulId, Long id, String title, Date created, String content, boolean complete, boolean visible,
 		Map<String, ManagedFile> assets, String summary, String rssSlug,
 		Long blogId) implements Notable, Searchable, Publishable, Composable {
 

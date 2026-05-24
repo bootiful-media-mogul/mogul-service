@@ -13,7 +13,11 @@ public interface BlogService {
 
 	Collection<Post> getPostsForBlog(long blogId);
 
+	Collection<Post> getVisiblePostsForBlog(long blogId);
+
 	void deletePost(Long postId);
+
+	void setPostVisibility(Long postId, boolean visible);
 
 	Blog createBlog(Long mogulId, String title, String description);
 

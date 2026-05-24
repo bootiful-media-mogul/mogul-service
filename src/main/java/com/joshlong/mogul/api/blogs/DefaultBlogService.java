@@ -55,11 +55,28 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Collection<Post> getPostsForBlog(long blogId) {
+		return this.postsForBlog(blogId, false);
+	}
+
+	@Override
+	public Collection<Post> getVisiblePostsForBlog(long blogId) {
+		return this.postsForBlog(blogId, true);
+	}
+
+	private Collection<Post> postsForBlog(long blogId, boolean visibleOnly) {
+		var sql = " select * from blog_post where blog_id = ? " + (visibleOnly ? " and visible = true " : "")
+				+ " order by created desc ";
 		return this.db //
-			.sql(" select * from blog_post where blog_id = ? order by created desc ") //
+			.sql(sql) //
 			.params(blogId) //
 			.query(this.postRowMapper) //
 			.list();
+	}
+
+	@Override
+	public void setPostVisibility(Long postId, boolean visible) {
+		this.db.sql("update blog_post set visible = ? where id = ?").params(visible, postId).update();
+		this.publisher.publishEvent(new PostUpdatedEvent(this.getPostById(postId)));
 	}
 
 	@Override
@@ -244,8 +261,8 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
-					rs.getString("content"), rs.getBoolean("complete"), new HashMap<>(), rs.getString("summary"),
-					rs.getString("rss_slug"), rs.getLong("blog_id"));
+					rs.getString("content"), rs.getBoolean("complete"), rs.getBoolean("visible"), new HashMap<>(),
+					rs.getString("summary"), rs.getString("rss_slug"), rs.getLong("blog_id"));
 		}
 
 	}
