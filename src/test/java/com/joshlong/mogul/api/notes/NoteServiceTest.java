@@ -32,6 +32,13 @@ class NoteServiceTest {
 		var anotherOne = "another one!";
 		var updated = noteService.update(secondNote.id(), null, anotherOne);
 		Assertions.assertEquals(anotherOne, updated.note(), "the note was updated");
+		var done = noteService.setDone(mogul.id(), updated.id(), true);
+		Assertions.assertNotNull(done.done(), "the note was marked done");
+		Assertions.assertEquals(1, noteService.notes(mogul.id(), first, false).size(),
+				"the done note should be excluded");
+		Assertions.assertEquals(2, noteService.notes(mogul.id(), first, true).size(), "all notes should be included");
+		var unfinished = noteService.setDone(mogul.id(), updated.id(), false);
+		Assertions.assertNull(unfinished.done(), "the note was marked unfinished");
 		Assertions.assertEquals(updated, noteService.getNoteById(updated.id()),
 				"the search should return the same instance");
 	}

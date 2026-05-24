@@ -40,6 +40,12 @@ class NotesController {
 	}
 
 	@MutationMapping
+	boolean setNoteDone(@Argument Long id, @Argument Boolean done) {
+		var currentMogul = this.mogulService.getCurrentMogul();
+		return this.noteService.setDone(currentMogul.id(), id, Boolean.TRUE.equals(done)) != null;
+	}
+
+	@MutationMapping
 	boolean createNote(@Argument String type, @Argument Long id, @Argument String note) {
 		var mogul = this.mogulService.getCurrentMogul();
 		var payload = this.noteService.resolveNotable(mogul.id(), id, type);
@@ -49,22 +55,23 @@ class NotesController {
 	}
 
 	@QueryMapping
-	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id) {
+	Collection<ClientNote> notesForNotable(@Argument String type, @Argument Long id, @Argument Boolean includeDone) {
 		var currentMogul = this.mogulService.getCurrentMogul();
 		return this.noteService //
-			.notes(currentMogul.id(), id, type)//
+			.notes(currentMogul.id(), id, type, Boolean.TRUE.equals(includeDone))//
 			.stream()//
 			.map(note -> this.note(type, note))//
 			.toList();
 	}
 
 	private ClientNote note(String type, Note note) {
-		return new ClientNote(type, note.id(), DateUtils.forDate(note.created()), note.url(), note.note());
+		return new ClientNote(type, note.id(), DateUtils.forDate(note.created()), DateUtils.forDate(note.done()),
+				note.url(), note.note());
 	}
 
 }
 
-record ClientNote(String type, Long id, OffsetDateTime created, URI url, String note) {
+record ClientNote(String type, Long id, OffsetDateTime created, OffsetDateTime done, URI url, String note) {
 }
 
 record NoteCreatedEvent(Note note) {
