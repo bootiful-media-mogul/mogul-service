@@ -184,6 +184,7 @@ type Post {
     title :String
     content:String
     summary:String
+    rssSlug:String
     complete :Boolean
     descriptionComposition: Composition
 }
@@ -215,9 +216,9 @@ type Mutation {
 
     deleteBlog (blogId:Int): Boolean
 
-    createPost(blogId:Int, title:String, content:String, summary:String): Post
+    createPost(blogId:Int, title:String, content:String, summary:String, rssSlug:String): Post
 
-    updatePost(postId:Int, title:String, description:String, summary:String): Boolean
+    updatePost(postId:Int, title:String, description:String, summary:String, rssSlug:String): Boolean
 
     deletePost(postId:Int): Boolean
 

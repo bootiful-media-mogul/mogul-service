@@ -163,13 +163,13 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
-	public Post updatePost(Long postId, Date published, String title, String content, String summary) {
+	public Post updatePost(Long postId, Date published, String title, String content, String summary, String rssSlug) {
 
 		if (!StringUtils.hasText(summary))
 			summary = "";
 
-		this.db.sql("update  blog_post set title = ? , content = ?, summary = ? where id = ?")//
-			.params(title, content, summary, postId)//
+		this.db.sql("update  blog_post set title = ? , content = ?, summary = ?, rss_slug = ? where id = ?")//
+			.params(title, content, summary, StringUtils.hasText(rssSlug) ? rssSlug : null, postId)//
 			.update();
 		if (null != published)
 			this.db.sql("update blog_post set created= ? where id = ? ").params(published, postId).update();
@@ -190,6 +190,11 @@ class DefaultBlogService implements BlogService {
 
 	@Override
 	public Post createPost(Long blogId, Date published, String title, String content, String summary) {
+		return this.createPost(blogId, published, title, content, summary, null);
+	}
+
+	@Override
+	public Post createPost(Long blogId, Date published, String title, String content, String summary, String rssSlug) {
 
 		if (published == null)
 			published = new Date();
@@ -198,8 +203,9 @@ class DefaultBlogService implements BlogService {
 			summary = "";
 
 		var gkh = new GeneratedKeyHolder();
-		this.db.sql(" insert into blog_post(blog_id, title, content ,summary, created ) values (?,?,?,?,?) ")
-			.params(blogId, title, content, summary, published)
+		this.db
+			.sql(" insert into blog_post(blog_id, title, content ,summary, created, rss_slug ) values (?,?,?,?,?,?) ")
+			.params(blogId, title, content, summary, published, StringUtils.hasText(rssSlug) ? rssSlug : null)
 			.update(gkh);
 		var id = JdbcUtils.getIdFromKeyHolder(gkh).longValue();
 		var post = this.getPostById(id);
@@ -239,7 +245,7 @@ class DefaultBlogService implements BlogService {
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
 					rs.getString("content"), rs.getBoolean("complete"), new HashMap<>(), rs.getString("summary"),
-					rs.getLong("blog_id"));
+					rs.getString("rss_slug"), rs.getLong("blog_id"));
 		}
 
 	}

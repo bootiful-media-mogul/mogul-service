@@ -29,9 +29,11 @@ public interface BlogService {
 
 	String summarize(String content);
 
-	Post updatePost(Long postId, Date publishedAt, String title, String content, String summary);
+	Post updatePost(Long postId, Date publishedAt, String title, String content, String summary, String rssSlug);
 
 	Post createPost(Long blogId, Date published, String title, String content, String summary);
+
+	Post createPost(Long blogId, Date published, String title, String content, String summary, String rssSlug);
 
 	Collection<Post> findPostsByTitle(Long blogId, String title);
 
