@@ -82,9 +82,9 @@ class DefaultBlogService implements BlogService {
 	}
 
 	@Override
-	public Blog updateBlog(Long mogulId, Long blogId, String title, String description) {
-		this.db.sql("update blog set title = ?, description = ? where id = ? and mogul_id = ? ") //
-			.params(title, description, blogId, mogulId)//
+	public Blog updateBlog(Long mogulId, Long blogId, String title, String description, String rssUrl) {
+		this.db.sql("update blog set title = ?, description = ?, rss_url = ? where id = ? and mogul_id = ? ") //
+			.params(title, description, StringUtils.hasText(rssUrl) ? rssUrl : null, blogId, mogulId)//
 			.update();
 		var blog = this.getBlogById(blogId);
 		this.publisher.publishEvent(new BlogUpdatedEvent(blog));
@@ -249,7 +249,7 @@ class DefaultBlogService implements BlogService {
 		@Override
 		public Blog mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Blog(rs.getLong("mogul_id"), rs.getLong("id"), rs.getString("title"),
-					rs.getString("description"), rs.getTimestamp("created"));
+					rs.getString("description"), rs.getString("rss_url"), rs.getTimestamp("created"));
 		}
 
 	}

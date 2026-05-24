@@ -108,8 +108,9 @@ class BlogController {
 	}
 
 	@MutationMapping
-	boolean updateBlog(@Argument Long blogId, @Argument String title, @Argument String description) {
-		this.service.updateBlog(this.mogulService.getCurrentMogul().id(), blogId, title, description);
+	boolean updateBlog(@Argument Long blogId, @Argument String title, @Argument String description,
+			@Argument String rssUrl) {
+		this.service.updateBlog(this.mogulService.getCurrentMogul().id(), blogId, title, description, rssUrl);
 		return true;
 	}
 

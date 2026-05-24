@@ -17,7 +17,7 @@ public interface BlogService {
 
 	Blog createBlog(Long mogulId, String title, String description);
 
-	Blog updateBlog(Long mogulId, Long blogId, String title, String description);
+	Blog updateBlog(Long mogulId, Long blogId, String title, String description, String rssUrl);
 
 	Blog getBlogById(Long id);
 
