@@ -139,11 +139,11 @@
             <artifactId>podbean-client</artifactId>
             <version>0.0.19</version>
         </dependency>
-    <!--    <dependency>
-            <groupId>com.joshlong</groupId>
-            <artifactId>lucene-spring-boot-starter</artifactId>
-            <version>0.0.2</version>
-        </dependency>-->
+        <!--    <dependency>
+                <groupId>com.joshlong</groupId>
+                <artifactId>lucene-spring-boot-starter</artifactId>
+                <version>0.0.2</version>
+            </dependency>-->
         <dependency>
             <groupId>com.joshlong</groupId>
             <artifactId>template-spring-boot-starter</artifactId>
@@ -282,6 +282,10 @@
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
