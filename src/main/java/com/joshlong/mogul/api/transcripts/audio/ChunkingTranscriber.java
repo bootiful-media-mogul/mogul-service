@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.transcripts.audio;
 import com.joshlong.mogul.api.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -100,15 +101,16 @@ class ChunkingTranscriber implements Transcriber {
 				+ parentFile.getAbsolutePath() + "] does not exist, and could not be created.");
 		try {
 			var orderedAudio = this.divide(transcriptForResource, audio)//
-				.map(tr -> (Callable<String>) () -> {
-					var audioResource = tr.audio();
+				.map(resource -> (Callable<String>) () -> {
+					var audioResource = resource.audio();
 					if (audioResource != null) {
 						try {
 							return this.retryTemplate.execute(() -> {
-								log.debug("start transcribe audio resource {}", audioResource);
-								var result = this.openAiAudioTranscriptionModel.call(audioResource);
-								log.debug("finish transcribe audio result {}", result);
-								return result;
+								this.log.debug("start transcribe audio resource {}", audioResource);
+								var apt = new AudioTranscriptionPrompt(audioResource);
+								var result = this.openAiAudioTranscriptionModel.call(apt);
+								this.log.debug("finish transcribe audio result {}", result);
+								return result.getResult().getOutput();
 							});
 						} //
 						catch (Throwable e) { // this will capture RetryException as
