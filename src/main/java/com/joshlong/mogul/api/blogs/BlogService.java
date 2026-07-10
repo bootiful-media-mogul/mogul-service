@@ -9,6 +9,8 @@ import java.util.Map;
 
 public interface BlogService {
 
+	Collection<Blog> getAllBlogsByMogul(Long mogulId);
+
 	Collection<Blog> getBlogsFor(long mogulId);
 
 	Collection<Post> getPostsForBlog(long blogId);

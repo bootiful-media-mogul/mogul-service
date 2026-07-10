@@ -1,12 +1,12 @@
-package com.joshlong.mogul.api.podcasts.publication;
+package com.joshlong.mogul.api.blogs.publication;
 
 import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
 import com.joshlong.mogul.api.ayrshare.AyrshareService;
 import com.joshlong.mogul.api.ayrshare.Platform;
+import com.joshlong.mogul.api.blogs.Post;
 import com.joshlong.mogul.api.compositions.Attachment;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.utils.UriUtils;
 import org.springframework.stereotype.Component;
@@ -18,42 +18,26 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.*;
-import static com.joshlong.mogul.api.podcasts.publication.AyrsharePodcastEpisodePublisherPlugin.NAME;
 
-/**
- * This will show the user the possible social accounts they could target and, in
- * conjunction with the configuration in the settings page, allow the user to publish
- * messages. The client will need to send the content they want sent for each destination.
- * this plugin needs to dynamically show compositions for each of the final destinations.
- * We support varying lengths of message content, platform user references, media
- * attachments, etc.
- *
- * @author Josh Long
- */
-@Component(value = NAME)
-class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
+@Component(value = AyrshareBlogPostPublisherPlugin.NAME)
+class AyrshareBlogPostPublisherPlugin implements BlogPostPublisherPlugin {
 
-	static final String NAME = PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME;
+	static final String NAME = BLOG_POST_AYRSHARE_PLUGIN_NAME;
 
 	private final AyrshareService ayrshare;
-
-	private final Settings settings;
 
 	private final MogulService mogulService;
 
 	private final ManagedFileService managedFileService;
 
-	AyrsharePodcastEpisodePublisherPlugin(AyrshareService ayrshare, Settings settings, MogulService mogulService,
-			ManagedFileService managedFileService) {
+	private final Settings settings;
+
+	AyrshareBlogPostPublisherPlugin(AyrshareService ayrshare, MogulService mogulService,
+			ManagedFileService managedFileService, Settings settings) {
 		this.ayrshare = ayrshare;
-		this.settings = settings;
 		this.mogulService = mogulService;
 		this.managedFileService = managedFileService;
-	}
-
-	@Override
-	public String name() {
-		return NAME;
+		this.settings = settings;
 	}
 
 	@Override
@@ -64,8 +48,14 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public void publish(PublishContext<Episode> context) {
+	public String name() {
+		return NAME;
+	}
+
+	@Override
+	public void publish(PublishContext<Post> context) {
 		var mogul = this.mogulService.getCurrentMogul();
+		var ayrshareSettings = this.settings.getAllValuesByCategory(mogul.id(), NAME);
 		var drafts = this.ayrshare.getDraftAyrsharePublicationCompositionsFor(mogul.id());
 		var platformsToCompositions = new HashMap<String, Collection<Attachment>>();
 		for (var c : drafts) {
@@ -77,6 +67,7 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 			if (pluginExecutionContext.containsKey(platformKey)) {
 				var post = pluginExecutionContext.get(platformKey);
 				var response = this.ayrshare.post(post, new Platform[] { platform }, () -> {
+
 					var settingsForTenant = settings.getAllSettingsByCategory(context.mogulId(), NAME);
 					return settingsForTenant.get(API_KEY_SETTING_KEY).value();
 				}, postContext -> {
@@ -91,8 +82,8 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 					postContext.media(uris);
 					if (platform.equals(Platform.X)) {
 						var customHeaders = Map.of( //
-								"X-Twitter-OAuth1-Api-Key", pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), //
-								"X-Twitter-OAuth1-Api-Secret", pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET) //
+								"X-Twitter-OAuth1-Api-Key", ayrshareSettings.get(TWITTER_OAUTH1_API_KEY), //
+								"X-Twitter-OAuth1-Api-Secret", ayrshareSettings.get(TWITTER_OAUTH1_API_SECRET) //
 						);
 						postContext.customHeaders(customHeaders);
 					}
@@ -105,7 +96,7 @@ class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPl
 	}
 
 	@Override
-	public boolean unpublish(UnpublishContext<Episode> context) {
+	public boolean unpublish(UnpublishContext<Post> context) {
 		return false;
 	}
 

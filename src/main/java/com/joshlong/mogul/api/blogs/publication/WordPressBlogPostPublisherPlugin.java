@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.blogs.publication;
 
-import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.blogs.Post;
 import com.joshlong.mogul.api.utils.UriUtils;
 import com.joshlong.mogul.api.wordpress.WordPressClient;
@@ -17,7 +16,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component(value = WordPressBlogPostPublisherPlugin.PLUGIN_NAME)
-class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
+class WordPressBlogPostPublisherPlugin implements BlogPostPublisherPlugin {
 
 	static final String PLUGIN_NAME = "wordpress";
 
@@ -36,7 +35,7 @@ class WordPressBlogPostPublisherPlugin implements PublisherPlugin<Post> {
 
 	@Override
 	public boolean isConfigurationValid(Map<String, String> context) {
-		var parentSaysYes = PublisherPlugin.super.isConfigurationValid(context);
+		var parentSaysYes = BlogPostPublisherPlugin.super.isConfigurationValid(context);
 		if (!parentSaysYes) {
 			if (this.log.isDebugEnabled()) {
 				this.log.debug("isConfigurationValid returned false");

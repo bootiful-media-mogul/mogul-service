@@ -19,15 +19,19 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.API_KEY_SETTING_KEY;
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PLUGIN_NAME;
+import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME;
 
 /**
  * warning! do <em>not</em> make this class {@link Transactional transactional}, as a lot
  * of the implementations involve network calls and stuff that doesn't interact with a SQL
  * DB. no use hogging up a DB connection just to do HTTP IO.
+ * <p>
+ * TODO could the lazy connection DataSource proxy work here? Could I make
+ * it @Transactional and then use lazy datasources?
  */
 class DefaultAyrshareService implements AyrshareService {
 
@@ -62,14 +66,11 @@ class DefaultAyrshareService implements AyrshareService {
 	}
 
 	@Override
-	public Response post(String post, Platform[] platforms, Consumer<PostContext> contextConsumer) {
+	public Response post(String post, Platform[] platforms, Supplier<String> keySupplier,
+			Consumer<PostContext> contextConsumer) {
 		var currentMogul = this.mogulService.getCurrentMogul();
 		var mogulId = currentMogul.id();
-		var ayrshare = this.clients.computeIfAbsent(mogulId, _ -> {
-			var settingsForTenant = settings.getAllSettingsByCategory(mogulId, PLUGIN_NAME);
-			var key = settingsForTenant.get(API_KEY_SETTING_KEY).value();
-			return new Ayrshare(key);
-		});
+		var ayrshare = this.clients.computeIfAbsent(mogulId, _ -> new Ayrshare(keySupplier.get()));
 		return ayrshare.post(post, platforms, contextConsumer);
 	}
 
@@ -78,8 +79,12 @@ class DefaultAyrshareService implements AyrshareService {
 		return Platform.of(platformCode);
 	}
 
-	private boolean isNotAyrshare(String pluginName) {
-		return !StringUtils.hasText(pluginName) || !pluginName.equalsIgnoreCase(AyrshareConstants.PLUGIN_NAME);
+	private boolean isAyrshare(String pluginName) {
+		if (!StringUtils.hasText(pluginName))
+			return true;
+		var ayrsharePlugins = List.of(AyrshareConstants.PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME,
+				AyrshareConstants.BLOG_POST_AYRSHARE_PLUGIN_NAME);
+		return ayrsharePlugins.contains(pluginName);
 	}
 
 	@Override
@@ -139,7 +144,7 @@ class DefaultAyrshareService implements AyrshareService {
 
 	@EventListener
 	void onAyrsharePublicationCompletedEvent(PublicationCompletedEvent pce) {
-		if (this.isNotAyrshare(pce.publication().plugin()))
+		if (!this.isAyrshare(pce.publication().plugin()))
 			return;
 
 		var mogul = pce.publication().mogulId();

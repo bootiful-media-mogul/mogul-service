@@ -78,15 +78,22 @@ public interface PublisherPlugin<T extends Publishable> {
 
 		private final T payload;
 
+		private final Long mogulId;
+
 		private final List<Outcome> outcomes = new ArrayList<>();
 
-		PublishContext(T payload, Map<String, String> inputContext) {
+		PublishContext(Long mogulId, T payload, Map<String, String> inputContext) {
 			super(inputContext);
 			this.payload = payload;
+			this.mogulId = mogulId;
 		}
 
-		public static <T> PublishContext<T> of(T payload, Map<String, String> c) {
-			return new PublishContext<>(payload, c);
+		public Long mogulId() {
+			return this.mogulId;
+		}
+
+		public static <T> PublishContext<T> of(Long mogulId, T payload, Map<String, String> c) {
+			return new PublishContext<>(mogulId, payload, c);
 		}
 
 		public T payload() {

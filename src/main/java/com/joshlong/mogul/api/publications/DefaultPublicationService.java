@@ -126,12 +126,9 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 				.update(kh);
 			return JdbcUtils.getIdFromKeyHolder(kh).longValue();
 		}));
-
 		context.put(PUBLICATION_ID, Long.toString(publicationId));
-
 		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(this.getPublicationById(publicationId)));
-
-		var pc = PublisherPlugin.PublishContext.of(payload, context);
+		var pc = PublisherPlugin.PublishContext.of(mogulId, payload, context);
 		try {
 			plugin.publish(pc);
 		} //

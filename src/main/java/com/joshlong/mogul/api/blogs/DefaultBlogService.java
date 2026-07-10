@@ -4,9 +4,8 @@ import com.joshlong.mogul.api.ai.AiClient;
 import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
+import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -42,6 +41,26 @@ class DefaultBlogService implements BlogService {
 		this.singularity = singularity;
 		this.publisher = publisher;
 		this.compositionService = compositionService;
+	}
+
+	@ApplicationModuleListener
+	void mogulCreated(MogulCreatedEvent createdEvent) {
+		var mogul = createdEvent.mogul();
+
+		if (this.getAllBlogsByMogul(mogul.id()).isEmpty()) {
+			var podcast = this.createBlog(mogul.id(), mogul.givenName() + " " + mogul.familyName() + "'s Blog",
+					mogul.givenName() + " " + mogul.familyName() + "' first Blog!");
+			Assert.notNull(podcast,
+					"there should be a newly created podcast associated with the mogul [" + mogul + "]");
+		}
+	}
+
+	@Override
+	public Collection<Blog> getAllBlogsByMogul(Long mogulId) {
+		return this.db.sql("select * from blog b where b.mogul_id = ?")
+			.params(mogulId)
+			.query(this.blogRowMapper)
+			.list();
 	}
 
 	@Override

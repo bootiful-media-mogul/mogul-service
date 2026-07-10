@@ -17,7 +17,7 @@ import java.util.UUID;
 import static com.joshlong.mogul.api.blogs.publication.MarkdownFileBlogPostPublisherPlugin.PLUGIN_NAME;
 
 @Component(value = PLUGIN_NAME)
-class MarkdownFileBlogPostPublisherPlugin implements PublisherPlugin<Post> {
+class MarkdownFileBlogPostPublisherPlugin implements BlogPostPublisherPlugin {
 
 	static final String PLUGIN_NAME = "blogPostMarkdownFile";
 

@@ -660,7 +660,6 @@ class DefaultPodcastService implements PodcastService {
 				.sql("select * from podcast_episode pe where pe.id = any(? )") //
 				.params(new SqlArrayValue("bigint", (Object[]) idsArr))
 				.query(new EpisodeResultSetExtractor(managedFileService::getManagedFiles));
-
 			for (var episode : episodes) {
 				map.put(episode.id(), episode);
 			}

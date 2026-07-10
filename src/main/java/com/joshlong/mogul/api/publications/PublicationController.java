@@ -54,11 +54,11 @@ class PublicationController<T extends Publishable> {
 	boolean canPublish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
 			@Argument String plugin) {
 		var context = this.contextFromClient(contextJson);
-		var publishable = (T) this.publicationService.resolvePublishable(mogulService.getCurrentMogul().id(),
-				publishableId, publishableType);
+		var mogulId = mogulService.getCurrentMogul().id();
+		var publishable = (T) this.publicationService.resolvePublishable(mogulId, publishableId, publishableType);
 		Assert.state(this.plugins.containsKey(plugin), "the plugin named [" + plugin + "] does not exist!");
 		var resolvedPlugin = this.plugins.get(plugin);
-		var configuration = this.settings.getAllValuesByCategory(mogulService.getCurrentMogul().id(), plugin);
+		var configuration = this.settings.getAllValuesByCategory(mogulId, plugin);
 		var combinedContext = new HashMap<>(configuration);
 		for (var k : context.keySet()) {
 			if (!combinedContext.containsKey(k)) {
@@ -69,7 +69,7 @@ class PublicationController<T extends Publishable> {
 						+ "because it would override a user specified setting", k);
 			}
 		}
-		var pc = PublisherPlugin.PublishContext.of(publishable, combinedContext);
+		var pc = PublisherPlugin.PublishContext.of(mogulId, publishable, combinedContext);
 		return resolvedPlugin.canPublish(pc);
 	}
 
