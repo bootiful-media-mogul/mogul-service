@@ -50,20 +50,6 @@ class BlogPostFeedController {
 		return "/blogs/%s/posts/%s".formatted(post.blogId(), post.id());
 	}
 
-	@GetMapping(value = BLOG_FEED_URL)
-	String feed(@PathVariable long mogulId, @PathVariable long blogId)
-			throws IOException, ParserConfigurationException, TransformerException {
-		this.log.debug("producing the RSS feed for " + BLOG_FEED_URL + " for mogulId {} and blogId {}", mogulId,
-				blogId);
-		var mogul = this.mogulService.getMogulById(mogulId);
-		var blog = this.blogService.getBlogById(blogId);
-		Assert.state(blog.mogulId() == mogulId, "the blog's mogulId does not match the mogulId in the path");
-		var posts = this.blogService.getVisiblePostsForBlog(blogId);
-		var blogPostRowMapper = new BlogPostEntryMapper(blog, Map.of());
-		return this.feeds.createMogulAtomFeed(blog.title(), BLOG_FEED_URL, blog.created().toInstant(),
-				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);
-	}
-
 	private static Optional<URI> validRoot(Blog blog) {
 		if (!StringUtils.hasText(blog.rssUrl()))
 			return Optional.empty();
@@ -92,6 +78,20 @@ class BlogPostFeedController {
 		if (StringUtils.hasText(post.rssSlug()))
 			return rootedUrl(root.get(), post.rssSlug());
 		return rootedUrl(root.get(), computedPath(post));
+	}
+
+	@GetMapping(value = BLOG_FEED_URL)
+	String feed(@PathVariable long mogulId, @PathVariable long blogId)
+			throws IOException, ParserConfigurationException, TransformerException {
+		this.log.debug("producing the RSS feed for " + BLOG_FEED_URL + " for mogulId {} and blogId {}", mogulId,
+				blogId);
+		var mogul = this.mogulService.getMogulById(mogulId);
+		var blog = this.blogService.getBlogById(blogId);
+		Assert.state(blog.mogulId() == mogulId, "the blog's mogulId does not match the mogulId in the path");
+		var posts = this.blogService.getVisiblePostsForBlog(blogId);
+		var blogPostRowMapper = new BlogPostEntryMapper(blog, Map.of());
+		return this.feeds.createMogulAtomFeed(blog.title(), BLOG_FEED_URL, blog.created().toInstant(),
+				mogul.givenName() + " " + mogul.familyName(), longToUuid(blogId).toString(), posts, blogPostRowMapper);
 	}
 
 	private record BlogPostEntryMapper(Blog blog, Map<Long, String> urls) implements EntryMapper<Post> {

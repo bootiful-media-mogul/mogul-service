@@ -40,16 +40,6 @@ interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 @SuppressWarnings("unchecked")
 class ElasticSearchService extends AbstractDomainService<Searchable, SearchableResolver<?>> implements SearchService {
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-			var values = MemberCategory.values();
-			hints.reflection().registerType(TypeReference.of(javax.net.ssl.SSLParameters.class), values);
-		}
-
-	}
-
 	static final String INDEX_NAME = "searchables";
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -167,6 +157,16 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 		var transcribable = Objects.requireNonNull(repo).find(event.transcribableId());
 		Assert.notNull(transcribable, "the transcribable id " + event.transcribableId() + " was null!");
 		this.index(transcribable);
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			var values = MemberCategory.values();
+			hints.reflection().registerType(TypeReference.of(javax.net.ssl.SSLParameters.class), values);
+		}
+
 	}
 
 }

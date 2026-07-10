@@ -1,4 +1,3 @@
-
 @NullMarked
 package com.joshlong.mogul.api.search.elastic;
 

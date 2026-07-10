@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.blogs.publication;
 
-import com.joshlong.mogul.api.PublisherPlugin;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.blogs.Post;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;

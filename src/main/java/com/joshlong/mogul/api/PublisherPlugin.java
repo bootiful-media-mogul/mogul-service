@@ -88,12 +88,12 @@ public interface PublisherPlugin<T extends Publishable> {
 			this.mogulId = mogulId;
 		}
 
-		public Long mogulId() {
-			return this.mogulId;
-		}
-
 		public static <T> PublishContext<T> of(Long mogulId, T payload, Map<String, String> c) {
 			return new PublishContext<>(mogulId, payload, c);
+		}
+
+		public Long mogulId() {
+			return this.mogulId;
 		}
 
 		public T payload() {

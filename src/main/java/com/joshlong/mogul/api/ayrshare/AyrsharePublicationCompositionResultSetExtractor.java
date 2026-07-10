@@ -39,8 +39,8 @@ class AyrsharePublicationCompositionResultSetExtractor
 			apcToPublicationIds.put(apcId, rs.getLong("publication_id"));
 			ayrsharePublicationCompositions.add(this.getRootAyrsharePublicationCompositionAndNothingElse(rs));
 		}
-		var compositionsByIds = collectionOfCompositionsFunction.apply(apcToComposition.values());
-		var publicationsByIds = collectionOfPublicationsFunction.apply(apcToPublicationIds.values());
+		var compositionsByIds = this.collectionOfCompositionsFunction.apply(apcToComposition.values());
+		var publicationsByIds = this.collectionOfPublicationsFunction.apply(apcToPublicationIds.values());
 		var results = new LinkedHashSet<AyrsharePublicationComposition>();
 		for (var apc : ayrsharePublicationCompositions) {
 			var apcId = apc.id();

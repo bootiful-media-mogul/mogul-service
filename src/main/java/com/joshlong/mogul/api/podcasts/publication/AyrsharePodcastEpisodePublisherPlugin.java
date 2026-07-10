@@ -1,112 +1,25 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import com.joshlong.mogul.api.ayrshare.AyrshareConstants;
+import com.joshlong.mogul.api.ayrshare.AbstractAyrsharePublisherPlugin;
 import com.joshlong.mogul.api.ayrshare.AyrshareService;
-import com.joshlong.mogul.api.ayrshare.Platform;
-import com.joshlong.mogul.api.compositions.Attachment;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.settings.Settings;
-import com.joshlong.mogul.api.utils.UriUtils;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.*;
+import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME;
 import static com.joshlong.mogul.api.podcasts.publication.AyrsharePodcastEpisodePublisherPlugin.NAME;
 
-/**
- * This will show the user the possible social accounts they could target and, in
- * conjunction with the configuration in the settings page, allow the user to publish
- * messages. The client will need to send the content they want sent for each destination.
- * this plugin needs to dynamically show compositions for each of the final destinations.
- * We support varying lengths of message content, platform user references, media
- * attachments, etc.
- *
- * @author Josh Long
- */
-@Component(value = NAME)
-class AyrsharePodcastEpisodePublisherPlugin implements PodcastEpisodePublisherPlugin {
+@Component(NAME)
+class AyrsharePodcastEpisodePublisherPlugin extends AbstractAyrsharePublisherPlugin<Episode>
+		implements PodcastEpisodePublisherPlugin {
 
 	static final String NAME = PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME;
 
-	private final AyrshareService ayrshare;
-
-	private final Settings settings;
-
-	private final MogulService mogulService;
-
-	private final ManagedFileService managedFileService;
-
 	AyrsharePodcastEpisodePublisherPlugin(AyrshareService ayrshare, Settings settings, MogulService mogulService,
 			ManagedFileService managedFileService) {
-		this.ayrshare = ayrshare;
-		this.settings = settings;
-		this.mogulService = mogulService;
-		this.managedFileService = managedFileService;
-	}
-
-	@Override
-	public String name() {
-		return NAME;
-	}
-
-	@Override
-	public Set<PublisherSetting> pluginSettings() {
-		return Set.of(new PublisherSetting(true, API_KEY_SETTING_KEY),
-				new PublisherSetting(false, TWITTER_OAUTH1_API_KEY),
-				new PublisherSetting(false, TWITTER_OAUTH1_API_SECRET));
-	}
-
-	@Override
-	public void publish(PublishContext<Episode> context) {
-		var mogul = this.mogulService.getCurrentMogul();
-		var drafts = this.ayrshare.getDraftAyrsharePublicationCompositionsFor(mogul.id());
-		var platformsToCompositions = new HashMap<String, Collection<Attachment>>();
-		for (var c : drafts) {
-			platformsToCompositions.put(c.platform().platformCode(), c.composition().attachments());
-		}
-		for (var platform : this.ayrshare.platforms()) {
-			var platformKey = platform.platformCode().toLowerCase();
-			var pluginExecutionContext = context.context();
-			if (pluginExecutionContext.containsKey(platformKey)) {
-				var post = pluginExecutionContext.get(platformKey);
-				var response = this.ayrshare.post(post, new Platform[] { platform }, () -> {
-					var settingsForTenant = settings.getAllSettingsByCategory(context.mogulId(), NAME);
-					return settingsForTenant.get(API_KEY_SETTING_KEY).value();
-				}, postContext -> {
-					var media = platformsToCompositions.getOrDefault(platform.platformCode(), Set.of());
-					var uris = media //
-						.stream() //
-						.map(attachment -> {
-							var managedFile = attachment.managedFile();
-							return UriUtils.uri(managedFileService.getPublicUrlForManagedFile(managedFile.id()));
-						}) //
-						.toArray(URI[]::new);
-					postContext.media(uris);
-					if (platform.equals(Platform.X)) {
-						var customHeaders = Map.of( //
-								"X-Twitter-OAuth1-Api-Key", pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), //
-								"X-Twitter-OAuth1-Api-Secret", pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET) //
-						);
-						postContext.customHeaders(customHeaders);
-					}
-				});
-				response.postIds()
-					.forEach((platformObj, posted) -> context.success(platformObj.platformCode().toLowerCase(),
-							posted.postUrl()));
-			}
-		}
-	}
-
-	@Override
-	public boolean unpublish(UnpublishContext<Episode> context) {
-		return false;
+		super(NAME, ayrshare, settings, mogulService, managedFileService);
 	}
 
 }

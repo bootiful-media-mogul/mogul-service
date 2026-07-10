@@ -22,9 +22,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.API_KEY_SETTING_KEY;
-import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME;
-
 /**
  * warning! do <em>not</em> make this class {@link Transactional transactional}, as a lot
  * of the implementations involve network calls and stuff that doesn't interact with a SQL
