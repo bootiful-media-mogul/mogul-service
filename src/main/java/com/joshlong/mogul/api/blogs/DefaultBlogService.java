@@ -7,12 +7,14 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -35,24 +37,47 @@ class DefaultBlogService implements BlogService {
 
 	private final AiClient singularity;
 
+	private final TransactionTemplate transactionTemplate;
+
 	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
-			CompositionService compositionService) {
+			CompositionService compositionService, TransactionTemplate transactionTemplate) {
 		this.db = db;
 		this.singularity = singularity;
 		this.publisher = publisher;
 		this.compositionService = compositionService;
+		this.transactionTemplate = transactionTemplate;
 	}
 
 	@ApplicationModuleListener
 	void mogulCreated(MogulCreatedEvent createdEvent) {
 		var mogul = createdEvent.mogul();
-
 		if (this.getAllBlogsByMogul(mogul.id()).isEmpty()) {
 			var podcast = this.createBlog(mogul.id(), mogul.givenName() + " " + mogul.familyName() + "'s Blog",
 					mogul.givenName() + " " + mogul.familyName() + "' first Blog!");
 			Assert.notNull(podcast,
 					"there should be a newly created podcast associated with the mogul [" + mogul + "]");
 		}
+	}
+
+	/**
+	 * creates a {@link Post} in response to a {@link PostCreationRequestedEvent} (e.g.
+	 * from the podcast-episode publisher plugin). runs synchronously inside its own
+	 * transaction so that (a) {@link #createPost}'s own {@code PostCreatedEvent} fires on
+	 * commit and (b) the created post is handed back to the caller via
+	 * {@link PostCreationRequestedEvent#onCreated()} before {@code publishEvent} returns,
+	 * letting the caller record the post's path as a publication outcome.
+	 */
+	@EventListener
+	void onPostCreationRequested(PostCreationRequestedEvent e) {
+		this.transactionTemplate.execute(status -> {
+			var blog = this.getBlogById(e.blogId());
+			Assert.notNull(blog, "the blog [" + e.blogId() + "] must exist");
+			Assert.isTrue(blog.mogulId().equals(e.mogulId()),
+					"the blog [" + e.blogId() + "] must belong to the requesting mogul [" + e.mogulId() + "]");
+			var post = this.createPost(e.blogId(), new Date(), e.title(), e.content(), e.summary());
+			e.onCreated().accept(post);
+			return post;
+		});
 	}
 
 	@Override

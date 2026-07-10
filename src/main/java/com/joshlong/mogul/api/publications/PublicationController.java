@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
@@ -75,7 +76,8 @@ class PublicationController<T extends Publishable> {
 
 	@MutationMapping
 	boolean publish(@Argument Long publishableId, @Argument String publishableType, @Argument String contextJson,
-			@Argument String plugin) {
+			@Argument String plugin,
+			@ContextValue(name = PublicationService.BASE_URL, required = false) String baseUrl) {
 
 		this.log.debug(
 				"going to publish the publication with id # {} and type # {} and context JSON :: {} :: and plugin named {}",
@@ -92,6 +94,10 @@ class PublicationController<T extends Publishable> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.mogulService.assertAuthorizedMogul(currentMogulId);
 			var contextAndSettings = this.contextFromClient(contextJson);
+			// captured on the request thread (from the gateway header) and carried across
+			// the async boundary so plugins can build absolute links back into the app.
+			if (StringUtils.hasText(baseUrl))
+				contextAndSettings.put(PublicationService.BASE_URL, baseUrl);
 			this.publicationService.publish(currentMogulId, publishable, contextAndSettings, publisherPlugin);
 		};
 		this.executor.execute(runnable);

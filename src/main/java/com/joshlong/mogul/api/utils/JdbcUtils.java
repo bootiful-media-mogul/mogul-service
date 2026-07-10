@@ -22,8 +22,11 @@ public abstract class JdbcUtils {
 				return null;
 			return uri.toURL();
 		} //
-		catch (MalformedURLException e) {
-			throw new RuntimeException(e);
+		catch (MalformedURLException | IllegalArgumentException e) {
+			// a stored value that isn't an absolute URL (e.g. a relative path) must not
+			// blow up reading the row - degrade to a null URL instead. URI#toURL throws
+			// IllegalArgumentException when the URI isn't absolute.
+			return null;
 		}
 	}
 

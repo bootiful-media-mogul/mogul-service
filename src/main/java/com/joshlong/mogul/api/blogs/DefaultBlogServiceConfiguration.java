@@ -6,14 +6,15 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 class DefaultBlogServiceConfiguration {
 
 	@Bean
 	DefaultBlogService defaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
-			CompositionService compositionService) {
-		return new DefaultBlogService(db, singularity, publisher, compositionService);
+			CompositionService compositionService, TransactionTemplate transactionTemplate) {
+		return new DefaultBlogService(db, singularity, publisher, compositionService, transactionTemplate);
 	}
 
 }

@@ -47,7 +47,11 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 			var proxyFactoryBean = new ProxyFactoryBean();
 			proxyFactoryBean.addAdvice((MethodInterceptor) invocation -> {
 				var publishMethod = invocation.getMethod().getName().equalsIgnoreCase("publish");
-				if (publishMethod) {
+				// only plugins that publish the episode's audio need the lazy (and
+				// potentially long) production step; plugins like the blog-post one opt
+				// out
+				// via requiresProducedAudio() and publish straight through.
+				if (publishMethod && plugin.requiresProducedAudio()) {
 
 					var beanFactory = beanFactoryAtomicReference.get();
 
