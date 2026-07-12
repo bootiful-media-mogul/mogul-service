@@ -26,6 +26,8 @@ class PostSearchableResolver extends AbstractSearchableResolver<Post> {
 		if (searchableIds == null || searchableIds.isEmpty())
 			return Collections.emptyList();
 		var postsMap = this.blogService.getPostsByIds(searchableIds);
+		if (postsMap.isEmpty())
+			return Collections.emptyList();
 		var searchableResults = new ArrayList<SearchableResult<Post>>();
 		Assert.state(!postsMap.isEmpty(), "Posts must not be empty");
 		for (var post : postsMap.values()) {

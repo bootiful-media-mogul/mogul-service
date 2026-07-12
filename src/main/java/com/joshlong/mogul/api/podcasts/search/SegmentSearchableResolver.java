@@ -34,7 +34,7 @@ class SegmentSearchableResolver extends AbstractSearchableResolver<Segment> {
 	@Override
 	public List<SearchableResult<Segment>> results(List<Long> searchableIds) {
 		if (searchableIds.isEmpty())
-			return Collections.emptyList();
+			return new ArrayList<>();
 
 		var segments = this.podcastService.getPodcastEpisodeSegmentsByIds(searchableIds);
 		var episodeIds = new HashSet<Long>();
