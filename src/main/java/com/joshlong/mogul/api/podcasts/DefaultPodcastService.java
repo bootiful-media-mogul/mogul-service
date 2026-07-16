@@ -134,6 +134,11 @@ class DefaultPodcastService implements PodcastService {
 					.params(new Date(), episodeId)
 					.update();
 				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId);
+				// todo
+				this.db.sql("update podcast_episode_segment set duration =  ? where id = ? ")
+					.params(normalizedEvent.context().getOrDefault("durationInMilliseconds", 0L), segmentId)
+					.update();
+
 			}
 			this.refreshPodcastEpisodeCompleteness(episodeId);
 			this.publisher.publishEvent(new PodcastEpisodeUpdatedEvent(this.getPodcastEpisodeById(episodeId)));
@@ -717,7 +722,7 @@ class DefaultPodcastService implements PodcastService {
 						"id", rs.getLong("id"), "segment_audio_managed_file_id", segmentAudioManagedFileId,
 						"produced_segment_audio_managed_file_id", segmentAudioManagedFileId1, "cross_fade_duration",
 						rs.getLong("cross_fade_duration"), "name", rs.getString("name"), "sequence_number",
-						rs.getInt("sequence_number")));
+						rs.getInt("sequence_number"), "duration", rs.getLong("duration")));
 			}
 
 			var managedFileMap = managedFileFunction.apply(managedFileIds);
@@ -726,8 +731,8 @@ class DefaultPodcastService implements PodcastService {
 				result.add(new Segment((Long) m.get("podcast_episode_id"), (Long) m.get("id"),
 						managedFileMap.get((Long) m.get("segment_audio_managed_file_id")),
 						managedFileMap.get((Long) m.get("produced_segment_audio_managed_file_id")),
-						(Long) m.get("cross_fade_duration"), (String) m.get("name"),
-						(Integer) m.get("sequence_number")));
+						(Long) m.get("cross_fade_duration"), (String) m.get("name"), (Integer) m.get("sequence_number"),
+						(Long) m.get("duration")));
 			}
 			return result;
 		}

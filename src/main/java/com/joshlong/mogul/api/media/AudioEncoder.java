@@ -5,17 +5,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.FileCopyUtils;
 
-import java.io.File;
+import java.io.*;
 
 // todo refactor so that this type can be package private.
 @Component
-public class AudioEncoder implements Encoder {
+public class AudioEncoder implements Encoder<AudioEncodedFile> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Override
-	public File encode(File input) {
+	public AudioEncodedFile encode(File input) {
 		try {
 			var inputAbsolutePath = input.getAbsolutePath();
 			this.log.debug("absolute path of audio file to encode: {}", inputAbsolutePath);
@@ -33,10 +34,24 @@ public class AudioEncoder implements Encoder {
 						"libmp3lame", "-b:a", "192k", mp3AbsolutePath })
 				.waitFor();
 			Assert.state(exit == 0, "the ffmpeg command ran successfully");
-			return mp3;
+			var durationMs = this.durationInMilliseconds(mp3AbsolutePath);
+			return new AudioEncodedFile(mp3, durationMs);
 		} //
 		catch (Exception e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	private float durationInMilliseconds(String file) throws Exception {
+		var pb = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+				file)
+			.redirectErrorStream(true)
+			.start();
+		var exitCode = pb.waitFor();
+		Assert.state(exitCode == 0, "ffprobe failed");
+		try (var i = new BufferedReader(new InputStreamReader(pb.getInputStream())); var o = new StringWriter()) {
+			FileCopyUtils.copy(i, o);
+			return Float.parseFloat(o.toString()) * 1000;// milliseconds
 		}
 	}
 

@@ -199,6 +199,17 @@ class PodcastController {
 		NotificationEvents.notify(ne);
 	}
 
+	@SchemaMapping
+	float duration(Episode episode) {
+		// IO.println("duration for episode " + episode.id());
+		var segments = this.podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
+		var total = 0f;
+		for (var segment : segments) {
+			total += segment.duration();
+		}
+		return total;
+	}
+
 	@ApplicationModuleListener
 	void broadcastPodcastEpisodeCompletionEventToClients(PodcastEpisodeCompletedEvent podcastEpisodeCompletedEvent) {
 		var episode = podcastEpisodeCompletedEvent.episode();

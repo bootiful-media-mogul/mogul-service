@@ -15,14 +15,14 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Component
-public class ImageEncoder implements Encoder {
+public class ImageEncoder implements Encoder<ImageEncodedFile> {
 
 	public final static DataSize MAX_SIZE = DataSize.ofMegabytes(1);
 
 	private final Logger log = LoggerFactory.getLogger(ImageEncoder.class);
 
 	@Override
-	public File encode(File path) {
+	public ImageEncodedFile encode(File path) {
 		try {
 			var output = isValidImage(path) ? Files
 				.copy(path.toPath(), new File(path.getParentFile(), "copy-" + UUID.randomUUID() + ".jpg").toPath())
@@ -31,7 +31,7 @@ public class ImageEncoder implements Encoder {
 					"the stdout image [" + path.getAbsolutePath() + "] must be of the right file size");
 			log.debug("in: {}{}out: {}{}", path.getAbsolutePath(), System.lineSeparator(), output.getAbsolutePath(),
 					System.lineSeparator());
-			return output;
+			return new ImageEncodedFile(output);
 		} //
 		catch (Throwable throwable) {
 			this.log.error(throwable.getMessage(), throwable);

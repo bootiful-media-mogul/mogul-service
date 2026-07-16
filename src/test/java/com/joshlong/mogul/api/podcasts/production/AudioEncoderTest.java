@@ -22,11 +22,15 @@ class AudioEncoderTest {
 		try {
 			var input = new ClassPathResource("/samples/input.wav");
 			var wav = Files.createTempFile("input", ".wav").toFile();
-			FileCopyUtils.copy(input.getInputStream(), new FileOutputStream(wav));
-			Assert.state(wav.exists(), "the .wav file exists");
-			output = encoder.encode(wav);
-			Assert.state(output.length() < wav.length(), "the new file should be a _lot_ smaller than the original!");
-			Assert.state(output.getName().endsWith(".mp3"), "the new file should be an .mp3");
+			try (var i = input.getInputStream(); var o = new FileOutputStream(wav)) {
+				FileCopyUtils.copy(i, o);
+				Assert.state(wav.exists(), "the .wav file exists");
+				var ef = encoder.encode(wav);
+				output = ef.file();
+				Assert.state(output.length() < wav.length(),
+						"the new file should be a _lot_ smaller than the original!");
+				Assert.state(output.getName().endsWith(".mp3"), "the new file should be an .mp3");
+			}
 		}
 		finally {
 			if (null != output)

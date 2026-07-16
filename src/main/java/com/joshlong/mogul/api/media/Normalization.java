@@ -13,7 +13,9 @@ import org.springframework.util.FileCopyUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
@@ -33,28 +35,33 @@ class Normalization {
 		this.managedFileService = managedFileService;
 	}
 
-	void normalize(ManagedFile input, ManagedFile output) throws Exception {
-
+	Map<String, Object> normalize(ManagedFile input, ManagedFile output) throws Exception {
+		var ctx = new HashMap<String, Object>();
 		if (!input.written()) {
 			log.debug("the input file {} has not been written yet, so we can't normalize it", input.id());
-			return;
+			return Map.of();
 		}
-
 		var imgMediaType = CommonMediaTypes.IMAGE;
 		var parseMediaType = MediaType.parseMediaType(input.contentType());
 		var isImage = imgMediaType.isCompatibleWith(parseMediaType);
 		var ext = isImage ? CommonMediaTypes.JPG : CommonMediaTypes.MP3;
-		var encodingFunction = isImage ? (Function<File, File>) this.imageEncoder::encode
-				: (Function<File, File>) this.audioEncoder::encode;
+		var encodingFunction = isImage ? (Function<File, ImageEncodedFile>) this.imageEncoder::encode
+				: (Function<File, AudioEncodedFile>) this.audioEncoder::encode;
 		var filesToDelete = new HashSet<File>();
 		try {
 			var localFile = input.uniqueLocalFile();
 			filesToDelete.add(localFile);
 			var resource = this.managedFileService.read(input.id());
-			FileCopyUtils.copy(resource.getInputStream(), new FileOutputStream(localFile));
-			var newFile = encodingFunction.apply(localFile);
-			filesToDelete.add(newFile);
-			this.managedFileService.write(output.id(), output.filename(), ext, new FileSystemResource(newFile));
+			try (var i = resource.getInputStream(); var o = new FileOutputStream(localFile)) {
+				FileCopyUtils.copy(i, o);
+				var encodedFile = encodingFunction.apply(localFile);
+				var file = encodedFile.file();
+				filesToDelete.add(file);
+				if (encodedFile instanceof AudioEncodedFile audioEncodedFile) {
+					ctx.put("durationInMilliseconds", audioEncodedFile.millisecondsDuration());
+				}
+				this.managedFileService.write(output.id(), output.filename(), ext, new FileSystemResource(file));
+			}
 		} //
 		finally {
 			for (var f : filesToDelete) {
@@ -64,6 +71,7 @@ class Normalization {
 				}
 			}
 		}
+		return ctx;
 	}
 
 }

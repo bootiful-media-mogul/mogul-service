@@ -15,7 +15,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
  * @param order the relative order of the segment
  */
 public record Segment(Long episodeId, Long id, ManagedFile audio, ManagedFile producedAudio, long crossFadeDuration,
-		String name, int order) implements Transcribable, Searchable {
+		String name, int order, long duration) implements Transcribable, Searchable {
 
 	@Override
 	public Long transcribableId() {

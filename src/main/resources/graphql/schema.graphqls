@@ -86,16 +86,17 @@ type Episode {
     id : Int
     titleComposition: Composition
     descriptionComposition: Composition
-    #    availablePlugins :[String]
+    # availablePlugins :[String]
     title: String
     description: String
-    #    valid: Boolean
+    # valid: Boolean
     graphic: ManagedFile
     podcastId: Int
     producedAudio: ManagedFile
     complete: Boolean
     created: DateTime
     segments : [Segment]
+    duration: Float
 }
 
 type Segment {
@@ -107,6 +108,7 @@ type Segment {
     order : Int
     crossFadeDuration : Int
     transcript: Transcript
+    duration: Float
 }
 
 type Podcast {

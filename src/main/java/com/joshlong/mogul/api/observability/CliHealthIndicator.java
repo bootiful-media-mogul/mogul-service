@@ -36,14 +36,17 @@ class CliHealthIndicator implements HealthIndicator {
 	private Health computeHealth() {
 		try {
 			var process = new ProcessBuilder().command(this.command).start();
-			var output = FileCopyUtils.copyToString(new InputStreamReader(process.getInputStream()));
-			var error = FileCopyUtils.copyToString(new InputStreamReader(process.getErrorStream()));
-			var exit = process.waitFor();
-			var health = exit == 0 ? Health.up() : Health.down();
-			return health //
-				.withDetail(this.name + "-output", output) //
-				.withDetail(this.name + "error", error) //
-				.build();
+			try (var inStream = new InputStreamReader(process.getInputStream());
+					var errorStream = new InputStreamReader(process.getErrorStream());) {
+				var output = FileCopyUtils.copyToString(inStream);
+				var error = FileCopyUtils.copyToString(errorStream);
+				var exit = process.waitFor();
+				var health = exit == 0 ? Health.up() : Health.down();
+				return health //
+					.withDetail(this.name + "-output", output) //
+					.withDetail(this.name + "error", error) //
+					.build();
+			}
 		} //
 		catch (Throwable throwable) {
 			this.log.warn("could not capture the health for the command {}", Arrays.toString(this.command), throwable);

@@ -12,6 +12,8 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * handles normalizing media like audio and images. delegates, ultimately, to
  * {@link Normalization}. Publishes a {@link MediaNormalizedEvent mediaNormalizedEvent} on
@@ -35,17 +37,20 @@ class MediaServiceConfiguration {
 	}
 
 	@Bean
-	IntegrationFlow mediaNormalizationIntegrationFlow( //
-			@MediaNormalizationMessageChannel MessageChannel inbound, //
+	IntegrationFlow mediaNormalizationIntegrationFlow(@MediaNormalizationMessageChannel MessageChannel inbound, //
 			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate, //
-			Normalization normalization) { //
+			Normalization normalization //
+	) { //
 		return IntegrationFlow //
 			.from(inbound) //
 			.handle(MediaNormalizationRequest.class, (payload, _) -> { //
 				try {
-					normalization.normalize(payload.in(), payload.out());
+					var normalizedResult = normalization.normalize(payload.in(), payload.out());
+					var map = new ConcurrentHashMap<String, Object>();
+					map.putAll(normalizedResult);
+					map.putAll(payload.context());
 					transactionTemplate.execute(_ -> {
-						var event = new MediaNormalizedEvent(payload.in(), payload.out(), payload.context());
+						var event = new MediaNormalizedEvent(payload.in(), payload.out(), map);
 						publisher.publishEvent(event);
 						return null;
 					});
@@ -56,7 +61,6 @@ class MediaServiceConfiguration {
 				}
 				return null;
 			}) //
-
 			.get();
 	}
 
