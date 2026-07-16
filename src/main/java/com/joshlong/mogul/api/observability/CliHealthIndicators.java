@@ -7,6 +7,11 @@ import org.springframework.context.annotation.Configuration;
 class CliHealthIndicators {
 
 	@Bean
+	CliHealthIndicator ffprobe() {
+		return new CliHealthIndicator(new String[] { "ffprobe", "-version" }, "ffprobe");
+	}
+
+	@Bean
 	CliHealthIndicator magick() {
 		return new CliHealthIndicator(new String[] { "magick", "--version" }, "imagemagick");
 	}

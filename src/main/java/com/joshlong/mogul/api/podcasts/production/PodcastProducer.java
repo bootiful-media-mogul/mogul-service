@@ -77,7 +77,8 @@ public class PodcastProducer {
 			var producedWav = this.produce(workspace, segmentFiles.toArray(new File[0]));
 			var producedMp3 = this.audioEncoder.encode(producedWav);
 			var producedAudio = episode.producedAudio();
-			this.managedFileService.write(producedAudio.id(), producedMp3.getName(), CommonMediaTypes.MP3, producedMp3);
+			this.managedFileService.write(producedAudio.id(), producedMp3.file().getName(), CommonMediaTypes.MP3,
+					producedMp3.file());
 			this.log.debug("writing [{}]", episode.id());
 			this.podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
 			this.log.debug("wrote [{}]", episode.id());
