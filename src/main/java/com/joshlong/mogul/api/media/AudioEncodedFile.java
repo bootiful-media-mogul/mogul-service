@@ -7,14 +7,14 @@ public class AudioEncodedFile implements EncodedFile {
 
 	private final File file;
 
-	private final long millisecondsDuration;
+	private final float millisecondsDuration;
 
-	public AudioEncodedFile(File file, long millisecondsDuration) {
+	public AudioEncodedFile(File file, float millisecondsDuration) {
 		this.millisecondsDuration = millisecondsDuration;
 		this.file = file;
 	}
 
-	public long millisecondsDuration() {
+	public float millisecondsDuration() {
 		return this.millisecondsDuration;
 	}
 

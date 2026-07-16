@@ -5,11 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.FileCopyUtils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 
 // todo refactor so that this type can be package private.
 @Component
@@ -36,7 +34,7 @@ public class AudioEncoder implements Encoder<AudioEncodedFile> {
 						"libmp3lame", "-b:a", "192k", mp3AbsolutePath })
 				.waitFor();
 			Assert.state(exit == 0, "the ffmpeg command ran successfully");
-			var durationMs = this.getMp3DurationMs(mp3AbsolutePath);
+			var durationMs = this.durationInMilliseconds(mp3AbsolutePath);
 			return new AudioEncodedFile(mp3, durationMs);
 		} //
 		catch (Exception e) {
@@ -44,35 +42,16 @@ public class AudioEncoder implements Encoder<AudioEncodedFile> {
 		}
 	}
 
-	private long getMp3DurationMs(String filePath) throws IOException, InterruptedException {
-		var pb = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
-				"default=noprint_wrappers=1:nokey=1:csv_strict=1", filePath)
-			.redirectErrorStream(true);
-
-		var process = pb.start();
-		// Read the output
-		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-			var output = reader.readLine();
-			reader.close();
-
-			// Wait for process to complete
-			var exitCode = process.waitFor();
-
-			if (exitCode != 0) {
-				throw new IOException("ffprobe command failed with exit code: " + exitCode);
-			}
-
-			if (output == null || output.trim().isEmpty()) {
-				throw new IOException("No duration output from ffprobe");
-			}
-			// Parse the duration (in seconds) and convert to milliseconds
-			try {
-				var durationSeconds = Double.parseDouble(output.trim());
-				return Math.round(durationSeconds * 1000);
-			}
-			catch (NumberFormatException e) {
-				throw new IOException("Failed to parse duration: " + output, e);
-			}
+	private float durationInMilliseconds(String file) throws Exception {
+		var pb = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+				file)
+			.redirectErrorStream(true)
+			.start();
+		var exitCode = pb.waitFor();
+		Assert.state(exitCode == 0, "ffprobe failed");
+		try (var i = new BufferedReader(new InputStreamReader(pb.getInputStream())); var o = new StringWriter()) {
+			FileCopyUtils.copy(i, o);
+			return Float.parseFloat(o.toString()) * 1000;// milliseconds
 		}
 	}
 
