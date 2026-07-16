@@ -86,10 +86,10 @@ type Episode {
     id : Int
     titleComposition: Composition
     descriptionComposition: Composition
-    #    availablePlugins :[String]
+    # availablePlugins :[String]
     title: String
     description: String
-    #    valid: Boolean
+    # valid: Boolean
     graphic: ManagedFile
     podcastId: Int
     producedAudio: ManagedFile
