@@ -96,6 +96,7 @@ type Episode {
     complete: Boolean
     created: DateTime
     segments : [Segment]
+    duration: Float
 }
 
 type Segment {
@@ -107,6 +108,7 @@ type Segment {
     order : Int
     crossFadeDuration : Int
     transcript: Transcript
+    duration: Float
 }
 
 type Podcast {
