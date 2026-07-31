@@ -7,7 +7,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 
 // todo refactor so that this type can be package private.
 @Component
@@ -42,17 +45,24 @@ public class AudioEncoder implements Encoder<AudioEncodedFile> {
 		}
 	}
 
-	private float durationInMilliseconds(String file) throws Exception {
-		var pb = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
-				file)
-			.redirectErrorStream(true)
-			.start();
-		var exitCode = pb.waitFor();
-		Assert.state(exitCode == 0, "ffprobe failed");
-		try (var i = new BufferedReader(new InputStreamReader(pb.getInputStream())); var o = new StringWriter()) {
-			FileCopyUtils.copy(i, o);
-			return Float.parseFloat(o.toString()) * 1000;// milliseconds
+	// apparently this can fail. so we will wrap it in excessive exception handling.
+	private float durationInMilliseconds(String file) {
+		try {
+			var pb = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+					file)
+				.redirectErrorStream(true)
+				.start();
+			var exitCode = pb.waitFor();
+			Assert.state(exitCode == 0, "ffprobe failed");
+			try (var i = new BufferedReader(new InputStreamReader(pb.getInputStream())); var o = new StringWriter()) {
+				FileCopyUtils.copy(i, o);
+				return Float.parseFloat(o.toString()) * 1000;// milliseconds
+			}
+		} //
+		catch (Exception e) {
+			this.log.warn("couldn't compute duration for {}", file);
 		}
+		return 0;
 	}
 
 }
