@@ -8,6 +8,7 @@ import com.joshlong.mogul.api.search.SearchService;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +25,7 @@ class NotesIndexerJob implements Job {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	NotesIndexerJob(NoteService noteService, SearchService searchService, JdbcClient db) {
+	NotesIndexerJob(NoteService noteService, @Lazy SearchService searchService, JdbcClient db) {
 		this.noteService = noteService;
 		this.searchService = searchService;
 		this.db = db;

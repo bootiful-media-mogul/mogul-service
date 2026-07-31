@@ -4,6 +4,7 @@ import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.SearchableResult;
 import com.joshlong.mogul.api.utils.DateUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
@@ -18,7 +19,7 @@ class SearchController {
 
 	private final SearchService searchService;
 
-	SearchController(SearchService searchService) {
+	SearchController(@Lazy SearchService searchService) {
 		this.searchService = searchService;
 	}
 

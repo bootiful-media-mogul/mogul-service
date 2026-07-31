@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.ayrshare;
 
 import com.joshlong.mogul.api.mogul.MogulService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
@@ -14,7 +15,7 @@ class AyrshareController {
 
 	private final MogulService mogulService;
 
-	AyrshareController(AyrshareService ayrshareService, MogulService mogulService) {
+	AyrshareController(@Lazy AyrshareService ayrshareService, @Lazy MogulService mogulService) {
 		this.ayrshareService = ayrshareService;
 		this.mogulService = mogulService;
 	}

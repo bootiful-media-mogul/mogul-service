@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -39,8 +40,8 @@ class DefaultBlogService implements BlogService {
 
 	private final TransactionTemplate transactionTemplate;
 
-	DefaultBlogService(JdbcClient db, AiClient singularity, ApplicationEventPublisher publisher,
-			CompositionService compositionService, TransactionTemplate transactionTemplate) {
+	DefaultBlogService(@Lazy JdbcClient db, @Lazy AiClient singularity, @Lazy ApplicationEventPublisher publisher,
+			@Lazy CompositionService compositionService, @Lazy TransactionTemplate transactionTemplate) {
 		this.db = db;
 		this.singularity = singularity;
 		this.publisher = publisher;

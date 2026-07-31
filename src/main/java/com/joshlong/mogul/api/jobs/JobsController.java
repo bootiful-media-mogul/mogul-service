@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-@Controller
+//@Controller
 class JobsController {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());

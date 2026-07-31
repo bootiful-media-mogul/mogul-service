@@ -10,6 +10,7 @@ import com.joshlong.mogul.api.search.SearchService;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -31,7 +32,7 @@ class PodcastIndexerJob implements Job {
 
 	private final SearchService searchService;
 
-	PodcastIndexerJob(PodcastService podcastService, SearchService searchService) {
+	PodcastIndexerJob(PodcastService podcastService, @Lazy SearchService searchService) {
 		this.podcastService = podcastService;
 		this.searchService = searchService;
 	}

@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -26,7 +27,7 @@ class BlogController {
 
 	private final Logger log = LoggerFactory.getLogger(BlogController.class);
 
-	BlogController(BlogService service, MogulService mogulService) {
+	BlogController(@Lazy BlogService service, @Lazy MogulService mogulService) {
 		this.service = service;
 		this.mogulService = mogulService;
 	}

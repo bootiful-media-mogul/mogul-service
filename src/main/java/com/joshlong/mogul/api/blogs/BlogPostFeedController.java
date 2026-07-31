@@ -6,6 +6,7 @@ import com.joshlong.mogul.api.feeds.Feeds;
 import com.joshlong.mogul.api.mogul.MogulService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@Controller
+//@Controller
 @ResponseBody
 class BlogPostFeedController {
 
@@ -36,7 +37,7 @@ class BlogPostFeedController {
 
 	private final BlogService blogService;
 
-	BlogPostFeedController(Feeds feeds, MogulService mogulService, BlogService blogService) {
+	BlogPostFeedController(Feeds feeds, @Lazy MogulService mogulService, @Lazy BlogService blogService) {
 		this.feeds = feeds;
 		this.mogulService = mogulService;
 		this.blogService = blogService;

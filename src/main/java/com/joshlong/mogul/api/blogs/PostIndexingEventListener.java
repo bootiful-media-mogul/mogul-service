@@ -3,6 +3,7 @@ package com.joshlong.mogul.api.blogs;
 import com.joshlong.mogul.api.search.SearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ class PostIndexingEventListener {
 
 	private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-	PostIndexingEventListener(SearchService searchService) {
+	PostIndexingEventListener(@Lazy SearchService searchService) {
 		this.searchService = searchService;
 	}
 

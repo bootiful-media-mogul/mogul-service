@@ -4,6 +4,7 @@ import com.joshlong.mogul.api.Note;
 import com.joshlong.mogul.api.search.SearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,7 @@ class NoteIndexingListener {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	NoteIndexingListener(SearchService searchService) {
+	NoteIndexingListener(@Lazy SearchService searchService) {
 		this.searchService = searchService;
 	}
 
