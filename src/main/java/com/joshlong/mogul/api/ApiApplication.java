@@ -32,7 +32,7 @@ import java.util.EventObject;
 @SpringBootApplication
 public class ApiApplication {
 
-	static void main(String[] args) {
+	public static void main(String[] args) {
 		// SpringApplication.run(ApiApplication.class, args);
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
