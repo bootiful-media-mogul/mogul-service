@@ -15,6 +15,7 @@ import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
 import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -31,6 +32,7 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.util.*;
 
+@Lazy
 interface DocumentRepository extends ElasticsearchRepository<Document, String> {
 
 }
@@ -48,8 +50,8 @@ class ElasticSearchService extends AbstractDomainService<Searchable, SearchableR
 
 	private final ElasticsearchOperations ops;
 
-	ElasticSearchService(Collection<SearchableResolver<?>> resolvers, DocumentRepository documentRepository,
-			ElasticsearchOperations ops) {
+	ElasticSearchService(Collection<SearchableResolver<?>> resolvers, @Lazy DocumentRepository documentRepository,
+			@Lazy ElasticsearchOperations ops) {
 		super(resolvers);
 		this.documentRepository = documentRepository;
 		this.ops = ops;

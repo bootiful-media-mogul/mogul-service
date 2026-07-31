@@ -38,20 +38,17 @@ class DefaultAyrshareService implements AyrshareService {
 
 	private final Map<Long, Ayrshare> clients;
 
-	private final Settings settings;
-
 	private final MogulService mogulService;
 
 	private final PublicationService publicationService;
 
 	private final Platform[] platforms;
 
-	DefaultAyrshareService(MogulService mogulService, JdbcClient db, Settings settings, int maxCache,
+	DefaultAyrshareService(MogulService mogulService, JdbcClient db, int maxCache,
 			CompositionService compositionService, PublicationService publicationService) {
 		this.mogulService = mogulService;
 		this.db = db;
 		this.compositionService = compositionService;
-		this.settings = settings;
 		this.clients = CollectionUtils.evictingConcurrentMap(maxCache, Duration.ofMinutes(10));
 		this.publicationService = publicationService;
 		this.platforms = Platform.values();

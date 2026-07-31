@@ -4,7 +4,6 @@ import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.publications.PublicationService;
-import com.joshlong.mogul.api.settings.Settings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,9 +12,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class AyrshareConfiguration {
 
 	@Bean
-	DefaultAyrshareService defaultAyrshareService(Settings settings, ApiProperties properties, MogulService ms,
-			CompositionService cs, JdbcClient db, PublicationService publicationService) {
-		return new DefaultAyrshareService(ms, db, settings, properties.cache().maxEntries(), cs, publicationService);
+	DefaultAyrshareService defaultAyrshareService(ApiProperties properties, MogulService ms, CompositionService cs,
+			JdbcClient db, PublicationService publicationService) {
+		return new DefaultAyrshareService(ms, db, properties.cache().maxEntries(), cs, publicationService);
 	}
 
 }

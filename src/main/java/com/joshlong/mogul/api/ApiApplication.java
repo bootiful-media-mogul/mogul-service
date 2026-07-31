@@ -10,6 +10,7 @@ import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
@@ -31,8 +32,12 @@ import java.util.EventObject;
 @SpringBootApplication
 public class ApiApplication {
 
-	static void main(String[] args) {
-		SpringApplication.run(ApiApplication.class, args);
+	public static void main(String[] args) {
+		// SpringApplication.run(ApiApplication.class, args);
+		var app = new SpringApplication(ApiApplication.class);
+		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
+		app.run(args);
+
 	}
 
 	@Bean
