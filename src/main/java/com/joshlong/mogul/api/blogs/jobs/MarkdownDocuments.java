@@ -35,7 +35,7 @@ class MarkdownDocuments {
 	}
 
 	private LocalDate dateToLocalDate(Map<String, Object> map) {
-		Date raw = null;
+		var raw = (Date) null;
 		var popularDateNames = Set.of("publishedAt", "pubDate", "date");
 		for (var k : popularDateNames) {
 			var possibleMatch = (Date) valueForKey(map, k);
@@ -49,7 +49,6 @@ class MarkdownDocuments {
 
 	private MarkdownDocumentHeader markdownDocumentHeaderFromFromMap(Map<String, Object> rawHeader) {
 		var localDate = this.dateToLocalDate(rawHeader);
-		IO.println("published at: " + localDate);
 		return new MarkdownDocumentHeader(rawHeader, //
 				this.valueForKey(rawHeader, "author"), //
 				this.valueForKey(rawHeader, "title"), //

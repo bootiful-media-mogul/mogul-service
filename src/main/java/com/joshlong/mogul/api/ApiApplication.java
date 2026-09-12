@@ -37,7 +37,6 @@ public class ApiApplication {
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
 		app.run(args);
-
 	}
 
 	@Bean
