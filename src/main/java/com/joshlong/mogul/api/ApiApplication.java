@@ -73,19 +73,6 @@ public class ApiApplication {
 		return DateTimeFormatter.BASIC_ISO_DATE;
 	}
 
-	/*
-	 * // fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 // todo
-	 * can we remove this one day? static class FlywayHints implements
-	 * RuntimeHintsRegistrar {
-	 *
-	 * @Override public void registerHints(@NonNull RuntimeHints hints, @Nullable
-	 * ClassLoader classLoader) {
-	 * hints.reflection().registerType(PublishingConfigurationExtension.class,
-	 * MemberCategory.values()); }
-	 *
-	 * }
-	 */
-
 	static class EventHints implements RuntimeHintsRegistrar {
 
 		@Override
