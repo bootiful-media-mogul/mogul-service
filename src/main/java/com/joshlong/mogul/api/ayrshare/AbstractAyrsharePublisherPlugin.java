@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.utils.UriUtils;
+import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.util.Collection;
@@ -79,11 +80,20 @@ public abstract class AbstractAyrsharePublisherPlugin<T extends Publishable> imp
 						.toArray(URI[]::new);
 					postContext.media(uris);
 					if (platform.equals(Platform.X)) {
-						var customHeaders = Map.of( //
-								"X-Twitter-OAuth1-Api-Key", pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY), //
-								"X-Twitter-OAuth1-Api-Secret", pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET) //
-						);
-						postContext.customHeaders(customHeaders);
+						var apiKey = pluginExecutionContext.get(TWITTER_OAUTH1_API_KEY);
+						var apiSecret = pluginExecutionContext.get(TWITTER_OAUTH1_API_SECRET);
+						var hasValidTwitterCredentials = StringUtils.hasText(apiKey) && StringUtils.hasText(apiSecret);
+						if (hasValidTwitterCredentials) {
+							var customHeaders = Map.of( //
+									"X-Twitter-OAuth1-Api-Key", apiKey, //
+									"X-Twitter-OAuth1-Api-Secret", apiSecret //
+							);
+							postContext.customHeaders(customHeaders);
+						} //
+						else {
+							context.failure(platform.platformCode().toLowerCase(),
+									"you didn't specify the twitter oauth key and secret in the settings page!");
+						}
 					}
 				});
 				response.postIds()
