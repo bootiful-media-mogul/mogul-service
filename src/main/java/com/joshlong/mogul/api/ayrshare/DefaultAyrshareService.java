@@ -6,7 +6,6 @@ import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.publications.PublicationCompletedEvent;
 import com.joshlong.mogul.api.publications.PublicationService;
-import com.joshlong.mogul.api.settings.Settings;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import org.springframework.context.event.EventListener;
@@ -26,9 +25,6 @@ import java.util.stream.Collectors;
  * warning! do <em>not</em> make this class {@link Transactional transactional}, as a lot
  * of the implementations involve network calls and stuff that doesn't interact with a SQL
  * DB. no use hogging up a DB connection just to do HTTP IO.
- * <p>
- * TODO could the lazy connection DataSource proxy work here? Could I make
- * it @Transactional and then use lazy datasources?
  */
 class DefaultAyrshareService implements AyrshareService {
 

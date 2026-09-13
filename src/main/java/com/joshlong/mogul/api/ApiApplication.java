@@ -2,7 +2,6 @@ package com.joshlong.mogul.api;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import graphql.scalars.ExtendedScalars;
-import org.flywaydb.core.internal.publishing.PublishingConfigurationExtension;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.aot.hint.MemberCategory;
@@ -27,13 +26,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.EventObject;
 
 @IntegrationComponentScan
-@ImportRuntimeHints({ ApiApplication.EventHints.class, ApiApplication.FlywayHints.class })
+@ImportRuntimeHints(ApiApplication.EventHints.class)
 @EnableConfigurationProperties(ApiProperties.class)
 @SpringBootApplication
 public class ApiApplication {
 
-	public static void main(String[] args) {
-		// SpringApplication.run(ApiApplication.class, args);
+	static void main(String[] args) {
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
 		app.run(args);
@@ -52,13 +50,13 @@ public class ApiApplication {
 
 	@Bean
 	Customizer<HttpSecurity> httpSecurityCustomizer() {
-		// @formatter:off
-		return http -> http
+		return http -> http //
 			.authorizeHttpRequests((authorize) -> authorize //
-			.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll() //
-			.requestMatchers("/public/**").permitAll()//
-		);
-		// @formatter:on
+				.requestMatchers(EndpointRequest.toAnyEndpoint())
+				.permitAll() //
+				.requestMatchers("/public/**")
+				.permitAll()//
+			);
 	}
 
 	@Bean
@@ -75,16 +73,18 @@ public class ApiApplication {
 		return DateTimeFormatter.BASIC_ISO_DATE;
 	}
 
-	// fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69
-	// todo can we remove this one day?
-	static class FlywayHints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
-			hints.reflection().registerType(PublishingConfigurationExtension.class, MemberCategory.values());
-		}
-
-	}
+	/*
+	 * // fixes https://github.com/bootiful-media-mogul/mogul-service/issues/69 // todo
+	 * can we remove this one day? static class FlywayHints implements
+	 * RuntimeHintsRegistrar {
+	 *
+	 * @Override public void registerHints(@NonNull RuntimeHints hints, @Nullable
+	 * ClassLoader classLoader) {
+	 * hints.reflection().registerType(PublishingConfigurationExtension.class,
+	 * MemberCategory.values()); }
+	 *
+	 * }
+	 */
 
 	static class EventHints implements RuntimeHintsRegistrar {
 

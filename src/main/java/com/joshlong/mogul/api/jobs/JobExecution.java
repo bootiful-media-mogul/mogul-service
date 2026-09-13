@@ -5,44 +5,11 @@ import org.springframework.util.Assert;
 import java.util.Map;
 import java.util.Objects;
 
-public class JobExecution {
-
-	private final Long id;
-
-	private final Long mogulId;
-
-	private final String jobName;
-
-	private final Map<String, JobExecutionParam> context;
-
-	private final boolean success;
+public record JobExecution(Long id, Long mogulId, String jobName, Map<String, JobExecutionParam> context,
+		boolean success) {
 
 	JobExecution(Long id, Long mogulId, String jobName, boolean success, Map<String, JobExecutionParam> context) {
-		this.id = id;
-		this.mogulId = mogulId;
-		this.success = success;
-		this.jobName = jobName;
-		this.context = context;
-	}
-
-	public Long id() {
-		return id;
-	}
-
-	public Long mogulId() {
-		return mogulId;
-	}
-
-	public String jobName() {
-		return jobName;
-	}
-
-	public boolean success() {
-		return this.success;
-	}
-
-	public Map<String, JobExecutionParam> context() {
-		return context;
+		this(id, mogulId, jobName, context, success);
 	}
 
 	@Override

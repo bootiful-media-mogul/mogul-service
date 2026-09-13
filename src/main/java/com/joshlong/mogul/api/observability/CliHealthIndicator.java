@@ -37,7 +37,7 @@ class CliHealthIndicator implements HealthIndicator {
 		try {
 			var process = new ProcessBuilder().command(this.command).start();
 			try (var inStream = new InputStreamReader(process.getInputStream());
-					var errorStream = new InputStreamReader(process.getErrorStream());) {
+					var errorStream = new InputStreamReader(process.getErrorStream())) {
 				var output = FileCopyUtils.copyToString(inStream);
 				var error = FileCopyUtils.copyToString(errorStream);
 				var exit = process.waitFor();
