@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import static com.joshlong.mogul.api.ayrshare.AyrshareConstants.MOGUL_AYRSHARE_PLUGIN_NAME;
 
-
 @Component(MOGUL_AYRSHARE_PLUGIN_NAME)
 class AyrshareMogulPublisherPlugin extends AbstractAyrsharePublisherPlugin<Mogul> implements MogulPublisherPlugin {
 
