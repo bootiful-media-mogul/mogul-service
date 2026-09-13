@@ -8,6 +8,8 @@ public class AyrshareConstants {
 
 	public static final String BLOG_POST_AYRSHARE_PLUGIN_NAME = "blogPostAyrshare";
 
+	public static final String MOGUL_AYRSHARE_PLUGIN_NAME = "mogulAyrshare";
+
 	public static final String API_KEY_SETTING_KEY = "ayrshareKey";
 
 	public static final String TWITTER_OAUTH1_API_KEY = "twitterOauth1ApiKey";

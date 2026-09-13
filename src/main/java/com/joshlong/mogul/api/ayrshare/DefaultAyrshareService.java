@@ -73,7 +73,7 @@ class DefaultAyrshareService implements AyrshareService {
 		if (!StringUtils.hasText(pluginName))
 			return true;
 		var ayrsharePlugins = List.of(AyrshareConstants.PODCAST_EPISODE_AYRSHARE_PLUGIN_NAME,
-				AyrshareConstants.BLOG_POST_AYRSHARE_PLUGIN_NAME);
+				AyrshareConstants.BLOG_POST_AYRSHARE_PLUGIN_NAME, AyrshareConstants.MOGUL_AYRSHARE_PLUGIN_NAME);
 		return ayrsharePlugins.contains(pluginName);
 	}
 
