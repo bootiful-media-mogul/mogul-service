@@ -84,42 +84,47 @@ class DefaultAyrshareService implements AyrshareService {
 	@Override
 	@Transactional
 	public Collection<AyrsharePublicationComposition> getDraftAyrsharePublicationCompositionsFor(Long mogulId) {
-		var accountedForPlatforms = new HashMap<String, Boolean>();
-		var list = this.getDrafts(mogulId);
-		for (var p : platforms()) {
-			accountedForPlatforms.put(p.platformCode(), false);
-		}
-		for (var ayrsharePublicationComposition : list) {
-			accountedForPlatforms.put(ayrsharePublicationComposition.platform().platformCode(), true);
-		}
-		var newIds = new ArrayList<Long>();
-		for (var platform : accountedForPlatforms.keySet()) {
-			if (!accountedForPlatforms.get(platform)) {
-				var gkh = new GeneratedKeyHolder();
-				this.db.sql(
-						"insert into ayrshare_publication_composition( mogul_id, platform ,draft ) values (?,?,true) returning id")
-					.params(mogulId, platform)
-					.update(gkh);
-				var newId = Objects.requireNonNull(gkh.getKey()).longValue();
-				var payload = new AyrsharePublicationComposition(newId, true, null, Platform.of(platform), null);
-				var composition = this.compositionService.compose(payload, platform);
-				this.db.sql("update ayrshare_publication_composition set composition_id = ? where id = ?")
-					.params(composition.id(), newId)
-					.update();
-				newIds.add(newId);
-			}
+		var accountedForPlatforms = this.getDrafts(mogulId)
+			.stream() //
+			.map(AyrsharePublicationComposition::platform) //
+			.filter(Objects::nonNull) //
+			.map(Platform::platformCode) //
+			.collect(Collectors.toSet());
+
+		for (var platform : this.platforms()) {
+			var platformCode = platform.platformCode();
+			if (accountedForPlatforms.contains(platformCode))
+				continue;
+			var gkh = new GeneratedKeyHolder();
+			// this runs concurrently: publishing to N platforms tells the client N
+			// times that it should go re-read the drafts. without `on conflict`, every
+			// one of those requests that didn't see the others' uncommitted inserts
+			// would add a second draft row, and the platform would render twice from
+			// then on.
+			var inserted = this.db.sql("""
+					insert into ayrshare_publication_composition( mogul_id, platform, draft )
+					values (?,?,true)
+					on conflict (mogul_id, platform) where draft do nothing
+					returning id
+					""") //
+				.params(mogulId, platformCode) //
+				.update(gkh);
+			if (inserted == 0) // somebody else created this platform's draft first
+				continue;
+			var newId = Objects.requireNonNull(gkh.getKey()).longValue();
+			var payload = new AyrsharePublicationComposition(newId, true, null, platform, null);
+			var composition = this.compositionService.compose(payload, platformCode);
+			this.db.sql("update ayrshare_publication_composition set composition_id = ? where id = ?")
+				.params(composition.id(), newId)
+				.update();
 		}
 
-		var allIds = (List<Long>) new ArrayList<Long>();
-		allIds.addAll(newIds);
-		for (var oid : list)
-			allIds.add(oid.id());
 		var drafts = this.getDrafts(mogulId);
-		Assert.state(allIds.size() == drafts.size(), "allIds.size() == drafts.size()");
-		Assert.state(drafts.stream() //
-			.map(AyrsharePublicationComposition::id) //
-			.collect(Collectors.toSet())
-			.containsAll(allIds), "allIds == drafts");
+		var draftsByPlatform = drafts.stream()
+			.collect(Collectors.groupingBy(AyrsharePublicationComposition::platform, Collectors.counting()));
+		Assert.state(draftsByPlatform.values().stream().allMatch(count -> count == 1),
+				() -> "there must be exactly one draft per platform for mogul " + mogulId + ", but got "
+						+ draftsByPlatform);
 		return drafts.stream() //
 			.sorted(Comparator.comparing(AyrsharePublicationComposition::platform))//
 			.collect(Collectors.toList());
