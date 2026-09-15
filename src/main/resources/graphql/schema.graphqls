@@ -75,6 +75,8 @@ type MogulStatus {
     mogulId: Int
     date: String
     created: DateTime
+    # batch-loaded: N days of publications cost one round of SQL, not N
+    publications: [Publication]
 }
 
 type ManagedFile {
