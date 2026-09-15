@@ -26,8 +26,6 @@ public class AudioEncoder implements Encoder<AudioEncodedFile> {
 			Assert.state(input.exists() && input.isFile(),
 					"the input ['" + inputAbsolutePath + "'] must be a valid, existing file");
 			var mp3Ext = "mp3";
-			// if (inputAbsolutePath.toLowerCase().endsWith(mp3Ext))
-			// return input;
 			var mp3 = FileUtils.createRelativeTempFile(input, "." + mp3Ext);
 			var mp3AbsolutePath = mp3.getAbsolutePath();
 			this.log.debug("mp3: {}", mp3AbsolutePath);

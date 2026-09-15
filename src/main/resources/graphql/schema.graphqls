@@ -68,6 +68,15 @@ type Mogul {
     email : String
 }
 
+# a single day in the life of a Mogul, and the thing that actually gets published
+# when you publish "about" a mogul. at most one per mogul per date.
+type MogulStatus {
+    id: Int
+    mogulId: Int
+    date: String
+    created: DateTime
+}
+
 type ManagedFile {
     id: Int
     bucket: String
@@ -324,6 +333,8 @@ type Query {
 
     # mogul
     me: Mogul
+    mogulStatusToday: MogulStatus
+    mogulStatuses(limit: Int): [MogulStatus]
 
     # ai
     aiChat(prompt:String): String

@@ -45,8 +45,9 @@ class Normalization {
 		var parseMediaType = MediaType.parseMediaType(input.contentType());
 		var isImage = imgMediaType.isCompatibleWith(parseMediaType);
 		var ext = isImage ? CommonMediaTypes.JPG : CommonMediaTypes.MP3;
-		var encodingFunction = isImage ? (Function<File, ImageEncodedFile>) this.imageEncoder::encode
-				: (Function<File, AudioEncodedFile>) this.audioEncoder::encode;
+		var encodingFunction = isImage ? //
+				(Function<File, ImageEncodedFile>) this.imageEncoder::encode : //
+				(Function<File, AudioEncodedFile>) this.audioEncoder::encode;
 		var filesToDelete = new HashSet<File>();
 		try {
 			var localFile = input.uniqueLocalFile();

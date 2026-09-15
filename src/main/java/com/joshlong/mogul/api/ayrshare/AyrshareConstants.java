@@ -8,7 +8,10 @@ public class AyrshareConstants {
 
 	public static final String BLOG_POST_AYRSHARE_PLUGIN_NAME = "blogPostAyrshare";
 
-	public static final String MOGUL_AYRSHARE_PLUGIN_NAME = "mogulAyrshare";
+	// the value is load-bearing and stays "mogulAyrshare" even though the plugin now
+	// publishes a MogulStatus: it is the settings category key and the name the
+	// client asks for by hand.
+	public static final String MOGUL_STATUS_AYRSHARE_PLUGIN_NAME = "mogulAyrshare";
 
 	public static final String API_KEY_SETTING_KEY = "ayrshareKey";
 

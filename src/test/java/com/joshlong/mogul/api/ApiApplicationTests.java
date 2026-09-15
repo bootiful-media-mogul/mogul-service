@@ -12,7 +12,7 @@ class ApiApplicationTests {
 	void contextLoads() {
 		var am = ApplicationModules.of(ApiApplication.class);
 		am.verify();
-		System.out.println(am);
+		IO.println(am);
 		new Documenter(am).writeDocumentation();
 	}
 

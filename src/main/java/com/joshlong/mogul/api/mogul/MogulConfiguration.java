@@ -24,11 +24,16 @@ class MogulConfiguration {
 		return new DefaultMogulService(authUserInfo, db, publisher, tt, apiProperties.cache().maxEntries());
 	}
 
+	@Bean
+	DefaultMogulStatusService defaultMogulStatusService(JdbcClient db) {
+		return new DefaultMogulStatusService(db);
+	}
+
 	static class MogulHints implements RuntimeHintsRegistrar {
 
 		@Override
 		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-			for (var c : Set.of(Mogul.class, MogulCreatedEvent.class))
+			for (var c : Set.of(Mogul.class, MogulStatus.class, MogulCreatedEvent.class))
 				hints.reflection().registerType(c, MemberCategory.values());
 		}
 
