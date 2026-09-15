@@ -2,6 +2,7 @@ package com.joshlong.mogul.api.podcasts;
 
 import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.compositions.Composition;
+import com.joshlong.mogul.api.media.MediaNormalizedEvent;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -225,6 +226,14 @@ class PodcastController {
 			this.log.warn("experienced an exception when trying to emit "
 					+ "a podcast completed event for podcast episode id # {}", id);
 		} //
+	}
+
+	@ApplicationModuleListener
+	void onMediaNormalizedEvent(MediaNormalizedEvent mediaNormalizedEvent) {
+		var managedFileForAPodcastEpisodeSegment = mediaNormalizedEvent.out().id();
+		// todo look up in the DB to see if this corresponds to one of the podcast episode
+		// segments under our jurisdiction
+		// todo re-broadcast this and listen for it on the client side
 	}
 
 	@SchemaMapping

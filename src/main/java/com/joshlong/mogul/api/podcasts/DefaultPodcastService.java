@@ -80,18 +80,16 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
-
 		if (episodes.isEmpty()) {
 			return new HashMap<>();
 		}
-
-		var segmentResultSetExtractor = new SegmentResultSetExtractor(managedFileService::getManagedFiles);
-		var segments = db //
+		var segmentResultSetExtractor = new SegmentResultSetExtractor( //
+				this.managedFileService::getManagedFiles);
+		var segments = this.db //
 			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ") //
 			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))//
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
-
 		for (var s : segments) {
 			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
 		}
@@ -220,14 +218,16 @@ class DefaultPodcastService implements PodcastService {
 			}
 		}
 
-		var msg = Map.of("graphic written", graphicsWritten, "graphic produced", episode.producedGraphic().written(),
-				"segments not empty?", !segments.isEmpty(), "has a title", StringUtils.hasText(episode.title()),
-				"all segments have written and produced audio", allSegmentsHaveWrittenAndProducedAudio,
-				"details on segments", detailsOnSegments.toString());
-		var finalMsg = new StringBuilder();
-		for (var k : msg.keySet())
-			finalMsg.append(k).append(' ').append(msg.get(k)).append(System.lineSeparator());
-		this.log.info(finalMsg.toString());
+		if (this.log.isDebugEnabled()) {
+			var msg = Map.of("graphic written", graphicsWritten, "graphic produced",
+					episode.producedGraphic().written(), "segments not empty?", !segments.isEmpty(), "has a title",
+					StringUtils.hasText(episode.title()), "all segments have written and produced audio",
+					allSegmentsHaveWrittenAndProducedAudio, "details on segments", detailsOnSegments.toString());
+			var finalMsg = new StringBuilder();
+			for (var k : msg.keySet())
+				finalMsg.append(k).append(' ').append(msg.get(k)).append(System.lineSeparator());
+			this.log.debug(finalMsg.toString());
+		}
 
 		for (var e : Set.of(new PodcastEpisodeUpdatedEvent(episodeById),
 				new PodcastEpisodeCompletedEvent(mogulId, episodeById))) {

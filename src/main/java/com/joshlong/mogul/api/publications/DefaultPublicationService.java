@@ -12,6 +12,7 @@ import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
@@ -212,6 +213,29 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	@Override
 	public Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, String clazz) {
 		return this.getPublicationsByPublicationKeyAndClass(publicationKey, this.classForType(clazz));
+	}
+
+	@Override
+	public Map<Long, Collection<Publication>> getPublicationsByPublicationKeysAndClass(Collection<Long> publicationKeys,
+			Class<?> clazz) {
+		var keys = new LinkedHashSet<>(publicationKeys);
+		var results = new LinkedHashMap<Long, Collection<Publication>>();
+		for (var key : keys)
+			results.put(key, new ArrayList<>());
+		if (keys.isEmpty())
+			return results;
+		// one query for the whole batch. the row mapper then reads every one of their
+		// outcomes in one more, so this is two queries regardless of how many
+		// publishables were asked for.
+		var payloads = keys.stream().map(key -> Long.toString(key)).toArray(String[]::new);
+		var publications = this.db //
+			.sql("select * from publication where payload = any(?) and payload_class = ? order by created desc") //
+			.params(new SqlArrayValue("text", payloads), clazz.getName()) //
+			.query(this.getPublicationRowMapper()) //
+			.list();
+		for (var publication : publications)
+			results.computeIfAbsent(Long.parseLong(publication.payload()), _ -> new ArrayList<>()).add(publication);
+		return results;
 	}
 
 	public record SettingsLookup(Long mogulId, String category) {
