@@ -91,8 +91,7 @@ class DefaultPodcastService implements PodcastService {
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
 		for (var s : segments) {
-			episodeToSegmentsMap.computeIfAbsent(
-					s.episodeId(), _ -> new ArrayList<>()).add(s);
+			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
 		}
 		for (var entry : episodeToSegmentsMap.entrySet()) {
 			orderedSegments(entry.getValue());
@@ -219,12 +218,11 @@ class DefaultPodcastService implements PodcastService {
 			}
 		}
 
-
-		if (this.log.isDebugEnabled() ) {
-			var msg = Map.of("graphic written", graphicsWritten, "graphic produced", episode.producedGraphic().written(),
-					"segments not empty?", !segments.isEmpty(), "has a title", StringUtils.hasText(episode.title()),
-					"all segments have written and produced audio", allSegmentsHaveWrittenAndProducedAudio,
-					"details on segments", detailsOnSegments.toString());
+		if (this.log.isDebugEnabled()) {
+			var msg = Map.of("graphic written", graphicsWritten, "graphic produced",
+					episode.producedGraphic().written(), "segments not empty?", !segments.isEmpty(), "has a title",
+					StringUtils.hasText(episode.title()), "all segments have written and produced audio",
+					allSegmentsHaveWrittenAndProducedAudio, "details on segments", detailsOnSegments.toString());
 			var finalMsg = new StringBuilder();
 			for (var k : msg.keySet())
 				finalMsg.append(k).append(' ').append(msg.get(k)).append(System.lineSeparator());

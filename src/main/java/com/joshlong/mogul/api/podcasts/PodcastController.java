@@ -230,8 +230,9 @@ class PodcastController {
 
 	@ApplicationModuleListener
 	void onMediaNormalizedEvent(MediaNormalizedEvent mediaNormalizedEvent) {
-		var managedFileForAPodcastEpisodeSegment = mediaNormalizedEvent.out().id() ;
-		// todo look up in the DB to see if this corresponds to one of the podcast episode segments under our jurisdiction
+		var managedFileForAPodcastEpisodeSegment = mediaNormalizedEvent.out().id();
+		// todo look up in the DB to see if this corresponds to one of the podcast episode
+		// segments under our jurisdiction
 		// todo re-broadcast this and listen for it on the client side
 	}
 
