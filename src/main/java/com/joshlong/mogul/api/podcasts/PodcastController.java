@@ -143,12 +143,15 @@ class PodcastController {
 	@BatchMapping
 	Map<Episode, List<Segment>> segments(List<Episode> episodes) {
 		var epIds = episodes.stream().map(Episode::id).collect(Collectors.toSet());
-		var allEpisodes = this.podcastService.getAllPodcastEpisodesByIds(epIds);
 		var allEpisodeSegments = this.podcastService.getPodcastEpisodeSegmentsByEpisodes(epIds);
-		var map = new HashMap<Episode, List<Segment>>();
-
-		for (var ep : allEpisodes)
-			map.put(ep, allEpisodeSegments.get(ep.id()));
+		// key off the episode instances we were handed. re-reading the episodes and
+		// keying off *those* meant that any drift between the stored copy and the
+		// parent instance -- Episode is a record, so equality is every field -- built a
+		// map the batch loader couldn't match, and every segments field silently
+		// resolved to null. it was also a query for something we already had.
+		var map = new LinkedHashMap<Episode, List<Segment>>();
+		for (var episode : episodes)
+			map.put(episode, allEpisodeSegments.get(episode.id()));
 
 		for (var ep : map.entrySet()) {
 			Assert.state(ep.getValue() != null, "no segments found for episode id #" + ep.getKey().id() + ","
@@ -200,15 +203,23 @@ class PodcastController {
 		NotificationEvents.notify(ne);
 	}
 
-	@SchemaMapping
-	float duration(Episode episode) {
-		// IO.println("duration for episode " + episode.id());
-		var segments = this.podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
-		var total = 0f;
-		for (var segment : segments) {
-			total += segment.duration();
+	/**
+	 * batched, and off the same call {@link #segments(List)} uses: this used to re-read
+	 * each episode's segments one episode at a time, to total up rows the segments
+	 * mapping had already loaded.
+	 */
+	@BatchMapping
+	Map<Episode, Float> duration(List<Episode> episodes) {
+		var episodeIds = episodes.stream().map(Episode::id).collect(Collectors.toSet());
+		var segmentsByEpisode = this.podcastService.getPodcastEpisodeSegmentsByEpisodes(episodeIds);
+		var map = new LinkedHashMap<Episode, Float>();
+		for (var episode : episodes) {
+			var total = 0f;
+			for (var segment : segmentsByEpisode.getOrDefault(episode.id(), List.of()))
+				total += segment.duration();
+			map.put(episode, total);
 		}
-		return total;
+		return map;
 	}
 
 	@ApplicationModuleListener
@@ -236,10 +247,18 @@ class PodcastController {
 		// todo re-broadcast this and listen for it on the client side
 	}
 
-	@SchemaMapping
-	Transcript transcript(Segment segment) {
+	/**
+	 * batched: an episode's segments used to cost one transcript query each, plus an
+	 * insert apiece for any that had no row yet.
+	 */
+	@BatchMapping
+	Map<Segment, Transcript> transcript(List<Segment> segments) {
 		var mogul = this.mogulService.getCurrentMogul();
-		return this.transcriptService.transcript(mogul.id(), segment);
+		var transcripts = this.transcriptService.transcripts(mogul.id(), segments);
+		var map = new LinkedHashMap<Segment, Transcript>();
+		for (var segment : segments)
+			map.put(segment, transcripts.get(segment));
+		return map;
 	}
 
 }

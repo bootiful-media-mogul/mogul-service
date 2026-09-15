@@ -29,8 +29,15 @@ public interface TranscriptService {
 
 	void writeTranscript(Long transcriptId, String transcript);
 
-	<T extends Transcribable> String readTranscript(Long mogulId, T toRead);
-
 	<T extends Transcribable> Map<Transcribable, String> readTranscripts(Long mogulId, Collection<T> toRead);
+
+	/**
+	 * the batched form of {@link #transcript(Long, Transcribable)}: the whole collection
+	 * costs one query, plus one insert and one re-read if any of them didn't have a row
+	 * yet. same guarantee as the single-payload version -- every payload comes back with
+	 * a transcript, created if it wasn't there -- so callers still get an id to write
+	 * against.
+	 */
+	<T extends Transcribable> Map<Transcribable, Transcript> transcripts(Long mogulId, Collection<T> payloads);
 
 }

@@ -18,9 +18,12 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Transactional
 @SuppressWarnings("unchecked")
@@ -135,12 +138,6 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	}
 
 	@Override
-	public <T extends Transcribable> String readTranscript(Long mogulId, T transcribable) {
-		var transcript = this.transcript(mogulId, transcribable);
-		return transcript.transcript();
-	}
-
-	@Override
 	public Transcript transcript(Long mogulId, Transcribable payload) {
 		var clazz = classNameFor(payload);
 		var payloadKeyAsJson = JsonUtils.write(payload.transcribableId());
@@ -159,27 +156,85 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	public <T extends Transcribable> Map<Transcribable, String> readTranscripts(Long mogulId, Collection<T> toRead) {
 		if (toRead.isEmpty())
 			return Map.of();
-
-		var mapOfIdToTranscribable = new HashMap<String, Transcribable>();
-		for (var tr : toRead) {
-			mapOfIdToTranscribable.put(JsonUtils.write(tr.transcribableId()), tr);
-		}
-
-		var transcriptIds = toRead.stream().map(x -> JsonUtils.write(x.transcribableId())).toList();
-
-		var sql = "select * from transcript where mogul_id = ? and payload = any(?)";
-
-		this.log.info("sql query: [{}]", sql);
-		var transcripts = db.sql(sql) //
-			.params(mogulId, new SqlArrayValue("text", transcriptIds.toArray(String[]::new)))//
-			.query(transcribableRowMapper) //
-			.list();
+		var keyed = keyBy(toRead);
+		var found = this.transcriptsFor(mogulId, keyed.keySet());
 		var map = new HashMap<Transcribable, String>();
-		for (var tr : transcripts) {
-			var transcribableId = tr.payload(); // map id to object by transcribableId
-			map.put(mapOfIdToTranscribable.get(transcribableId), tr.transcript());
-		}
+		keyed.forEach((key, transcribable) -> {
+			var transcript = found.get(key);
+			if (transcript != null)
+				map.put(transcribable, transcript.transcript());
+		});
 		return map;
+	}
+
+	@Override
+	public <T extends Transcribable> Map<Transcribable, Transcript> transcripts(Long mogulId, Collection<T> payloads) {
+		if (payloads.isEmpty())
+			return Map.of();
+		var keyed = keyBy(payloads);
+		// deliberately not filtered by mogul, to match the single-payload
+		// transcript(Long, Transcribable) above: filtering here would hide an existing
+		// row and make us insert a duplicate alongside it.
+		var found = this.transcriptsFor(null, keyed.keySet());
+		var missing = keyed.keySet().stream().filter(key -> !found.containsKey(key)).toList();
+		if (!missing.isEmpty()) {
+			// one insert for everything that had no row yet, rather than one apiece.
+			// transcript has no unique constraint to conflict on, so the rows we write
+			// are exactly the ones the read above didn't find.
+			var sql = new StringBuilder("insert into transcript(mogul_id, payload, payload_class) values ");
+			var params = new ArrayList<>();
+			for (var i = 0; i < missing.size(); i++) {
+				sql.append(i == 0 ? "" : ",").append("(?,?,?)");
+				params.add(mogulId);
+				params.add(missing.get(i).payload());
+				params.add(missing.get(i).payloadClass());
+			}
+			this.db.sql(sql.toString()).params(params.toArray()).update();
+			found.putAll(this.transcriptsFor(null, missing));
+		}
+		var results = new LinkedHashMap<Transcribable, Transcript>();
+		keyed.forEach((key, transcribable) -> results.put(transcribable, found.get(key)));
+		return results;
+	}
+
+	private static <T extends Transcribable> Map<TranscriptKey, Transcribable> keyBy(Collection<T> payloads) {
+		var keyed = new LinkedHashMap<TranscriptKey, Transcribable>();
+		for (var payload : payloads)
+			keyed.put(new TranscriptKey(classNameFor(payload), JsonUtils.write(payload.transcribableId())), payload);
+		return keyed;
+	}
+
+	/**
+	 * reads a batch of transcripts in one query per distinct payload class -- in practice
+	 * one, since a batch is a list of the same kind of thing. matching on payload alone
+	 * would let two Transcribables of different types that happen to share an id resolve
+	 * to each other's transcript, which is why the class is part of both the query and
+	 * the key.
+	 */
+	private Map<TranscriptKey, Transcript> transcriptsFor(Long mogulId, Collection<TranscriptKey> keys) {
+		var byClass = keys.stream()
+			.collect(Collectors.groupingBy(TranscriptKey::payloadClass,
+					Collectors.mapping(TranscriptKey::payload, Collectors.toSet())));
+		var results = new HashMap<TranscriptKey, Transcript>();
+		for (var entry : byClass.entrySet()) {
+			var payloads = new SqlArrayValue("text", entry.getValue().toArray(String[]::new));
+			var transcripts = (null == mogulId) //
+					? this.db.sql("select * from transcript where payload_class = ? and payload = any(?)")
+						.params(entry.getKey(), payloads)
+						.query(this.transcribableRowMapper)
+						.list()
+					: this.db
+						.sql("select * from transcript where payload_class = ? and payload = any(?) and mogul_id = ?")
+						.params(entry.getKey(), payloads, mogulId)
+						.query(this.transcribableRowMapper)
+						.list();
+			for (var transcript : transcripts)
+				results.put(new TranscriptKey(transcript.payloadClass().getName(), transcript.payload()), transcript);
+		}
+		return results;
+	}
+
+	private record TranscriptKey(String payloadClass, String payload) {
 	}
 
 	@Override
