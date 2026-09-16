@@ -231,6 +231,13 @@ class DefaultCompositionService implements CompositionService {
 		var compositionCacheKey = this.compositionKey(clzz, key, field);
 		var clazzName = clzz.getName();
 		return this.compositionsByKeyCache.get(compositionCacheKey, () -> {
+			// read before write. going straight to the insert meant every cold read of
+			// a composition that already existed -- which is nearly all of them, since
+			// a composition is created once and read forever -- wrote to the table and
+			// its write-ahead log only to discover it had nothing to do.
+			var existing = this.selectCompositionByKey(clazzName, key, field);
+			if (existing != null)
+				return existing;
 			this.db //
 				.sql("""
 						    insert into composition( payload_class,payload, field) values (?,?,?)
@@ -239,11 +246,15 @@ class DefaultCompositionService implements CompositionService {
 						""")//
 				.params(clazzName, key, field) //
 				.update();
-			return CollectionUtils.firstOrNull(this.db //
-				.sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
-				.params(clazzName, key, field)//
-				.query(this.compositionResultSetExtractor));
+			return this.selectCompositionByKey(clazzName, key, field);
 		});
+	}
+
+	private Composition selectCompositionByKey(String clazzName, String key, String field) {
+		return CollectionUtils.firstOrNull(this.db //
+			.sql("select * from composition where payload_class = ? and payload = ?  and field = ? ")//
+			.params(clazzName, key, field)//
+			.query(this.compositionResultSetExtractor));
 	}
 
 	private void invalidateCompositionCacheById(Long compositionId) {
@@ -264,21 +275,13 @@ class DefaultCompositionService implements CompositionService {
 
 	@Override
 	public <T extends Composable> Composition compose(T payload, String field) {
-		var clazz = payload.getClass().getName();
-		var payloadKeyAsJson = JsonUtils.write(payload.compositionKey());
-		var composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
-		if (composition == null) {
-			this.db //
-				.sql("""
-						  insert into composition(payload, payload_class, field) values (?,?,?)
-						  on conflict on constraint composition_payload_class_payload_field_key
-						  do nothing
-						""")//
-				.params(payloadKeyAsJson, clazz, field) //
-				.update();
-			composition = this.readThroughCompositionByKey(payload.getClass(), payloadKeyAsJson, field);
-		}
-		return composition;
+		// readThroughCompositionByKey already creates the row when it isn't there, so
+		// there is nothing here to retry. the fallback this replaces re-ran the same
+		// on-conflict-do-nothing insert -- a guaranteed no-op, since the read-through
+		// had just run it -- and then re-read a cache key it had itself memoized as
+		// absent, so it could only ever return the same null it was trying to recover
+		// from. two statements, one of them a write, to arrive back where it started.
+		return this.readThroughCompositionByKey(payload.getClass(), JsonUtils.write(payload.compositionKey()), field);
 	}
 
 	@Override
