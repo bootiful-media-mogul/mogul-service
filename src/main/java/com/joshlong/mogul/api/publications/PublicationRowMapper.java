@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.util.Assert;
 
@@ -17,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 class PublicationRowMapper implements RowMapper<Publication> {
 
@@ -81,12 +81,11 @@ class PublicationRowMapper implements RowMapper<Publication> {
 			return;
 		}
 		var collect = publicationIds.toArray(Long[]::new);
-		var placeholders = publicationIds //
-			.stream() //
-			.map(_ -> "?") //
-			.collect(Collectors.joining(","));
-		var sql = "select * from publication_outcome where publication_id in (" + placeholders + ")  ";
-		var outcomes = this.db.sql(sql).params((Object[]) collect).query(this.outcomeRowMapper).list();
+		var sql = " select * from publication_outcome where publication_id  = any(?) ";
+		var outcomes = this.db.sql(sql) //
+			.params(new SqlArrayValue("bigint", collect)) //
+			.query(this.outcomeRowMapper)
+			.list();
 		this.publicationToOutcomes.forEach((publicationId, list) -> {
 			outcomes.stream() //
 				.filter(o -> o.publicationId().equals(publicationId)) //

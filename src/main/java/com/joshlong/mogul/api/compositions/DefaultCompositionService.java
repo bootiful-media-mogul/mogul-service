@@ -7,6 +7,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileUpdatedEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.utils.CacheUtils;
 import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JdbcUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
@@ -17,6 +18,7 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -118,10 +120,15 @@ class DefaultCompositionService implements CompositionService {
 				.param(id)//
 				.query(this.compositionResultSetExtractor);
 			var c = CollectionUtils.firstOrNull(comps);
-			this.compositionsByIdCache.put(id, c);
-			this.compositionsByKeyCache.put(compositionKey(c), c);
+			doCache(id, c);
 		}
 		return this.compositionsByIdCache.get(id, Composition.class);
+	}
+
+	private void doCache(Long id, Composition composition) {
+		this.compositionsByIdCache.put(id, composition);
+		if (composition != null)
+			this.compositionsByKeyCache.put(compositionKey(composition), composition);
 	}
 
 	@Override
@@ -130,8 +137,25 @@ class DefaultCompositionService implements CompositionService {
 			return new HashMap<>();
 		}
 		var map = new HashMap<Long, Composition>();
+		// only the ids we haven't already got go to the database. reading the whole
+		// batch unconditionally would trade one rare cold query for a guaranteed one
+		// on every call -- and the cache is warm nearly all the time.
+		var idsNotInCache = CacheUtils.notPresentInCache(this.compositionsByIdCache, ids);
+		if (!idsNotInCache.isEmpty()) {
+			var allComps = this.db //
+				.sql("select * from composition where id = ANY(?)") //
+				.param(new SqlArrayValue("bigint", idsNotInCache.toArray())) //
+				.query(this.compositionResultSetExtractor);
+			for (var composition : allComps) {
+				var id = composition.id();
+				map.put(id, composition);
+				this.doCache(id, composition);
+			}
+		}
 		for (var id : ids) {
-			map.put(id, this.readThroughCompositionById(id));
+			var cached = this.compositionsByIdCache.get(id, Composition.class);
+			if (cached != null)
+				map.put(id, cached);
 		}
 		return map;
 	}
