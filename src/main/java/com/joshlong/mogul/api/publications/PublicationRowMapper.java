@@ -33,8 +33,13 @@ class PublicationRowMapper implements RowMapper<Publication> {
 	private final JdbcClient db;
 
 	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, _) -> {
-		var outcome = new Publication.Outcome(rs.getInt("id"), rs.getDate("created"), rs.getBoolean("success"),
-				JdbcUtils.url(rs, "uri"), rs.getString("key"), rs.getString("server_error_message"));
+		var outcome = new Publication.Outcome(rs.getInt("id"), //
+				rs.getDate("created"), //
+				rs.getBoolean("success"), //
+				JdbcUtils.url(rs, "uri"), //
+				rs.getString("key"), //
+				rs.getString("server_error_message") //
+		);
 		return new PublicationOutcome(rs.getLong("publication_id"), outcome);
 	};
 

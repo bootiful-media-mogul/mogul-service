@@ -59,9 +59,22 @@ class DefaultMogulStatusService implements MogulStatusService {
 	public Collection<MogulStatus> getRecentMogulStatuses(Long mogulId, int limit) {
 		if (limit <= 0)
 			return List.of();
+		// a status row is created the moment a mogul opens the app, so most days exist
+		// without anything having been published on them. filtering in the query rather
+		// than after it means the limit counts days that have something to show -- ask
+		// for ten and you get the last ten days with publications, not ten rows of which
+		// nine are empty.
 		return this.db //
-			.sql("select * from mogul_status where mogul_id = ? order by date desc limit ?") //
-			.params(mogulId, limit) //
+			.sql("""
+					select ms.* from mogul_status ms
+					where ms.mogul_id = ?
+					  and exists (select 1 from publication p
+					              where p.payload = ms.id::text
+					                and p.payload_class = ?)
+					order by ms.date desc
+					limit ?
+					""") //
+			.params(mogulId, MogulStatus.class.getName(), limit) //
 			.query(this.mogulStatusRowMapper) //
 			.list();
 	}
