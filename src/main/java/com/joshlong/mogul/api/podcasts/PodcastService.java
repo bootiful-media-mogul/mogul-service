@@ -4,6 +4,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +53,11 @@ public interface PodcastService {
 
 	Episode createPodcastEpisodeDraft(Long currentMogulId, Long podcastId, String title, String description);
 
-	Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description);
+	/**
+	 * @param created when the episode should claim to have been created; ignored when
+	 * {@literal null}, so callers that only mean to edit the text can pass nothing.
+	 */
+	Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description, Date created);
 
 	void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId);
 

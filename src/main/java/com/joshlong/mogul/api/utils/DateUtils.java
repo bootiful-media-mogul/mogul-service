@@ -16,6 +16,17 @@ public abstract class DateUtils {
 		return date;
 	}
 
+	/**
+	 * the inverse of {@link #forDate(Date)}, for dates arriving from the client through
+	 * the {@code DateTime} scalar.
+	 */
+	public static Date toDate(OffsetDateTime offsetDateTime) {
+		if (offsetDateTime == null) {
+			return null;
+		}
+		return Date.from(offsetDateTime.toInstant());
+	}
+
 	public static OffsetDateTime forDate(Date date) {
 		if (date == null) {
 			return null;

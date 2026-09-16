@@ -72,8 +72,10 @@ class BlogController {
 
 	@MutationMapping
 	boolean updatePost(@Argument Long postId, @Argument String title, @Argument String description,
-			@Argument String summary, @Argument String rssSlug) {
-		this.service.updatePost(postId, null, title, description, summary, rssSlug);
+			@Argument String summary, @Argument String rssSlug, @Argument OffsetDateTime created) {
+		// updatePost's second parameter is written straight to blog_post.created; a null
+		// leaves the existing value alone.
+		this.service.updatePost(postId, DateUtils.toDate(created), title, description, summary, rssSlug);
 		return true;
 	}
 

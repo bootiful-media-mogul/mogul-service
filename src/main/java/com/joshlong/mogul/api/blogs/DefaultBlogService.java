@@ -305,7 +305,12 @@ class DefaultBlogService implements BlogService {
 
 		@Override
 		public Post mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getDate("created"),
+			// getTimestamp, not getDate: getDate returns a java.sql.Date, which is a
+			// calendar day with the time truncated to midnight. the column is a
+			// timestamp, and the editor lets you set the time of day, so reading it
+			// back through getDate threw away what had just been saved. every other row
+			// mapper here -- Blog, Episode, Podcast -- already uses getTimestamp.
+			return new Post(rs.getLong("blog_id"), rs.getLong("id"), rs.getString("title"), rs.getTimestamp("created"),
 					rs.getString("content"), rs.getBoolean("complete"), rs.getBoolean("visible"), new HashMap<>(),
 					rs.getString("summary"), rs.getString("rss_slug"), rs.getLong("blog_id"));
 		}

@@ -643,13 +643,17 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
-	public Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description) {
+	public Episode updatePodcastEpisodeDetails(Long episodeId, String title, String description, Date created) {
 		Assert.notNull(episodeId, "the episode is null");
 		title = StringUtils.hasText(title) ? title : "";
 		description = StringUtils.hasText(description) ? description : "";
 		this.db.sql("update podcast_episode set title = ?, description =? where id = ?")
 			.params(title, description, episodeId)
 			.update();
+		// a null means "leave it alone", so an editor that doesn't offer the field can
+		// keep calling this without flattening the date.
+		if (null != created)
+			this.db.sql("update podcast_episode set created = ? where id = ?").params(created, episodeId).update();
 		this.invalidatePodcastEpisodeCache(episodeId);
 		this.refreshPodcastEpisodeCompleteness(episodeId);
 		var podcastEpisodeById = this.getPodcastEpisodeById(episodeId);

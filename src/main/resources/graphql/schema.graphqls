@@ -232,7 +232,7 @@ type Mutation {
 
     createPost(blogId:Int, title:String, content:String, summary:String, rssSlug:String): Post
 
-    updatePost(postId:Int, title:String, description:String, summary:String, rssSlug:String): Boolean
+    updatePost(postId:Int, title:String, description:String, summary:String, rssSlug:String, created: DateTime): Boolean
 
     setBlogPostVisibility(postId:Int, visible:Boolean): Boolean
 
@@ -272,7 +272,7 @@ type Mutation {
         podcastId:Int ,
         title:String,
         description:String): Episode
-    updatePodcastEpisode( podcastEpisodeId: Int, title: String, description: String): Boolean
+    updatePodcastEpisode( podcastEpisodeId: Int, title: String, description: String, created: DateTime): Boolean
     deletePodcastEpisode(podcastEpisodeId: Int): Boolean
 
     # podcast episode segments

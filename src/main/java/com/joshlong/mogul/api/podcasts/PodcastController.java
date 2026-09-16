@@ -70,9 +70,10 @@ class PodcastController {
 	}
 
 	@MutationMapping
-	boolean updatePodcastEpisode(@Argument Long podcastEpisodeId, @Argument String title,
-			@Argument String description) {
-		this.podcastService.updatePodcastEpisodeDetails(podcastEpisodeId, title, description);
+	boolean updatePodcastEpisode(@Argument Long podcastEpisodeId, @Argument String title, @Argument String description,
+			@Argument OffsetDateTime created) {
+		this.podcastService.updatePodcastEpisodeDetails(podcastEpisodeId, title, description,
+				DateUtils.toDate(created));
 		return true;
 	}
 
