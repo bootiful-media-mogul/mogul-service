@@ -49,7 +49,7 @@ class PodcastEpisodeFeedTest {
         var podcastId = 1L;
         var mogul = new Mogul(mogulId, "jlong",
                 "josh@joshlong.com", "clientId",
-                "Josh", "Long", new Date());
+                "Josh", "Long", new Date(), "UTC");
         var podcast = new Podcast(mogul.id(),
                 podcastId, "the title", new Date());
         var episodes = List.of(

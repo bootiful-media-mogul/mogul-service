@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api.blogs;
 
 import com.joshlong.mogul.api.ApiApplication;
-import com.joshlong.mogul.api.mogul.Mogul;
+import com.joshlong.mogul.api.mogul.MogulService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -10,8 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.util.StringUtils;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -19,10 +17,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @Disabled
 @SpringBootTest(classes = ApiApplication.class)
 class DefaultBlogServiceTest {
-
-	private static final RowMapper<Mogul> MOGUL_ROW_MAPPER = (rs, _) -> new Mogul(rs.getLong("id"),
-			rs.getString("username"), rs.getString("email"), rs.getString("client_id"), rs.getString("given_name"),
-			rs.getString("family_name"), rs.getDate("updated"));
 
 	private static final AtomicLong MOGUL = new AtomicLong(-1L);
 
@@ -36,12 +30,13 @@ class DefaultBlogServiceTest {
 	}
 
 	@BeforeAll
-	static void reset(@Autowired JdbcClient db) {
-		MOGUL.set(db.sql("select * from mogul where email = ? ")
-			.params("josh@joshlong.com")
-			.query(MOGUL_ROW_MAPPER)
-			.single()
-			.id());
+	static void reset(@Autowired MogulService mogulService) {
+		// through the service rather than a hand-rolled query: this test only ever
+		// wanted the mogul's id, and its own copy of the row mapper meant every change
+		// to the Mogul record broke it independently of the real one.
+		var moguls = mogulService.getMogulByEmail("josh@joshlong.com");
+		Assertions.assertFalse(moguls.isEmpty(), "there should be a mogul with that email");
+		MOGUL.set(moguls.iterator().next().id());
 		Assertions.assertTrue(MOGUL.get() > 0, "you must specify a valid mogul ID");
 	}
 

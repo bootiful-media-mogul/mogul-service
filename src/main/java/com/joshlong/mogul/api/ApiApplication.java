@@ -22,6 +22,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import java.time.Duration;
+import java.time.ZoneOffset;
+import java.util.TimeZone;
 import java.time.format.DateTimeFormatter;
 import java.util.EventObject;
 
@@ -32,6 +34,13 @@ import java.util.EventObject;
 public class ApiApplication {
 
 	static void main(String[] args) {
+		// pinned, not inherited. the PostgreSQL JDBC driver issues a `SET TimeZone` to
+		// the JVM's default on every connection, so this decides how the database reads
+		// and writes every timestamp. it happens to be UTC in production today, by
+		// virtue of the container; saying so here means a base image or a region change
+		// can't quietly move it. must run before the context starts, so the first
+		// connection already has it.
+		TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
 		app.run(args);
