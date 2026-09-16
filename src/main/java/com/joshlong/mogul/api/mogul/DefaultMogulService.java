@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClient;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -172,6 +173,23 @@ class DefaultMogulService implements MogulService {
 	}
 
 	@Override
+	public Mogul setTimeZone(Long mogulId, String timeZone) {
+		this.assertAuthorizedMogul(mogulId);
+		// rejects anything that isn't a real zone before it reaches the database, so a
+		// junk value can't make today() throw on every subsequent request.
+		var zone = ZoneId.of(timeZone);
+		this.db.sql("update mogul set time_zone = ? where id = ?").params(zone.getId(), mogulId).update();
+		this.evictMogulFromCaches(mogulId);
+		return this.getMogulById(mogulId);
+	}
+
+	private void evictMogulFromCaches(Long mogulId) {
+		var mogul = this.mogulsById.remove(mogulId);
+		if (mogul != null)
+			this.mogulsByName.remove(mogul.username());
+	}
+
+	@Override
 	public void assertAuthorizedMogul(Long mogulId) {
 		var currentlyAuthenticated = this.getCurrentMogul();
 		Assert.state(currentlyAuthenticated != null && currentlyAuthenticated.id().equals(mogulId),
@@ -213,7 +231,7 @@ class DefaultMogulService implements MogulService {
 		public Mogul mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return new Mogul(rs.getLong("id"), rs.getString("username"), rs.getString("email"),
 					rs.getString("client_id"), rs.getString("given_name"), rs.getString("family_name"),
-					rs.getDate("updated"));
+					rs.getDate("updated"), rs.getString("time_zone"));
 		}
 
 	}

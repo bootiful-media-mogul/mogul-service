@@ -25,8 +25,8 @@ class MogulConfiguration {
 	}
 
 	@Bean
-	DefaultMogulStatusService defaultMogulStatusService(JdbcClient db) {
-		return new DefaultMogulStatusService(db);
+	DefaultMogulStatusService defaultMogulStatusService(JdbcClient db, MogulService mogulService) {
+		return new DefaultMogulStatusService(db, mogulService);
 	}
 
 	static class MogulHints implements RuntimeHintsRegistrar {

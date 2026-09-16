@@ -16,4 +16,11 @@ public interface MogulService {
 
 	void assertAuthorizedMogul(Long aLong);
 
+	/**
+	 * records where the mogul is, as an IANA zone id ({@code Asia/Tokyo}). this decides
+	 * which calendar day their work is filed under, so it is a stored preference rather
+	 * than something read off whichever device they happen to be using.
+	 */
+	Mogul setTimeZone(Long mogulId, String timeZone);
+
 }

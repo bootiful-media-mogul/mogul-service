@@ -77,6 +77,8 @@ type Mogul {
     givenName : String
     familyName : String
     email : String
+    # IANA zone id; null until the mogul has told us where they are
+    timeZone : String
 }
 
 # a single day in the life of a Mogul, and the thing that actually gets published
@@ -267,6 +269,7 @@ type Mutation {
 
     # publicationService
     unpublish( publicationId: Int ) : Boolean
+    setMogulTimeZone( timeZone: String ) : Boolean
     publish( publishableId: Int, publishableType: String, contextJson: String, plugin: String ) : Boolean
 
     # compositions

@@ -4,10 +4,12 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.List;
 
@@ -16,16 +18,19 @@ class DefaultMogulStatusService implements MogulStatusService {
 
 	private final JdbcClient db;
 
+	private final MogulService mogulService;
+
 	private final MogulStatusRowMapper mogulStatusRowMapper = new MogulStatusRowMapper();
 
-	DefaultMogulStatusService(JdbcClient db) {
+	DefaultMogulStatusService(JdbcClient db, MogulService mogulService) {
 		this.db = db;
+		this.mogulService = mogulService;
 		Assert.notNull(this.db, "the db is null");
 	}
 
 	@Override
 	public MogulStatus today(Long mogulId) {
-		var today = LocalDate.now();
+		var today = LocalDate.now(this.zoneFor(mogulId));
 		this.db//
 			.sql("insert into mogul_status(mogul_id, date) values (?,?) on conflict (mogul_id, date) do nothing")//
 			.params(mogulId, today)//
@@ -33,6 +38,19 @@ class DefaultMogulStatusService implements MogulStatusService {
 		var status = this.getMogulStatusByDate(mogulId, today);
 		Assert.notNull(status, "the status for mogul [" + mogulId + "] on [" + today + "] should exist by now");
 		return status;
+	}
+
+	/**
+	 * the one place that decides what day it is. it has to be the mogul's day, not the
+	 * server's: the JVM runs in UTC, so a mogul in Los Angeles publishing at 6pm was
+	 * filed under tomorrow, and one in Tokyo would spend most of their waking day filed
+	 * under yesterday. falls back to the server's zone for a mogul who hasn't told us
+	 * where they are.
+	 */
+	private ZoneId zoneFor(Long mogulId) {
+		var mogul = this.mogulService.getMogulById(mogulId);
+		var timeZone = (null == mogul) ? null : mogul.timeZone();
+		return StringUtils.hasText(timeZone) ? ZoneId.of(timeZone) : ZoneId.systemDefault();
 	}
 
 	@Override
