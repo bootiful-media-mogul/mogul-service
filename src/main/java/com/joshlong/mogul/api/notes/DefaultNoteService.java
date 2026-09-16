@@ -53,10 +53,6 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 	@Override
 	public <T extends Notable> T resolveNotable(Long mogulId, Long id, String clazz) {
 		var type = (Class<? extends T>) this.classForType(clazz);
-
-		this.log.debug("Resolving notable entity of type {} for mogulId {} and id {}", type.getSimpleName(), mogulId,
-				id);
-
 		return this.resolveNotable(mogulId, id, type);
 	}
 

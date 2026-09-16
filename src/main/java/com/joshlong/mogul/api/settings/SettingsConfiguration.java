@@ -19,10 +19,14 @@ class SettingsConfiguration {
 
 	@Bean
 	Settings settings(CacheManager cacheManager, JdbcClient jdbcClient, ApplicationEventPublisher publisher,
-			TextEncryptor textEncryptor) {
+			TextEncryptor textEncryptor, ApiProperties properties) {
 		var mogulCategoryCache = cacheManager.getCache("mogulSettingsCategory");
 		var mogulCategoryKeyCache = cacheManager.getCache("mogulSettingsCategoryKey");
-		return new Settings(publisher, jdbcClient, textEncryptor, mogulCategoryCache, mogulCategoryKeyCache);
+		// everything a mogul owns, in one entry. the other two are views onto it, and
+		// this one is what lets a cold request know the mogul has already been read.
+		var mogulCache = cacheManager.getCache("mogulSettings");
+		return new Settings(publisher, jdbcClient, textEncryptor, properties.cache().maxEntries(), mogulCache,
+				mogulCategoryCache, mogulCategoryKeyCache);
 	}
 
 }

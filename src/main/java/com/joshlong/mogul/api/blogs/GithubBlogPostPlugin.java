@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.util.StringUtils;
 
 // todo can we put a testConnection method or something that uses the
 //  credential provided to validate that the connection
@@ -40,7 +41,9 @@ class GithubBlogPostPlugin implements PublisherPlugin<Post>, BeanNameAware {
 
 	@Override
 	public boolean isConfigurationValid(Map<String, String> context) {
-		return context.containsKey("clientId") && context.containsKey("clientSecret");
+		// same reason as the default implementation: a cleared setting is present but
+		// empty, and containsKey() cannot tell the difference.
+		return StringUtils.hasText(context.get("clientId")) && StringUtils.hasText(context.get("clientSecret"));
 	}
 
 	@Override

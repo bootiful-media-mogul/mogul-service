@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api;
 
 import org.jspecify.annotations.NonNull;
+import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.util.*;
@@ -26,7 +27,12 @@ public interface PublisherPlugin<T extends Publishable> {
 
 		var good = true;
 		for (var k : required) {
-			if (!context.containsKey(k)) {
+			// the value has to be worth something, not merely be present. clearing a
+			// required setting on the settings page leaves the row in place with an
+			// empty value, so containsKey() went on reporting the plugin as configured
+			// and the publish button stayed lit for something that could not work.
+			// this is the same test the settings page applies to each field.
+			if (!StringUtils.hasText(context.get(k))) {
 				good = false;
 				break;
 			}

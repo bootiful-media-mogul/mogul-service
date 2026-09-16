@@ -37,9 +37,6 @@ class WordPressBlogPostPublisherPlugin implements BlogPostPublisherPlugin {
 	public boolean isConfigurationValid(Map<String, String> context) {
 		var parentSaysYes = BlogPostPublisherPlugin.super.isConfigurationValid(context);
 		if (!parentSaysYes) {
-			if (this.log.isDebugEnabled()) {
-				this.log.debug("isConfigurationValid returned false");
-			}
 			return false;
 		}
 
