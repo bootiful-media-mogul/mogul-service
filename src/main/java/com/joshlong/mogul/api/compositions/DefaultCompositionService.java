@@ -274,14 +274,14 @@ class DefaultCompositionService implements CompositionService {
 	}
 
 	@Override
-	public <T extends Composable> Composition compose(T payload, String field) {
+	public Composition compose(Class<? extends Composable> payloadClass, Long compositionKey, String field) {
 		// readThroughCompositionByKey already creates the row when it isn't there, so
 		// there is nothing here to retry. the fallback this replaces re-ran the same
 		// on-conflict-do-nothing insert -- a guaranteed no-op, since the read-through
 		// had just run it -- and then re-read a cache key it had itself memoized as
 		// absent, so it could only ever return the same null it was trying to recover
 		// from. two statements, one of them a write, to arrive back where it started.
-		return this.readThroughCompositionByKey(payload.getClass(), JsonUtils.write(payload.compositionKey()), field);
+		return this.readThroughCompositionByKey(payloadClass, JsonUtils.write(compositionKey), field);
 	}
 
 	@Override

@@ -519,8 +519,9 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	private Composition compositionFor(Long episodeId, String field) {
-		var episode = this.getPodcastEpisodeById(episodeId);
-		return this.compositionService.compose(episode, field);
+		// a composition is identified by the class and the key alone, so there's nothing
+		// to be gained from loading the episode just to read its id back off it.
+		return this.compositionService.compose(Episode.class, episodeId, field);
 	}
 
 	@Override

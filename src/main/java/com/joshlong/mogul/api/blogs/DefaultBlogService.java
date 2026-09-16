@@ -245,8 +245,9 @@ class DefaultBlogService implements BlogService {
 	}
 
 	private Composition compositionFor(Long postId, String field) {
-		var episode = this.getPostById(postId);
-		return this.compositionService.compose(episode, field);
+		// a composition is identified by the class and the key alone, so there's nothing
+		// to be gained from loading the post just to read its id back off it.
+		return this.compositionService.compose(Post.class, postId, field);
 	}
 
 	@Override
