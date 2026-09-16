@@ -25,6 +25,8 @@ public interface PodcastService {
 
 	Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodeIds);
 
+	Map<Long, Long> getPodcastEpisodeDurationsByEpisodes(Collection<Long> episodeIds);
+
 	List<Segment> getPodcastEpisodeSegmentsByEpisode(Long id);
 
 	Collection<Podcast> getAllPodcastsByMogul(Long mogulId);

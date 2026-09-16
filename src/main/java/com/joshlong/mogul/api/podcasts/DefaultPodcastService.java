@@ -105,6 +105,24 @@ class DefaultPodcastService implements PodcastService {
 	}
 
 	@Override
+	public Map<Long, Long> getPodcastEpisodeDurationsByEpisodes(Collection<Long> episodeIds) {
+		if (episodeIds.isEmpty())
+			return new HashMap<>();
+		var durations = new HashMap<Long, Long>();
+		this.db //
+			.sql("""
+					select podcast_episode_id, sum(duration) as duration
+					from podcast_episode_segment
+					where podcast_episode_id = any(?)
+					group by podcast_episode_id
+					""") //
+			.params(new SqlArrayValue("bigint", (Object[]) episodeIds.toArray(Long[]::new))) //
+			.query((rs, _) -> durations.put(rs.getLong("podcast_episode_id"), rs.getLong("duration"))) //
+			.list();
+		return durations;
+	}
+
+	@Override
 	public List<Segment> getPodcastEpisodeSegmentsByEpisode(Long episodeId) {
 		return this.orderedSegments(db.sql("select * from podcast_episode_segment where podcast_episode_id = ? ") //
 			.param(episodeId)

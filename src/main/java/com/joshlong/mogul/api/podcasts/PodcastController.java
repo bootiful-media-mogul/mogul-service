@@ -154,8 +154,16 @@ class PodcastController {
 			map.put(episode, allEpisodeSegments.get(episode.id()));
 
 		for (var ep : map.entrySet()) {
-			Assert.state(ep.getValue() != null, "no segments found for episode id #" + ep.getKey().id() + ","
-					+ "and there must be at least one segment for each episode");
+			if (ep.getValue() == null) {
+				// an episode is meant to always have at least one segment. throwing here
+				// failed the entire query, not just this field, so a single episode left
+				// segment-less took its whole podcast page down. report it and render
+				// the episode empty instead.
+				this.log.warn("no segments found for episode id #{}, and there should be at least one",
+						ep.getKey().id());
+				ep.setValue(new ArrayList<>());
+				continue;
+			}
 			ep.getValue().sort(Comparator.comparingInt(Segment::order));
 		}
 		return map;
@@ -211,14 +219,10 @@ class PodcastController {
 	@BatchMapping
 	Map<Episode, Float> duration(List<Episode> episodes) {
 		var episodeIds = episodes.stream().map(Episode::id).collect(Collectors.toSet());
-		var segmentsByEpisode = this.podcastService.getPodcastEpisodeSegmentsByEpisodes(episodeIds);
+		var durations = this.podcastService.getPodcastEpisodeDurationsByEpisodes(episodeIds);
 		var map = new LinkedHashMap<Episode, Float>();
-		for (var episode : episodes) {
-			var total = 0f;
-			for (var segment : segmentsByEpisode.getOrDefault(episode.id(), List.of()))
-				total += segment.duration();
-			map.put(episode, total);
-		}
+		for (var episode : episodes)
+			map.put(episode, durations.getOrDefault(episode.id(), 0L).floatValue());
 		return map;
 	}
 
