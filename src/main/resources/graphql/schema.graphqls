@@ -60,6 +60,17 @@ type SettingsPage {
     settings : [Setting]
 }
 
+# a diagnostic: which wall clock the two writers of a `timestamp without time zone`
+# actually use. they are not necessarily the same.
+type ServerTime {
+    instant: String
+    javaTimeZone: String
+    javaOffset: String
+    javaLocalTime: String
+    databaseTimeZone: String
+    databaseLocalTime: String
+}
+
 type Mogul {
     id: Int
     name : String
@@ -332,6 +343,9 @@ type Query {
 
     # settings
     settings: [SettingsPage]
+
+    # diagnostics
+    serverTime: ServerTime
 
     # mogul
     me: Mogul
