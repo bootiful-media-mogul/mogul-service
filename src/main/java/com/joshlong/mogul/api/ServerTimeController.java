@@ -8,16 +8,21 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * a diagnostic. every {@code created} column in this schema is a
  * {@code timestamp without time zone}, so the wall clock it holds only means something if
- * you know which zone wrote it -- and two different things do the writing. rows the
- * application inserts through JDBC are converted using the <em>JVM's</em> default zone;
- * rows that fall back to a column's {@code default now()} are written in
- * <em>Postgres'</em> session zone. this reports both so the two can be compared before
- * anything is migrated to {@code timestamptz}, which requires naming the zone the
- * existing values were written in.
+ * you know which zone wrote it -- and migrating those columns to {@code timestamptz}
+ * means naming that zone, irreversibly.
+ * <p>
+ * the answer is the JVM's zone. the PostgreSQL JDBC driver issues a {@code SET TimeZone}
+ * to the JVM's default on every connection, so the session zone follows the JVM rather
+ * than the server's own configuration. that means both writers agree: rows the
+ * application inserts and rows that fall back to a column's {@code default now()} land in
+ * the same wall clock. the database values are reported here to confirm that, not because
+ * they're independent.
  */
 @Controller
 class ServerTimeController {
@@ -28,33 +33,26 @@ class ServerTimeController {
 		this.db = db;
 	}
 
+	/**
+	 * returns a map rather than a record on purpose: this is deployed as a GraalVM native
+	 * image, and a record read reflectively by the GraphQL layer would need registering
+	 * for reflection to survive it. a map needs nothing, which is the same reason
+	 * {@code MogulController.me()} returns one.
+	 */
 	@QueryMapping
-	ServerTime serverTime() {
+	Map<String, String> serverTime() {
 		var zone = ZoneId.systemDefault();
 		var now = Instant.now();
 		var databaseTimeZone = this.db.sql("show timezone").query(String.class).single();
 		var databaseLocalTime = this.db.sql("select localtimestamp").query(LocalDateTime.class).single();
-		return new ServerTime(//
-				now.toString(), //
-				zone.getId(), //
-				zone.getRules().getOffset(now).getId(), //
-				LocalDateTime.ofInstant(now, zone).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), //
-				databaseTimeZone, //
-				databaseLocalTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-	}
-
-	/**
-	 * @param instant the actual moment, which nobody disagrees about
-	 * @param javaTimeZone the JVM's default zone
-	 * @param javaOffset that zone's offset right now, daylight saving included
-	 * @param javaLocalTime the wall clock the JVM sees -- what a timestamp written by the
-	 * application lands as
-	 * @param databaseTimeZone Postgres' session time zone
-	 * @param databaseLocalTime the wall clock Postgres sees -- what a {@code default
-	 * now()} column lands as
-	 */
-	record ServerTime(String instant, String javaTimeZone, String javaOffset, String javaLocalTime,
-			String databaseTimeZone, String databaseLocalTime) {
+		var map = new LinkedHashMap<String, String>();
+		map.put("instant", now.toString());
+		map.put("javaTimeZone", zone.getId());
+		map.put("javaOffset", zone.getRules().getOffset(now).getId());
+		map.put("javaLocalTime", LocalDateTime.ofInstant(now, zone).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+		map.put("databaseTimeZone", databaseTimeZone);
+		map.put("databaseLocalTime", databaseLocalTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+		return map;
 	}
 
 }
