@@ -152,7 +152,8 @@ class DefaultPodcastService implements PodcastService {
 				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId);
 				// todo
 				this.db.sql("update podcast_episode_segment set duration =  ? where id = ? ")
-					.params(normalizedEvent.context().getOrDefault("durationInMilliseconds", 0L), segmentId)
+					.params(normalizedEvent.context().getOrDefault(MediaNormalizedEvent.DURATION_IN_MILLISECONDS, 0L),
+							segmentId)
 					.update();
 
 			}

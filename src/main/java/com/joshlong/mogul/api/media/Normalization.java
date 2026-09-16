@@ -59,7 +59,7 @@ class Normalization {
 				var file = encodedFile.file();
 				filesToDelete.add(file);
 				if (encodedFile instanceof AudioEncodedFile audioEncodedFile) {
-					ctx.put("durationInMilliseconds", audioEncodedFile.millisecondsDuration());
+					ctx.put(MediaNormalizedEvent.DURATION_IN_MILLISECONDS, audioEncodedFile.millisecondsDuration());
 				}
 				this.managedFileService.write(output.id(), output.filename(), ext, new FileSystemResource(file));
 			}

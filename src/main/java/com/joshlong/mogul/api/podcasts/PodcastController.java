@@ -211,11 +211,6 @@ class PodcastController {
 		NotificationEvents.notify(ne);
 	}
 
-	/**
-	 * batched, and off the same call {@link #segments(List)} uses: this used to re-read
-	 * each episode's segments one episode at a time, to total up rows the segments
-	 * mapping had already loaded.
-	 */
 	@BatchMapping
 	Map<Episode, Float> duration(List<Episode> episodes) {
 		var episodeIds = episodes.stream().map(Episode::id).collect(Collectors.toSet());
@@ -245,16 +240,28 @@ class PodcastController {
 
 	@ApplicationModuleListener
 	void onMediaNormalizedEvent(MediaNormalizedEvent mediaNormalizedEvent) {
-		var managedFileForAPodcastEpisodeSegment = mediaNormalizedEvent.out().id();
-		// todo look up in the DB to see if this corresponds to one of the podcast episode
-		// segments under our jurisdiction
-		// todo re-broadcast this and listen for it on the client side
+		var context = mediaNormalizedEvent.context();
+		if (!context.containsKey(DefaultPodcastService.PODCAST_EPISODE_CONTEXT_KEY)
+				|| !context.containsKey(DefaultPodcastService.PODCAST_EPISODE_SEGMENT_CONTEXT_KEY))
+			return;
+		var episodeId = context.get(DefaultPodcastService.PODCAST_EPISODE_CONTEXT_KEY);
+		var segmentId = context.get(DefaultPodcastService.PODCAST_EPISODE_SEGMENT_CONTEXT_KEY);
+		var duration = context.getOrDefault(MediaNormalizedEvent.DURATION_IN_MILLISECONDS, 0L);
+		try {
+			var json = JsonUtils.write(Map.of(//
+					"episodeId", episodeId, //
+					"segmentId", segmentId, //
+					MediaNormalizedEvent.DURATION_IN_MILLISECONDS, duration));
+			var notificationEvent = NotificationEvent.systemNotificationEventFor(mediaNormalizedEvent.in().mogulId(),
+					mediaNormalizedEvent, Long.toString((Long) segmentId), json);
+			NotificationEvents.notify(notificationEvent);
+		} //
+		catch (Exception e) {
+			this.log.warn("couldn't emit a media normalized notification for podcast episode segment # {}", segmentId,
+					e);
+		}
 	}
 
-	/**
-	 * batched: an episode's segments used to cost one transcript query each, plus an
-	 * insert apiece for any that had no row yet.
-	 */
 	@BatchMapping
 	Map<Segment, Transcript> transcript(List<Segment> segments) {
 		var mogul = this.mogulService.getCurrentMogul();
