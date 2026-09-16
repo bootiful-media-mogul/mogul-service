@@ -136,7 +136,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@ApplicationModuleListener
 	void invalidateCacheBecauseOfTranscriptUpdates(TranscriptRecordedEvent recordedEvent) {
-		this.log.info("you've got your transcript, invalidate ur cache for podcast episodes!");
+		this.log.debug("you've got your transcript, invalidate ur cache for podcast episodes!");
 	}
 
 	@ApplicationModuleListener
@@ -279,7 +279,7 @@ class DefaultPodcastService implements PodcastService {
 			.param(podcastId)//
 			.query(episodeRowMapper)//
 			.list();
-		log.info("getting episodes (deep? {}) for podcast {} returned {} episodes", deep, podcastId, results.size());
+		log.debug("getting episodes (deep? {}) for podcast {} returned {} episodes", deep, podcastId, results.size());
 		results.sort(this.episodeComparator);
 		return results;
 	}
@@ -585,7 +585,7 @@ class DefaultPodcastService implements PodcastService {
 	 * produced_audio_assets_updated field
 	 */
 	private void markAssetsDirty(Long episodeId) {
-		log.info("marking the produced_audio_assets_updated = now() for episode_id = {}", episodeId);
+		log.debug("marking the produced_audio_assets_updated = now() for episode_id = {}", episodeId);
 		this.db.sql("update podcast_episode set produced_audio_assets_updated  = now() where id   = ?")
 			.params(episodeId)
 			.update();
@@ -602,8 +602,11 @@ class DefaultPodcastService implements PodcastService {
 		var segmentList = db.sql("select * from podcast_episode_segment where id = any(?) ") //
 			.params(new SqlArrayValue("bigint", (Object[]) arr))//
 			.query(new SegmentResultSetExtractor(managedFileService::getManagedFiles));
-		this.log.info("segments returned for episode IDs {}: {}", CollectionUtils.join(episodeSegmentIds, ","),
-				segmentList.size());
+		// join() runs whether or not debug is on -- slf4j defers formatting, not the
+		// evaluation of its arguments -- so guard the one argument that costs something.
+		if (this.log.isDebugEnabled())
+			this.log.debug("segments returned for episode IDs {}: {}", CollectionUtils.join(episodeSegmentIds, ","),
+					segmentList.size());
 		return segmentList;
 	}
 
@@ -671,7 +674,7 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Collection<Episode> getAllPodcastEpisodesByIds(Collection<Long> episodeIds) {
-		this.log.info("getting episodes for episode ids(length {}) {}", episodeIds.size(), episodeIds);
+		this.log.debug("getting episodes for episode ids(length {}) {}", episodeIds.size(), episodeIds);
 		if (episodeIds.isEmpty()) {
 			return Set.of();
 		}
