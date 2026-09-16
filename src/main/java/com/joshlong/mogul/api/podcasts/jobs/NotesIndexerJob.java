@@ -8,7 +8,6 @@ import com.joshlong.mogul.api.search.SearchService;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -20,14 +19,11 @@ class NotesIndexerJob implements Job {
 
 	private final SearchService searchService;
 
-	private final JdbcClient db;
-
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	NotesIndexerJob(NoteService noteService, SearchService searchService, JdbcClient db) {
+	NotesIndexerJob(NoteService noteService, SearchService searchService) {
 		this.noteService = noteService;
 		this.searchService = searchService;
-		this.db = db;
 	}
 
 	@Override
@@ -42,22 +38,13 @@ class NotesIndexerJob implements Job {
 		return JobExecutionResult.ok();
 	}
 
-	private long from(Map<String, Object> ctx, @NonNull String k) {
-		var num = ctx.containsKey(k) ? (Number) ctx.get(k) : 0;
-		return num.longValue();
-	}
-
 	private void indexNotesFor(Long mogulId) {
 		this.log.info("indexing notes for mogul # {}", mogulId);
-		var list = this.db.sql(" select id from note where mogul_id = ? ") //
-			.param(mogulId)//
-			.query((rs, rowNum) -> rs.getLong("id")) //
-			.list();
-		for (var noteId : list) {
-			var note = noteService.getNoteById(noteId);
+		// one read for the whole mogul. selecting the ids and then loading each note
+		// behind them cost a query per note to fetch rows the first query had already
+		// found.
+		for (var note : this.noteService.getNotesByMogul(mogulId))
 			this.searchService.index(note);
-
-		}
 	}
 
 }

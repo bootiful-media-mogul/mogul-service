@@ -19,6 +19,8 @@ public interface NoteService {
 
 	Map<Long, Note> getNotesById(Collection<Long> ids);
 
+	Collection<Note> getNotesByMogul(Long mogulId);
+
 	<T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz);
 
 	<T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz, boolean includeDone);

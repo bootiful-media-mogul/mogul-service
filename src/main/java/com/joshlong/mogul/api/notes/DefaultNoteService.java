@@ -90,6 +90,15 @@ class DefaultNoteService extends AbstractDomainService<Notable, NotableResolver<
 	}
 
 	@Override
+	public Collection<Note> getNotesByMogul(Long mogulId) {
+		return this.db //
+			.sql("select * from note where mogul_id = ? order by created") //
+			.param(mogulId) //
+			.query(this.noteRowMapper) //
+			.list();
+	}
+
+	@Override
 	public <T extends Notable> Collection<Note> notes(Long mogulId, Long id, String clazz) {
 		return this.notes(mogulId, id, clazz, true);
 	}
