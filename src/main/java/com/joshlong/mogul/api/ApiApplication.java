@@ -23,9 +23,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import java.time.Duration;
 import java.time.ZoneOffset;
-import java.util.TimeZone;
 import java.time.format.DateTimeFormatter;
 import java.util.EventObject;
+import java.util.TimeZone;
 
 @IntegrationComponentScan
 @ImportRuntimeHints(ApiApplication.EventHints.class)

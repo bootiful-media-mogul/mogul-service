@@ -10,7 +10,6 @@ import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.context.event.EventListener;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,8 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestClient;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.*;

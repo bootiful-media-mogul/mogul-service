@@ -1,17 +1,17 @@
 package com.joshlong.mogul.api.settings;
 
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.transaction.annotation.Transactional;
-import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
-import java.time.Duration;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

@@ -274,24 +274,10 @@ class DefaultPodcastService implements PodcastService {
 	 */
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
-		var sql = "  select * from podcast_episode pe where pe.podcast_id  = ? ";
-		// a deep load resolves three managed files per episode, and the row mapper
-		// resolves them an episode at a time -- one more query for every row in the
-		// result set. the extractor reads the rows first and then resolves all of their
-		// managed files in a single call, which is why getPodcastEpisodesByIds below
-		// already goes through it. a shallow load resolves nothing, so it has nothing to
-		// batch and stays on the row mapper.
-		var results = deep //
-				? new ArrayList<>(this.db //
-					.sql(sql) //
-					.param(podcastId) //
-					.query(new EpisodeResultSetExtractor(this.managedFileService::getManagedFiles)))
-				: this.db //
-					.sql(sql) //
-					.param(podcastId) //
-					.query(new EpisodeRowMapper(false, this.managedFileService::getManagedFiles)) //
-					.list();
-		log.debug("getting episodes (deep? {}) for podcast {} returned {} episodes", deep, podcastId, results.size());
+		var results = new ArrayList<>(this.db //
+			.sql("  select * from podcast_episode pe where pe.podcast_id  = ? ") //
+			.param(podcastId) //
+			.query(new EpisodeResultSetExtractor(deep, this.managedFileService::getManagedFiles)));
 		results.sort(this.episodeComparator);
 		return results;
 	}
@@ -702,7 +688,7 @@ class DefaultPodcastService implements PodcastService {
 			var episodes = this.db //
 				.sql("select * from podcast_episode pe where pe.id = any(? )") //
 				.params(new SqlArrayValue("bigint", (Object[]) idsArr))
-				.query(new EpisodeResultSetExtractor(managedFileService::getManagedFiles));
+				.query(new EpisodeResultSetExtractor(true, managedFileService::getManagedFiles));
 			for (var episode : episodes) {
 				map.put(episode.id(), episode);
 			}
@@ -777,45 +763,60 @@ class DefaultPodcastService implements PodcastService {
 
 	}
 
+	/**
+	 * reads every episode row first and then resolves all of their managed files in a
+	 * single call, rather than three at a time per row. a hundred episodes is one lookup,
+	 * not a hundred.
+	 * <p>
+	 * a shallow read skips the resolution entirely: the search results and the episode
+	 * lists that only want titles have no use for the files, and asking for them is the
+	 * expensive half of the job.
+	 */
 	static class EpisodeResultSetExtractor implements ResultSetExtractor<Collection<Episode>> {
 
-		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService;
+		private final Function<Collection<Long>, Map<Long, ManagedFile>> managedFiles;
 
-		EpisodeResultSetExtractor(Function<Collection<Long>, Map<Long, ManagedFile>> managedFileService) {
-			this.managedFileService = managedFileService;
+		private final boolean deep;
+
+		EpisodeResultSetExtractor(boolean deep, Function<Collection<Long>, Map<Long, ManagedFile>> managedFiles) {
+			this.managedFiles = managedFiles;
+			this.deep = deep;
 		}
 
 		@Override
-		public Collection<Episode> extractData(@NonNull ResultSet resultSet) throws SQLException, DataAccessException {
-			var rewind = JdbcUtils.rewindableResultSet(resultSet);
-
-			// iterate through the resultset, noting all ManagedFile IDs
+		public Collection<Episode> extractData(@NonNull ResultSet rs) throws SQLException, DataAccessException {
+			var rows = new ArrayList<EpisodeRow>();
 			var managedFileIds = new HashSet<Long>();
-			var noOpEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
-				managedFileIds.addAll(longs);
-				// don't care it'll return null, but c'est la vie
-				return Map.of();
-			});
-			while (rewind.next()) {
-				// force memoization
-				noOpEpisodeRowMapper.mapRow(rewind, 0);
+			while (rs.next()) {
+				var row = new EpisodeRow(rs.getLong("id"), rs.getLong("podcast_id"), rs.getString("title"),
+						rs.getString("description"), rs.getTimestamp("created"), rs.getLong("graphic_managed_file_id"),
+						rs.getLong("produced_graphic_managed_file_id"), rs.getLong("produced_audio_managed_file_id"),
+						rs.getBoolean("complete"), rs.getTimestamp("produced_audio_updated"),
+						rs.getTimestamp("produced_audio_assets_updated"));
+				rows.add(row);
+				// a nullable produced_* column reads back as 0, and there is no row 0 to
+				// go looking for.
+				for (var id : List.of(row.graphicId(), row.producedGraphicId(), row.producedAudioId()))
+					if (id > 0)
+						managedFileIds.add(id);
 			}
-
-			// replay
-			rewind.rewind();
-			var allManagedFiles = this.managedFileService.apply(managedFileIds);
-			var resolvedEpisodeRowMapper = new EpisodeRowMapper(true, longs -> {
-				var map = new HashMap<Long, ManagedFile>();
-				for (var id : longs) {
-					map.put(id, allManagedFiles.getOrDefault(id, null));
-				}
-				return map;
-			});
+			var managedFileMap = this.deep ? this.managedFiles.apply(managedFileIds) : Map.<Long, ManagedFile>of();
 			var results = new ArrayList<Episode>();
-			while (rewind.next()) {
-				results.add(resolvedEpisodeRowMapper.mapRow(rewind, 0));
-			}
+			for (var row : rows)
+				results.add(new Episode(row.id(), row.podcastId(), row.title(), row.description(), row.created(),
+						managedFileMap.get(row.graphicId()), managedFileMap.get(row.producedGraphicId()),
+						managedFileMap.get(row.producedAudioId()), row.complete(), row.producedAudioUpdated(),
+						row.producedAudioAssetsUpdated()));
 			return results;
+		}
+
+		/**
+		 * one row, read but not yet resolved: its three managed files are fetched for the
+		 * whole batch once every row is in hand.
+		 */
+		private record EpisodeRow(Long id, Long podcastId, String title, String description, Date created,
+				Long graphicId, Long producedGraphicId, Long producedAudioId, boolean complete,
+				Date producedAudioUpdated, Date producedAudioAssetsUpdated) {
 		}
 
 	}

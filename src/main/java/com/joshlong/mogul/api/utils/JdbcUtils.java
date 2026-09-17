@@ -1,6 +1,5 @@
 package com.joshlong.mogul.api.utils;
 
-import com.joshlong.mogul.api.utils.jdbc.RewindableResultSets;
 import org.springframework.jdbc.support.KeyHolder;
 
 import java.net.MalformedURLException;
@@ -44,16 +43,6 @@ public abstract class JdbcUtils {
 			throw new RuntimeException(e);
 		}
 
-	}
-
-	/**
-	 * wraps the {@link ResultSet} in a {@link RewindableResultSet} that can be iterated
-	 * over multiple times. this is useful for scenarios where where you'd like to load
-	 * all the records, first, then load the details for particular objects in bulk using
-	 * IDs collected during the first sweep.
-	 */
-	public static RewindableResultSet rewindableResultSet(ResultSet resultSet) {
-		return RewindableResultSets.build(resultSet);
 	}
 
 }

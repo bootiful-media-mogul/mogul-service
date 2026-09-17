@@ -18,11 +18,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -52,6 +48,13 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	private static String classNameFor(Transcribable transcribable) {
 		return transcribable.getClass().getName();
+	}
+
+	private static <T extends Transcribable> Map<TranscriptKey, Transcribable> keyBy(Collection<T> payloads) {
+		var keyed = new LinkedHashMap<TranscriptKey, Transcribable>();
+		for (var payload : payloads)
+			keyed.put(new TranscriptKey(classNameFor(payload), JsonUtils.write(payload.transcribableId())), payload);
+		return keyed;
 	}
 
 	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
@@ -197,13 +200,6 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 		return results;
 	}
 
-	private static <T extends Transcribable> Map<TranscriptKey, Transcribable> keyBy(Collection<T> payloads) {
-		var keyed = new LinkedHashMap<TranscriptKey, Transcribable>();
-		for (var payload : payloads)
-			keyed.put(new TranscriptKey(classNameFor(payload), JsonUtils.write(payload.transcribableId())), payload);
-		return keyed;
-	}
-
 	/**
 	 * reads a batch of transcripts in one query per distinct payload class -- in practice
 	 * one, since a batch is a list of the same kind of thing. matching on payload alone
@@ -232,9 +228,6 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 				results.put(new TranscriptKey(transcript.payloadClass().getName(), transcript.payload()), transcript);
 		}
 		return results;
-	}
-
-	private record TranscriptKey(String payloadClass, String payload) {
 	}
 
 	@Override
@@ -271,6 +264,9 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 		var notificationEvent = NotificationEvent //
 			.systemNotificationEventFor(event.mogulId(), event, event.transcribableId().toString(), ctx);
 		NotificationEvents.notify(notificationEvent);
+	}
+
+	private record TranscriptKey(String payloadClass, String payload) {
 	}
 
 }

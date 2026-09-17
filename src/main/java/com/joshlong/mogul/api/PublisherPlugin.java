@@ -104,6 +104,29 @@ public interface PublisherPlugin<T extends Publishable> {
 			return new PublishContext<>(mogulId, payload, c);
 		}
 
+		/**
+		 * one line, short enough that the UI doesn't have to wrap it. newlines and runs
+		 * of whitespace collapse to single spaces -- a tweet's paragraph breaks would
+		 * otherwise arrive as a preview that's mostly blank -- and anything longer than
+		 * {@link #PREVIEW_LENGTH} is cut at the last word boundary and given an ellipsis.
+		 * done here, once, so every plugin's previews look alike and the column can't be
+		 * blown out by one of them.
+		 */
+		static String preview(String preview) {
+			if (!StringUtils.hasText(preview))
+				return null;
+			var oneLine = preview.replaceAll("\\s+", " ").trim();
+			if (oneLine.length() <= PREVIEW_LENGTH)
+				return oneLine;
+			var cut = oneLine.substring(0, PREVIEW_LENGTH);
+			var lastSpace = cut.lastIndexOf(' ');
+			// no space to break on means one very long word (a URL, usually); cutting it
+			// mid-word beats returning the whole thing.
+			if (lastSpace > PREVIEW_LENGTH / 2)
+				cut = cut.substring(0, lastSpace);
+			return cut.stripTrailing() + "\u2026";
+		}
+
 		public Long mogulId() {
 			return this.mogulId;
 		}
@@ -144,29 +167,6 @@ public interface PublisherPlugin<T extends Publishable> {
 		@NonNull
 		public List<Outcome> outcomes() {
 			return this.outcomes;
-		}
-
-		/**
-		 * one line, short enough that the UI doesn't have to wrap it. newlines and runs
-		 * of whitespace collapse to single spaces -- a tweet's paragraph breaks would
-		 * otherwise arrive as a preview that's mostly blank -- and anything longer than
-		 * {@link #PREVIEW_LENGTH} is cut at the last word boundary and given an ellipsis.
-		 * done here, once, so every plugin's previews look alike and the column can't be
-		 * blown out by one of them.
-		 */
-		static String preview(String preview) {
-			if (!StringUtils.hasText(preview))
-				return null;
-			var oneLine = preview.replaceAll("\\s+", " ").trim();
-			if (oneLine.length() <= PREVIEW_LENGTH)
-				return oneLine;
-			var cut = oneLine.substring(0, PREVIEW_LENGTH);
-			var lastSpace = cut.lastIndexOf(' ');
-			// no space to break on means one very long word (a URL, usually); cutting it
-			// mid-word beats returning the whole thing.
-			if (lastSpace > PREVIEW_LENGTH / 2)
-				cut = cut.substring(0, lastSpace);
-			return cut.stripTrailing() + "\u2026";
 		}
 
 		public record Outcome(URI uri, String key, boolean success, String serverErrorMessage, String preview) {

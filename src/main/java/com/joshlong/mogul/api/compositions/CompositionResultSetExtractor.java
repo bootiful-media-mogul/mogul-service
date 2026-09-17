@@ -9,7 +9,9 @@ import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 
 class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Composition>> {
 
