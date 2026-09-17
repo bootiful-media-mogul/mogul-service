@@ -1,22 +1,30 @@
 package com.joshlong.mogul.api.jobs;
 
+import com.joshlong.mogul.api.utils.CollectionUtils;
 import com.joshlong.mogul.api.utils.JsonUtils;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -29,11 +37,11 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	private final JdbcClient db;
 
-	private final JobsRowMapper jobsRowMapper;
+	private final JobsResultSetExtractor jobsResultSetExtractor;
 
 	private final JobParamRowMapper jobParamRowMapper;
 
-	private final JobExecutionRowMapper jobExecutionRowMapper;
+	private final JobExecutionResultSetExtractor jobExecutionResultSetExtractor;
 
 	private final JobExecutionParamRowMapper jobExecutionParamRowMapper;
 
@@ -50,9 +58,9 @@ class DefaultJobs implements InitializingBean, Jobs {
 		this.publisher = publisher;
 		this.jobParamPreparers = jobParamPreparers;
 		this.jobParamRowMapper = new JobParamRowMapper();
-		this.jobsRowMapper = new JobsRowMapper(this::getJobParamCollection);
-		this.jobExecutionRowMapper = new JobExecutionRowMapper(this::getJobExecutionParams);
 		this.jobExecutionParamRowMapper = new JobExecutionParamRowMapper();
+		this.jobsResultSetExtractor = new JobsResultSetExtractor(this::getJobParamsByJobIds);
+		this.jobExecutionResultSetExtractor = new JobExecutionResultSetExtractor(this::getJobExecutionParamsByIds);
 	}
 
 	@Override
@@ -67,21 +75,25 @@ class DefaultJobs implements InitializingBean, Jobs {
 		var map = new HashMap<String, com.joshlong.mogul.api.jobs.Job>();
 		var list = this.db //
 			.sql(" select * from job ") //
-			.query(this.jobsRowMapper) //
-			.list();
-		for (var jobDefinitions : list) {
-			map.put(jobDefinitions.jobName(), this.jobs.get(jobDefinitions.jobName()));
+			.query(this.jobsResultSetExtractor);
+		for (var jobDefinition : list) {
+			var job = this.jobs.get(jobDefinition.jobName());
+			if (job == null) {
+				this.log.warn("there is a row in `job` named [{}] with no Job of that name here; ignoring it",
+						jobDefinition.jobName());
+				continue;
+			}
+			map.put(jobDefinition.jobName(), job);
 		}
 		return map;
 	}
 
 	@Override
 	public JobExecution getJobExecution(Long id) {
-		return this.db //
+		return CollectionUtils.firstOrNull(this.db //
 			.sql(" select * from job_execution where id = ? ") //
 			.params(id) //
-			.query(this.jobExecutionRowMapper) //
-			.single();
+			.query(this.jobExecutionResultSetExtractor));
 	}
 
 	@Override
@@ -148,8 +160,7 @@ class DefaultJobs implements InitializingBean, Jobs {
 					            and "stop" is null
 					""") //
 			.params(jobName, mogulId) //
-			.query(this.jobExecutionRowMapper) //
-			.list();
+			.query(this.jobExecutionResultSetExtractor);
 		if (!list.isEmpty())
 			return list.getFirst();
 		return null;
@@ -203,7 +214,8 @@ class DefaultJobs implements InitializingBean, Jobs {
 		var jobDefinition = this.findJob(jobName);
 		Assert.notNull(jobDefinition, "the job named [" + jobName + "] does not exist!");
 		this.db.sql("delete from job_param where job_id = ?").params(jobDefinition.id()).update();
-		var existingJobParamsInDb = this.getJobParamCollection(jobDefinition.id());
+		var existingJobParamsInDb = this.getJobParamsByJobIds(List.of(jobDefinition.id()))
+			.getOrDefault(jobDefinition.id(), List.of());
 		this.log.debug("got {} job params from the DB.", existingJobParamsInDb.size());
 		for (var existingJobParamInDb : existingJobParamsInDb) {
 			if (!requiredContextAttributes.contains(existingJobParamInDb.paramName())) {
@@ -229,18 +241,48 @@ class DefaultJobs implements InitializingBean, Jobs {
 	}
 
 	private Job findJob(String jobName) {
-		return this.db //
+		return CollectionUtils.firstOrNull(this.db //
 			.sql("select * from job where job_name =  ?") //
 			.params(jobName) //
-			.query(this.jobsRowMapper) //
-			.single();
+			.query(this.jobsResultSetExtractor));
 	}
 
-	private Collection<JobParam> getJobParamCollection(long jobId) {
-		return this.db.sql("select * from job_param where job_id = ?")
-			.params(jobId)
-			.query(this.jobParamRowMapper)
-			.list();
+	/**
+	 * every job's parameters in one query, grouped by job, however many jobs were asked
+	 * for.
+	 */
+	private Map<Long, Collection<JobParam>> getJobParamsByJobIds(Collection<Long> jobIds) {
+		var results = new HashMap<Long, Collection<JobParam>>();
+		if (jobIds.isEmpty())
+			return results;
+		this.db.sql("select * from job_param where job_id = any(?)")
+			.params(new SqlArrayValue("bigint", jobIds.toArray()))
+			.query((rs, rowNum) -> Map.entry(rs.getLong("job_id"),
+					Objects.requireNonNull(this.jobParamRowMapper.mapRow(rs, rowNum))))
+			.list()
+			.forEach(entry -> results.computeIfAbsent(entry.getKey(), _ -> new ArrayList<>()).add(entry.getValue()));
+		return results;
+	}
+
+	/**
+	 * every execution's parameters in one query, grouped by execution and then by name.
+	 */
+	private Map<Long, Map<String, JobExecutionParam>> getJobExecutionParamsByIds(Collection<Long> jobExecutionIds) {
+		var results = new HashMap<Long, Map<String, JobExecutionParam>>();
+		if (jobExecutionIds.isEmpty())
+			return results;
+		// read job_execution_id off the row rather than off the mapped object: the
+		// record's
+		// first component is called `id` but the mapper fills it with the execution's id,
+		// not the param's own, and that is too easy a thing to group by wrongly.
+		this.db.sql("select * from job_execution_param jep where jep.job_execution_id = any(?)")
+			.params(new SqlArrayValue("bigint", jobExecutionIds.toArray()))
+			.query((rs, rowNum) -> Map.entry(rs.getLong("job_execution_id"),
+					Objects.requireNonNull(this.jobExecutionParamRowMapper.mapRow(rs, rowNum))))
+			.list()
+			.forEach(entry -> results.computeIfAbsent(entry.getKey(), _ -> new HashMap<>())
+				.put(entry.getValue().name(), entry.getValue()));
+		return results;
 	}
 
 	record Job(Collection<JobParam> parameters, String jobName, long id) {
@@ -277,24 +319,53 @@ class DefaultJobs implements InitializingBean, Jobs {
 
 	}
 
-	private record JobExecutionRowMapper(
-			Function<Long, Map<String, JobExecutionParam>> function) implements RowMapper<JobExecution> {
+	/**
+	 * reads the executions first and then their parameters in one call, rather than a
+	 * query per row.
+	 */
+	private record JobExecutionResultSetExtractor(
+			Function<Collection<Long>, Map<Long, Map<String, JobExecutionParam>>> params)
+			implements
+				ResultSetExtractor<List<JobExecution>> {
 
 		@Override
-		public JobExecution mapRow(ResultSet rs, int rowNum) throws SQLException {
-			var paramsMap = this.function.apply(rs.getLong("id"));
-			return new JobExecution(rs.getLong("id"), rs.getLong("mogul_id"), rs.getString("job_name"),
-					rs.getBoolean("success"), paramsMap);
+		public List<JobExecution> extractData(ResultSet rs) throws SQLException, DataAccessException {
+			var rows = new ArrayList<JobExecution>();
+			var ids = new LinkedHashSet<Long>();
+			while (rs.next()) {
+				var id = rs.getLong("id");
+				ids.add(id);
+				rows.add(new JobExecution(id, rs.getLong("mogul_id"), rs.getString("job_name"),
+						rs.getBoolean("success"), new HashMap<>()));
+			}
+			var paramsById = this.params.apply(ids);
+			return rows.stream()
+				.map(row -> new JobExecution(row.id(), row.mogulId(), row.jobName(), row.success(),
+						paramsById.getOrDefault(row.id(), Map.of())))
+				.toList();
 		}
 
 	}
 
-	private record JobsRowMapper(Function<Long, Collection<JobParam>> function) implements RowMapper<Job> {
+	/**
+	 * reads the jobs first and then their parameters in one call, rather than a query per
+	 * row.
+	 */
+	private record JobsResultSetExtractor(Function<Collection<Long>, Map<Long, Collection<JobParam>>> params)
+			implements
+				ResultSetExtractor<List<Job>> {
 
 		@Override
-		public Job mapRow(ResultSet rs, int rowNum) throws SQLException {
-			var jobId = rs.getLong("id");
-			return new Job(this.function.apply(jobId), rs.getString("job_name"), jobId);
+		public List<Job> extractData(ResultSet rs) throws SQLException, DataAccessException {
+			var names = new LinkedHashMap<Long, String>();
+			while (rs.next())
+				names.put(rs.getLong("id"), rs.getString("job_name"));
+			var paramsByJobId = this.params.apply(names.keySet());
+			return names.entrySet()
+				.stream()
+				.map(entry -> new Job(paramsByJobId.getOrDefault(entry.getKey(), List.of()), entry.getValue(),
+						entry.getKey()))
+				.toList();
 		}
 
 	}

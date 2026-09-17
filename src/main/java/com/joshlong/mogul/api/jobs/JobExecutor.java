@@ -49,8 +49,8 @@ class JobExecutor {
 		var context = new JobExecutionWrappingJobExecutionContext(jobExecution);
 		try {
 			var jobName = jobExecution.jobName();
-			Assert.state(this.jobs.jobs().containsKey(jobName), "the job doesn't exist in the jobs map!");
 			var jobsInstance = this.jobs.jobs().get(jobName);
+			Assert.state(jobsInstance != null, () -> "there is no job named [" + jobName + "] to run!");
 			var result = jobsInstance.run(context);
 			this.recordJobExecutionResult(job, result);
 		} //
