@@ -34,12 +34,8 @@ import java.util.TimeZone;
 public class ApiApplication {
 
 	static void main(String[] args) {
-		// pinned, not inherited. the PostgreSQL JDBC driver issues a `SET TimeZone` to
-		// the JVM's default on every connection, so this decides how the database reads
-		// and writes every timestamp. it happens to be UTC in production today, by
-		// virtue of the container; saying so here means a base image or a region change
-		// can't quietly move it. must run before the context starts, so the first
-		// connection already has it.
+
+		// pin the timezone so that it doesnt matter in which geozone we run the app
 		TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
@@ -88,7 +84,6 @@ public class ApiApplication {
 		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
 			for (var c : new Class<?>[] { ApplicationEvent.class, EventObject.class })
 				hints.reflection().registerType(c, MemberCategory.values());
-
 		}
 
 	}
