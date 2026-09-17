@@ -274,12 +274,23 @@ class DefaultPodcastService implements PodcastService {
 	 */
 	@Override
 	public Collection<Episode> getPodcastEpisodesByPodcast(Long podcastId, boolean deep) {
-		var episodeRowMapper = new EpisodeRowMapper(deep, this.managedFileService::getManagedFiles);
-		var results = this.db//
-			.sql("  select * from podcast_episode pe where pe.podcast_id  = ? ") //
-			.param(podcastId)//
-			.query(episodeRowMapper)//
-			.list();
+		var sql = "  select * from podcast_episode pe where pe.podcast_id  = ? ";
+		// a deep load resolves three managed files per episode, and the row mapper
+		// resolves them an episode at a time -- one more query for every row in the
+		// result set. the extractor reads the rows first and then resolves all of their
+		// managed files in a single call, which is why getPodcastEpisodesByIds below
+		// already goes through it. a shallow load resolves nothing, so it has nothing to
+		// batch and stays on the row mapper.
+		var results = deep //
+				? new ArrayList<>(this.db //
+					.sql(sql) //
+					.param(podcastId) //
+					.query(new EpisodeResultSetExtractor(this.managedFileService::getManagedFiles)))
+				: this.db //
+					.sql(sql) //
+					.param(podcastId) //
+					.query(new EpisodeRowMapper(false, this.managedFileService::getManagedFiles)) //
+					.list();
 		log.debug("getting episodes (deep? {}) for podcast {} returned {} episodes", deep, podcastId, results.size());
 		results.sort(this.episodeComparator);
 		return results;
