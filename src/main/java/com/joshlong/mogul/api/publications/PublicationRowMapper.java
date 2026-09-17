@@ -34,7 +34,7 @@ class PublicationRowMapper implements RowMapper<Publication> {
 
 	private final RowMapper<PublicationOutcome> outcomeRowMapper = (rs, _) -> {
 		var outcome = new Publication.Outcome(rs.getInt("id"), //
-				rs.getDate("created"), //
+				rs.getTimestamp("created"), //
 				rs.getBoolean("success"), //
 				JdbcUtils.url(rs, "uri"), //
 				rs.getString("key"), //

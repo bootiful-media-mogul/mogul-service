@@ -126,6 +126,11 @@ class PublicationController<T extends Publishable> {
 		return DateUtils.forDate(publication.created());
 	}
 
+	@SchemaMapping(typeName = "PublicationOutcome", field = "created")
+	OffsetDateTime outcomeCreated(Publication.Outcome outcome) {
+		return DateUtils.forDate(outcome.created());
+	}
+
 	@SchemaMapping
 	String state(Publication publication) {
 		return publication.state().name().toLowerCase();
