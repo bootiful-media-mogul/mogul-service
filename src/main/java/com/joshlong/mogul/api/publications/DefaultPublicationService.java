@@ -189,7 +189,11 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		var map = new HashMap<Long, Publication>();
 		var pubs = this.db //
 			.sql("select * from publication p where p.id = any(?) ") //
-			.params(ids.toArray()) //
+			// an array, not the ids spread across the one placeholder: postgres rejects a
+			// scalar on the right of ANY outright, so this threw for every non-empty
+			// lookup. it went unnoticed because its one caller reads ayrshare drafts,
+			// whose publication ids are null and get filtered out before we get here.
+			.params(new SqlArrayValue("bigint", ids.toArray())) //
 			.query(this.getPublicationRowMapper()) //
 			.list();
 		for (var p : pubs)

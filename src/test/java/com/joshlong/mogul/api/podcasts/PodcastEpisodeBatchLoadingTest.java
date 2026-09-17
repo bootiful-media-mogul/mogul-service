@@ -33,11 +33,14 @@ class PodcastEpisodeBatchLoadingTest {
 	void deepLoadResolvesEveryEpisodesManagedFilesInOneCall(@Autowired JdbcClient db,
 			@Autowired PodcastService podcastService) {
 		var mogulId = db.sql("select id from mogul").query((rs, _) -> rs.getLong("id")).list().getFirst();
-		var podcastId = db.sql("select id from podcast where mogul_id = ?")
-			.params(mogulId)
+		// a podcast of its own, and not whichever one happens to be first: the counts
+		// below are exact, so a single episode belonging to someone else -- left behind
+		// by another test, or sitting in the developer's own database -- would fail this
+		// for the wrong reason.
+		var podcastId = db.sql("insert into podcast(mogul_id, title) values (?,?) returning id")
+			.params(mogulId, "batch loading test " + UUID.randomUUID())
 			.query((rs, _) -> rs.getLong("id"))
-			.list()
-			.getFirst();
+			.single();
 		var episodeIds = new ArrayList<Long>();
 		var managedFileIds = new ArrayList<Long>();
 		try {
@@ -82,6 +85,49 @@ class PodcastEpisodeBatchLoadingTest {
 				db.sql("delete from podcast_episode where id = ?").params(episodeId).update();
 			for (var managedFileId : managedFileIds)
 				db.sql("delete from managed_file where id = ?").params(managedFileId).update();
+			db.sql("delete from podcast where id = ?").params(podcastId).update();
+		}
+	}
+
+	/**
+	 * the produced graphic and produced audio columns are both nullable, and a null one
+	 * arrives here as 0. two of them therefore arrive as the same value, which is fatal
+	 * to a set that refuses duplicates -- and it was fatal to the whole query, not just
+	 * to the one episode, since the row mapper threw partway through the result set.
+	 */
+	@Test
+	void anEpisodeWithNeitherProducedFileStillLoads(@Autowired JdbcClient db,
+			@Autowired PodcastService podcastService) {
+		var mogulId = db.sql("select id from mogul").query((rs, _) -> rs.getLong("id")).list().getFirst();
+		var podcastId = db.sql("insert into podcast(mogul_id, title) values (?,?) returning id")
+			.params(mogulId, "unproduced episode test " + UUID.randomUUID())
+			.query((rs, _) -> rs.getLong("id"))
+			.single();
+		var graphicId = this.managedFile(db, mogulId);
+		var episodeId = db.sql("""
+				insert into podcast_episode(podcast_id, title, description, graphic_managed_file_id)
+				values (?,?,?,?) returning id
+				""")
+			.params(podcastId, "not produced yet", "description", graphicId)
+			.query((rs, _) -> rs.getLong("id"))
+			.single();
+		try {
+			for (var deep : new boolean[] { false, true }) {
+				var episodes = podcastService.getPodcastEpisodesByPodcast(podcastId, deep);
+				assertEquals(1, episodes.size(), "the episode should load (deep? " + deep + ")");
+				var episode = episodes.iterator().next();
+				assertNull(episode.producedGraphic(), "there is no produced graphic to resolve");
+				assertNull(episode.producedAudio(), "there is no produced audio to resolve");
+			}
+			// the graphic is not null, so a deep read still resolves the one file there
+			// is.
+			var episode = podcastService.getPodcastEpisodesByPodcast(podcastId, true).iterator().next();
+			assertNotNull(episode.graphic(), "the graphic is set and should resolve");
+		} //
+		finally {
+			db.sql("delete from podcast_episode where id = ?").params(episodeId).update();
+			db.sql("delete from managed_file where id = ?").params(graphicId).update();
+			db.sql("delete from podcast where id = ?").params(podcastId).update();
 		}
 	}
 
