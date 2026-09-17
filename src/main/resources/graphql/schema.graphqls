@@ -51,6 +51,9 @@ type PublicationOutcome  {
     url:String
     key:String
     serverErrorMessage:String
+    # an already-abbreviated, one-line rendition of what actually went out -- the text
+    # of the tweet, say. null for the outcomes with nothing worth previewing.
+    preview:String
 
 }
 

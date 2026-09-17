@@ -82,6 +82,12 @@ public interface PublisherPlugin<T extends Publishable> {
 
 	class PublishContext<T> extends Context<T> {
 
+		/**
+		 * how much of a preview survives. an outcome row in the UI is one line beside an
+		 * icon and a link; this is about as much as fits there without wrapping.
+		 */
+		public static final int PREVIEW_LENGTH = 100;
+
 		private final T payload;
 
 		private final Long mogulId;
@@ -107,15 +113,31 @@ public interface PublisherPlugin<T extends Publishable> {
 		}
 
 		public PublishContext<T> success(String outcomeKey, URI outcome) {
-			return this.outcome(outcomeKey, true, outcome, null);
+			return this.outcome(outcomeKey, true, outcome, null, null);
+		}
+
+		/**
+		 * for the plugins whose outcome is worth reading and not just following: the
+		 * social posts, where one publish sends different text to each platform and the
+		 * link alone doesn't say which post is which. pass the whole thing; it's
+		 * abbreviated to one short line on the way in, so nothing here has to know how
+		 * much of it the UI can fit.
+		 */
+		public PublishContext<T> success(String outcomeKey, URI outcome, String preview) {
+			return this.outcome(outcomeKey, true, outcome, null, preview);
 		}
 
 		public PublishContext<T> failure(String outcomeKey, String errorMessageFromServer) {
-			return this.outcome(outcomeKey, false, null, errorMessageFromServer);
+			return this.outcome(outcomeKey, false, null, errorMessageFromServer, null);
 		}
 
-		private PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome, String errorMessage) {
-			this.outcomes.add(new Outcome(outcome, outcomeKey, success, errorMessage));
+		public PublishContext<T> failure(String outcomeKey, String errorMessageFromServer, String preview) {
+			return this.outcome(outcomeKey, false, null, errorMessageFromServer, preview);
+		}
+
+		private PublishContext<T> outcome(String outcomeKey, boolean success, URI outcome, String errorMessage,
+				String preview) {
+			this.outcomes.add(new Outcome(outcome, outcomeKey, success, errorMessage, preview(preview)));
 			return this;
 		}
 
@@ -124,7 +146,30 @@ public interface PublisherPlugin<T extends Publishable> {
 			return this.outcomes;
 		}
 
-		public record Outcome(URI uri, String key, boolean success, String serverErrorMessage) {
+		/**
+		 * one line, short enough that the UI doesn't have to wrap it. newlines and runs
+		 * of whitespace collapse to single spaces -- a tweet's paragraph breaks would
+		 * otherwise arrive as a preview that's mostly blank -- and anything longer than
+		 * {@link #PREVIEW_LENGTH} is cut at the last word boundary and given an ellipsis.
+		 * done here, once, so every plugin's previews look alike and the column can't be
+		 * blown out by one of them.
+		 */
+		static String preview(String preview) {
+			if (!StringUtils.hasText(preview))
+				return null;
+			var oneLine = preview.replaceAll("\\s+", " ").trim();
+			if (oneLine.length() <= PREVIEW_LENGTH)
+				return oneLine;
+			var cut = oneLine.substring(0, PREVIEW_LENGTH);
+			var lastSpace = cut.lastIndexOf(' ');
+			// no space to break on means one very long word (a URL, usually); cutting it
+			// mid-word beats returning the whole thing.
+			if (lastSpace > PREVIEW_LENGTH / 2)
+				cut = cut.substring(0, lastSpace);
+			return cut.stripTrailing() + "\u2026";
+		}
+
+		public record Outcome(URI uri, String key, boolean success, String serverErrorMessage, String preview) {
 		}
 
 	}

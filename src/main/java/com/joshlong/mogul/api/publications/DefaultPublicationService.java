@@ -147,9 +147,9 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 
 			pc.outcomes().forEach((outcome) -> {
 				this.db.sql(
-						"insert into publication_outcome(publication_id, success, uri , key ,server_error_message ) values (?,?,?,?,?)")
+						"insert into publication_outcome(publication_id, success, uri , key ,server_error_message, preview ) values (?,?,?,?,?,?)")
 					.params(publicationId, outcome.success(), outcome.uri() != null ? outcome.uri().toString() : null,
-							outcome.key(), outcome.serverErrorMessage())
+							outcome.key(), outcome.serverErrorMessage(), outcome.preview())
 					.update();
 			});
 

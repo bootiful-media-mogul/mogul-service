@@ -92,13 +92,16 @@ public abstract class AbstractAyrsharePublisherPlugin<T extends Publishable> imp
 						} //
 						else {
 							context.failure(platform.platformCode().toLowerCase(),
-									"you didn't specify the twitter oauth key and secret in the settings page!");
+									"you didn't specify the twitter oauth key and secret in the settings page!", post);
 						}
 					}
 				});
+				// the post text doubles as the outcome's preview: a link to a tweet says
+				// nothing about which tweet, and these go out one per platform with
+				// per-platform text, so the link alone leaves the user guessing.
 				response.postIds()
 					.forEach((platformObj, posted) -> context.success(platformObj.platformCode().toLowerCase(),
-							posted.postUrl()));
+							posted.postUrl(), post));
 			}
 		}
 	}

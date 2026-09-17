@@ -38,7 +38,8 @@ class PublicationRowMapper implements RowMapper<Publication> {
 				rs.getBoolean("success"), //
 				JdbcUtils.url(rs, "uri"), //
 				rs.getString("key"), //
-				rs.getString("server_error_message") //
+				rs.getString("server_error_message"), //
+				rs.getString("preview") //
 		);
 		return new PublicationOutcome(rs.getLong("publication_id"), outcome);
 	};
