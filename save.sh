@@ -4,7 +4,7 @@ set -e
 
 ./mvnw spring-javaformat:apply
 
-git commit -am up
+git commit -a up
 
 if [ -z "$1" ]; then
   git push
