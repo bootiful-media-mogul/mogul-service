@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.compositions;
 import com.joshlong.mogul.api.utils.ReflectionUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.SqlArrayValue;
 import org.springframework.util.Assert;
@@ -14,15 +13,15 @@ import java.util.*;
 
 class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Composition>> {
 
-	private final RowMapper<Attachment> attachmentRowMapper;
+	private final AttachmentResultSetExtractor attachments;
 
 	private final JdbcClient db;
 
-	CompositionResultSetExtractor(AttachmentRowMapper arm, JdbcClient db) {
-		this.attachmentRowMapper = arm;
+	CompositionResultSetExtractor(JdbcClient db, AttachmentResultSetExtractor attachments) {
 		this.db = db;
+		this.attachments = attachments;
 		Assert.notNull(this.db, "the db is null");
-		Assert.notNull(this.attachmentRowMapper, "the attachmentRowMapper is null");
+		Assert.notNull(this.attachments, "the attachments extractor is null");
 	}
 
 	@Override
@@ -34,18 +33,19 @@ class CompositionResultSetExtractor implements ResultSetExtractor<Collection<Com
 			compositions.put(composition.id(), composition);
 			indx += 1;
 		}
-		if (!compositions.isEmpty()) {
-			var attachments = db.sql("select * from composition_attachment where composition_id = any(?)")
-				.params(new SqlArrayValue("bigint", compositions.keySet().toArray()))
-				.query((rs1, rowNum) -> Map.of(rs1.getLong("composition_id"),
-						Objects.requireNonNull(this.attachmentRowMapper.mapRow(rs1, rowNum))))
-				.list();
-			for (var a : attachments) {
-				var compositionId = a.keySet().iterator().next();
-				var attachment = a.get(compositionId);
-				compositions.get(compositionId).attachments().add(attachment);
-			}
-		}
+		if (compositions.isEmpty())
+			return compositions.values();
+		// every attachment of every composition in one query, and every one of their
+		// managed files in one more, however many compositions were asked for.
+		var attachmentsByComposition = this.db.sql("select * from composition_attachment where composition_id = any(?)")
+			.params(new SqlArrayValue("bigint", compositions.keySet().toArray()))
+			.query(this.attachments);
+		if (attachmentsByComposition != null)
+			attachmentsByComposition.forEach((compositionId, attachments) -> {
+				var composition = compositions.get(compositionId);
+				if (composition != null)
+					composition.attachments().addAll(attachments);
+			});
 		return compositions.values();
 	}
 

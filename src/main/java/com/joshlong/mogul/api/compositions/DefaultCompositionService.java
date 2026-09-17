@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.SqlArrayValue;
@@ -23,8 +22,6 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 //todo the attachments pointing to a ManagedFile thats been cached with the wrong content-type.
 // the content-type is determined asynchronously, but the CompositionService should be able to invalidate it.
@@ -47,7 +44,7 @@ class DefaultCompositionService implements CompositionService {
 
 	private final ManagedFileService managedFileService;
 
-	private final RowMapper<Attachment> attachmentRowMapper;
+	private final AttachmentResultSetExtractor attachmentResultSetExtractor;
 
 	private final Cache compositionsByKeyCache, attachmentsCache, compositionsByIdCache;
 
@@ -55,40 +52,36 @@ class DefaultCompositionService implements CompositionService {
 
 	private final MarkdownPreview[] markdownPreviews;
 
-	DefaultCompositionService(AttachmentRowMapper attachmentRowMapper, JdbcClient db, Cache compositionsByKeyCache,
-			Cache compositionsByIdCache, Cache attachmentsCache, ManagedFileService managedFileService,
-			MarkdownPreview[] markdownPreviews) {
+	DefaultCompositionService(JdbcClient db, Cache compositionsByKeyCache, Cache compositionsByIdCache,
+			Cache attachmentsCache, ManagedFileService managedFileService, MarkdownPreview[] markdownPreviews) {
 		this.db = db;
 		this.compositionsByIdCache = compositionsByIdCache;
 		this.attachmentsCache = attachmentsCache;
 		this.compositionsByKeyCache = compositionsByKeyCache;
 		this.managedFileService = managedFileService;
-		this.attachmentRowMapper = attachmentRowMapper;
-		this.compositionResultSetExtractor = new CompositionResultSetExtractor(attachmentRowMapper, this.db);
+		this.attachmentResultSetExtractor = new AttachmentResultSetExtractor(this.managedFileService::getManagedFiles);
+		this.compositionResultSetExtractor = new CompositionResultSetExtractor(this.db,
+				this.attachmentResultSetExtractor);
 		this.markdownPreviews = markdownPreviews;
 	}
 
 	@ApplicationModuleListener
 	void onManagedFileEvent(ManagedFileUpdatedEvent event) {
 
-		record CompositionAndAttachment(Long compositionId, Attachment attachment) {
+		record CompositionAndAttachment(Long compositionId, Long attachmentId) {
 		}
 
 		this.log.debug("in {}, received a ManagedFileUpdatedEvent for {}", this.getClass().getSimpleName(),
 				event.managedFile());
 		var managedFileEventId = event.managedFile().id();
-		var compositionAndAttachmentRowMapper = new RowMapper<CompositionAndAttachment>() {
-
-			@Override
-			public CompositionAndAttachment mapRow(ResultSet rs, int rowNum) throws SQLException {
-				return new CompositionAndAttachment(rs.getLong("composition_id"),
-						attachmentRowMapper.mapRow(rs, rowNum));
-			}
-		};
+		// only the two ids are read below, so this deliberately does not resolve the
+		// attachments' managed files: doing so cost a lookup per row for an object that
+		// was thrown away, and the one managed file in question is already in hand on
+		// the event itself.
 		var attachments = db //
-			.sql("select * from composition_attachment where managed_file_id = ?")//
+			.sql("select composition_id, id from composition_attachment where managed_file_id = ?")//
 			.param(managedFileEventId) //
-			.query(compositionAndAttachmentRowMapper) //
+			.query((rs, _) -> new CompositionAndAttachment(rs.getLong("composition_id"), rs.getLong("id"))) //
 			.list();
 		if (attachments.isEmpty())
 			return;
@@ -97,7 +90,7 @@ class DefaultCompositionService implements CompositionService {
 
 		var compositions = new HashSet<Long>();
 		for (var meta : attachments) {
-			this.invalidateAttachmentCache(meta.attachment().id());
+			this.invalidateAttachmentCache(meta.attachmentId());
 			compositions.add(meta.compositionId());
 		}
 		if (!compositions.isEmpty())
@@ -207,11 +200,16 @@ class DefaultCompositionService implements CompositionService {
 	private Attachment readThroughAttachmentById(Long id) {
 		var attachment = this.attachmentsCache.get(id, Attachment.class);
 		if (attachment == null) {
+			// one row, but read through the same extractor as every other attachment, so
+			// there is exactly one place that knows how to turn these rows into objects.
 			var attachments = this.db //
 				.sql("select * from composition_attachment where id = ?") //
 				.param(id) //
-				.query(this.attachmentRowMapper)//
-				.list();
+				.query(this.attachmentResultSetExtractor) //
+				.values()
+				.stream()
+				.flatMap(Collection::stream)
+				.toList();
 			Assert.state(attachments.size() == 1, "there should be exactly one attachment for the given id " + id
 					+ " but there were " + attachments.size() + " instead");
 			for (var a : attachments) {

@@ -302,15 +302,25 @@ class DefaultManagedFileService implements ManagedFileService {
 	public Map<Long, ManagedFile> getManagedFiles(Collection<Long> managedFileIds) {
 		this.debug();
 		var outcome = new HashMap<Long, ManagedFile>();
+		var everythingElse = new ArrayList<Long>();
 		for (var mfId : managedFileIds) {
+			// a null managed file column reads back out of a ResultSet as 0, and the
+			// sequence starts at 1, so there is no row to go looking for. an episode
+			// missing, say, its produced graphic would otherwise drag a query along
+			// behind it on every single load, however warm the cache was.
+			if (mfId == null || mfId <= 0)
+				continue;
 			var entry = this.cache.get(mfId, ManagedFile.class);
 			if (entry != null)
 				outcome.put(mfId, entry);
+			else
+				everythingElse.add(mfId);
 		}
-		var everythingElse = new ArrayList<Long>();
-		for (var mfid : managedFileIds)
-			if (!outcome.containsKey(mfid))
-				everythingElse.add(mfid);
+		// sparing this trip is the entire point of the cache, and it wasn't being
+		// spared: `id = any('{}')` finds nothing, but it still goes to the database and
+		// back to find it.
+		if (everythingElse.isEmpty())
+			return outcome;
 		var results = db.sql("select * from managed_file where id = any(?)")
 			.params(new SqlArrayValue("bigint", everythingElse.toArray()))
 			.query(this.managedFileRowMapper)
