@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.mogul;
 
-import com.joshlong.mogul.api.ApiProperties;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,8 +20,10 @@ class MogulConfiguration {
 
 	@Bean
 	DefaultMogulService defaultMogulService(TransactionTemplate tt, JdbcClient db, ApplicationEventPublisher publisher,
-			@Value("${auth0.userinfo}") String authUserInfo, ApiProperties apiProperties) {
-		return new DefaultMogulService(authUserInfo, db, publisher, tt, apiProperties.cache().maxEntries());
+			@Value("${auth0.userinfo}") String authUserInfo, CacheManager cacheManager) {
+		var mogulsById = cacheManager.getCache("mogulsById");
+		var mogulsByName = cacheManager.getCache("mogulsByName");
+		return new DefaultMogulService(authUserInfo, db, publisher, tt, mogulsById, mogulsByName);
 	}
 
 	@Bean

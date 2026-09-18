@@ -1,10 +1,10 @@
 package com.joshlong.mogul.api.mogul;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.joshlong.mogul.api.utils.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
+import org.springframework.cache.Cache;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,9 +31,9 @@ class DefaultMogulService implements MogulService {
 
 	private final RestClient userinfoHttpRestClient = RestClient.builder().build();
 
-	private final Map<Long, Mogul> mogulsById;
+	private final Cache mogulsById;
 
-	private final Map<String, Mogul> mogulsByName;
+	private final Cache mogulsByName;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -48,16 +48,21 @@ class DefaultMogulService implements MogulService {
 	private final String auth0Userinfo;
 
 	DefaultMogulService(String auth0Userinfo, JdbcClient jdbcClient, ApplicationEventPublisher publisher,
-			TransactionTemplate transactionTemplate, int maxEntries) {
+			TransactionTemplate transactionTemplate, Cache mogulsById, Cache mogulsByName) {
 		this.auth0Userinfo = auth0Userinfo;
 		this.transactionTemplate = transactionTemplate;
 		this.db = jdbcClient;
 		this.publisher = publisher;
-
-		var tenMins = Duration.ofMinutes(10);
-		this.mogulsById = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
-		this.mogulsByName = CollectionUtils.evictingConcurrentMap(maxEntries, tenMins);
+		// these were node-local maps. a mogul edited on one node stayed stale on every
+		// other until the entry aged out -- and since today() reads the mogul's time
+		// zone, that showed up as dates rendering differently depending on which pod
+		// answered. they are caches from the broadcasting manager now, so an eviction
+		// here is an eviction everywhere, the way Settings has always done it.
+		this.mogulsById = mogulsById;
+		this.mogulsByName = mogulsByName;
 		Assert.notNull(this.db, "the db is null");
+		Assert.notNull(this.mogulsById, "the moguls-by-id cache is null");
+		Assert.notNull(this.mogulsByName, "the moguls-by-name cache is null");
 	}
 
 	@Override
@@ -127,36 +132,43 @@ class DefaultMogulService implements MogulService {
 
 	@Override
 	public Mogul getMogulById(Long id) {
-		var resolved = new AtomicBoolean(false);
-		var res = this.mogulsById.computeIfAbsent(id, mogulId -> {
-			var mogul = this.db //
-				.sql("select * from mogul where id =? ") //
-				.param(mogulId) //
-				.query(this.mogulRowMapper) //
-				.single();
-			resolved.set(true);
-			return mogul;
-		});
-		this.logMogulCacheAttempt(id, "id", resolved.get());
-		return res;
+		var hit = this.mogulsById.get(id, Mogul.class);
+		if (hit != null) {
+			this.logMogulCacheAttempt(id, "id", false);
+			return hit;
+		}
+		var mogul = this.db //
+			.sql("select * from mogul where id =? ") //
+			.param(id) //
+			.query(this.mogulRowMapper) //
+			.single();
+		this.mogulsById.put(id, mogul);
+		this.logMogulCacheAttempt(id, "id", true);
+		return mogul;
 	}
 
 	@Override
 	public Mogul getMogulByName(String name) {
-		var resolved = new AtomicBoolean(false);
-		var res = this.mogulsByName.computeIfAbsent(name, key -> {
-			var moguls = this.db//
-				.sql("select * from mogul where username = ? ")
-				.param(key)
-				.query(this.mogulRowMapper)
-				.list();
-			Assert.state(moguls.size() <= 1, "there should only be one mogul with this username [" + name + "]");
-			var mogul = moguls.isEmpty() ? null : moguls.getFirst();
-			resolved.set(true);
-			return mogul;
-		});
-		this.logMogulCacheAttempt(name, "name", resolved.get());
-		return res;
+		var hit = this.mogulsByName.get(name, Mogul.class);
+		if (hit != null) {
+			this.logMogulCacheAttempt(name, "name", false);
+			return hit;
+		}
+		var moguls = this.db//
+			.sql("select * from mogul where username = ? ")
+			.param(name)
+			.query(this.mogulRowMapper)
+			.list();
+		Assert.state(moguls.size() <= 1, "there should only be one mogul with this username [" + name + "]");
+		var mogul = moguls.isEmpty() ? null : moguls.getFirst();
+		// an absent mogul is deliberately not cached. the old ConcurrentMap never
+		// stored a null from computeIfAbsent, but this cache would happily keep one,
+		// and login() inserts the row then reads it straight back through here -- a
+		// cached miss would make that read fail every time.
+		if (mogul != null)
+			this.mogulsByName.put(name, mogul);
+		this.logMogulCacheAttempt(name, "name", true);
+		return mogul;
 	}
 
 	@Override
@@ -181,9 +193,18 @@ class DefaultMogulService implements MogulService {
 	}
 
 	private void evictMogulFromCaches(Long mogulId) {
-		var mogul = this.mogulsById.remove(mogulId);
-		if (mogul != null)
-			this.mogulsByName.remove(mogul.username());
+		// the by-name entry is keyed on the username, so resolve it from the database
+		// rather than from this node's cache: another node may hold that entry while
+		// this one never cached it at all, and then nothing would ever evict it.
+		var username = this.db //
+			.sql("select username from mogul where id = ?") //
+			.param(mogulId) //
+			.query(String.class) //
+			.optional() //
+			.orElse(null);
+		this.mogulsById.evict(mogulId);
+		if (username != null)
+			this.mogulsByName.evict(username);
 	}
 
 	@Override
