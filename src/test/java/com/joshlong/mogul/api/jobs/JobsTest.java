@@ -8,7 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 
 import java.time.Duration;
 import java.util.List;
@@ -26,7 +26,10 @@ import static org.awaitility.Awaitility.await;
  * through JSON and hand back to the right {@link Job}, and that the start/stop events the
  * client's notifications ride on still come out.
  */
-@SpringBootTest(properties = "jobrunr.background-job-server.enabled=true")
+@SpringBootTest(properties = { "jobrunr.background-job-server.enabled=true",
+		// the default poll is 15s, which makes a 30s wait a coin toss once the shared
+		// development database has a few jobs in it from earlier runs.
+		"jobrunr.background-job-server.poll-interval-in-seconds=5" })
 @Import(JobsTest.JobsTestConfiguration.class)
 class JobsTest {
 
@@ -50,7 +53,7 @@ class JobsTest {
 		this.jobs.launch(mogul.id(), "recordingJob", Map.of("name", "bob", "count", 42L));
 
 		// enqueue returns immediately; JobRunr runs it on a worker thread, so wait.
-		await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertThat(this.recordingJob.seen()).isNotEmpty());
+		await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> assertThat(this.recordingJob.seen()).isNotEmpty());
 
 		var context = this.recordingJob.seen().getFirst();
 		assertThat(context.get("name")).as("a string survives the json round trip").isEqualTo("bob");
@@ -68,7 +71,7 @@ class JobsTest {
 		// still be finishing while this one asserts.
 		this.jobs.launch(mogul.id(), "announcingJob", Map.of());
 
-		await().atMost(Duration.ofSeconds(30))
+		await().atMost(Duration.ofSeconds(60))
 			.untilAsserted(
 					() -> assertThat(this.listener.eventsFor("announcingJob")).containsExactly("started", "stopped"));
 	}
@@ -119,12 +122,12 @@ class JobsTest {
 				.toList();
 		}
 
-		@EventListener
+		@ApplicationModuleListener
 		void on(JobStartedEvent event) {
 			this.events.add(event.jobName() + ":started");
 		}
 
-		@EventListener
+		@ApplicationModuleListener
 		void on(JobStoppedEvent event) {
 			this.events.add(event.jobName() + ":stopped");
 		}

@@ -8,15 +8,6 @@ import org.springframework.util.Assert;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * jobs used to be registered in a {@code job} table, drafted into {@code job_execution}
- * rows, and dispatched as application events whose delivery a scheduled sweep had to
- * chase up. all of that now belongs to JobRunr: it persists the request, gives it to
- * exactly one node, and retries it if that node dies holding it.
- * <p>
- * what is left here is the mapping from a job name to the {@link Job} bean that
- * implements it, which is just the bean names in the context.
- */
 class DefaultJobs implements Jobs {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());

@@ -3,6 +3,8 @@ package com.joshlong.mogul.api.jobs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
 import java.util.Map;
@@ -15,20 +17,29 @@ public class MogulJobRequestHandler implements org.jobrunr.jobs.lambdas.JobReque
 
 	private final ApplicationEventPublisher publisher;
 
-	public MogulJobRequestHandler(Map<String, Job> jobs, ApplicationEventPublisher publisher) {
+	private final TransactionTemplate transactionTemplate;
+
+	public MogulJobRequestHandler(Map<String, Job> jobs, ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate) {
 		this.jobs = jobs;
 		this.publisher = publisher;
+		this.transactionTemplate = transactionTemplate;
 		Assert.notNull(this.jobs, "the jobs must not be null");
 		Assert.notNull(this.publisher, "the publisher must not be null");
+		Assert.notNull(this.transactionTemplate, "the transactionTemplate must not be null");
+	}
+
+	private void publishInTransaction(Object event) {
+		this.transactionTemplate.executeWithoutResult(_ -> this.publisher.publishEvent(event));
 	}
 
 	@Override
 	public void run(MogulJobRequest request) {
 		var jobName = request.jobName();
 		var job = this.jobs.get(jobName);
-		Assert.state(job != null, () -> "there is no job named [" + jobName + "] to run!");
+		Assert.notNull(job, () -> "there is no job named [" + jobName + "] to run!");
 		var context = new MapJobExecutionContext(request.mogulId(), request.context());
-		this.publisher.publishEvent(new JobStartedEvent(jobName, request.mogulId()));
+		this.publishInTransaction(new JobStartedEvent(jobName, request.mogulId()));
 		var result = (JobExecutionResult) null;
 		try {
 			result = job.run(context);
@@ -37,9 +48,7 @@ public class MogulJobRequestHandler implements org.jobrunr.jobs.lambdas.JobReque
 			this.log.error("the job named [{}] for mogul [{}] failed", jobName, request.mogulId(), throwable);
 			result = JobExecutionResult.error(throwable);
 		}
-		this.publisher.publishEvent(new JobStoppedEvent(jobName, request.mogulId(), result.success()));
-		// rethrow on failure so that JobRunr sees it, records it, and applies its own
-		// retry policy. swallowing it would leave a job marked succeeded that never did.
+		this.publishInTransaction(new JobStoppedEvent(jobName, request.mogulId(), result.success()));
 		if (!result.success()) {
 			var cause = result.context().get(Job.EXCEPTION_KEY);
 			throw new IllegalStateException("the job named [" + jobName + "] failed",
