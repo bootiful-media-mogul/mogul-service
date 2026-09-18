@@ -1,11 +1,14 @@
 package com.joshlong.mogul.api.jobs;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 
 import java.util.Date;
@@ -16,6 +19,15 @@ import java.util.function.Supplier;
 
 @Transactional
 class JobExecutor {
+
+	/**
+	 * an arbitrary but stable key for the sweep lock. advisory lock keys share a single
+	 * namespace across the whole database, so it is spelled out here rather than derived
+	 * from a hash of something that might one day collide.
+	 */
+	static final long INCOMPLETE_EVENTS_SWEEP_LOCK = 6_646_581L;
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Jobs jobs;
 
@@ -37,10 +49,44 @@ class JobExecutor {
 		this.contextAttributeWriterLambda = contextAttributeWriterLambda;
 	}
 
+	/**
+	 * every replica runs this schedule, and every replica reads the same
+	 * {@code event_publication} rows -- so without a lock each one resubmits the same
+	 * incomplete {@link JobStartedEvent} and the job runs once per node. an advisory lock
+	 * elects a single sweeper for each tick; the rest find it taken and wait for the next
+	 * minute, by which time the winner has finished.
+	 * <p>
+	 * the lock is the {@code _xact_} variant deliberately: it is released by the
+	 * transaction that took it, so a node that dies mid-sweep cannot strand it, and it
+	 * can never outlive its turn on a pooled connection the way a session-level lock can.
+	 */
 	@Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
 	void checkForIncompleteEvents() {
+		if (!this.claimSweep()) {
+			this.log.debug("another node is sweeping incomplete event publications; skipping this tick");
+			return;
+		}
 		this.eventPublications.resubmitIncompletePublications( //
 				e -> e.getApplicationEvent() instanceof JobStartedEvent);
+	}
+
+	/**
+	 * tries to become the one node that sweeps this tick. the lock is the {@code _xact_}
+	 * variant deliberately: it is released by the transaction that took it, so a node
+	 * that dies mid-sweep cannot strand it and it can never outlive its turn on a pooled
+	 * connection the way a session-level lock can.
+	 */
+	boolean claimSweep() {
+		// a transaction-scoped lock taken outside a transaction is released immediately
+		// and guards nothing at all -- silently. fail loudly instead if the surrounding
+		// @Transactional ever stops applying.
+		Assert.state(TransactionSynchronizationManager.isActualTransactionActive(),
+				"the sweep must run inside a transaction, or its advisory lock protects nothing");
+		return this.db //
+			.sql("select pg_try_advisory_xact_lock(?)") //
+			.param(INCOMPLETE_EVENTS_SWEEP_LOCK) //
+			.query(Boolean.class) //
+			.single();
 	}
 
 	@ApplicationModuleListener
