@@ -1,8 +1,8 @@
 package com.joshlong.mogul.api.settings;
 
-import com.joshlong.mogul.api.ApiProperties;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -32,13 +32,19 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 		return messageProducer;
 	}
 
+	/**
+	 * published to the fanout exchange declared alongside it, so that every node holding
+	 * a cache of these settings hears about the change and not just whichever one a
+	 * shared queue happened to hand the message to. a fanout ignores the routing key, so
+	 * there isn't one.
+	 */
 	@Bean
-	IntegrationFlow settingsWrittenEventExternalizationIntegrationFlow(ApiProperties apiProperties,
-			AmqpTemplate amqpTemplate, ObjectMapper json,
+	IntegrationFlow settingsWrittenEventExternalizationIntegrationFlow(AmqpTemplate amqpTemplate, ObjectMapper json,
+			FanoutExchange mogulSettingsEventsExchange,
 			@Qualifier(AUTHENTICATION_AND_SETTINGS_EVENT_LISTENER_BEAN_NAME) ApplicationEventListeningMessageProducer authenticationAndSettingsEventApplicationEventListeningMessageProducer) {
 		var log = LoggerFactory.getLogger(this.getClass());
-		var routingKey = apiProperties.amqp().settingsEvents();
-		log.info("routing key is {}.", routingKey);
+		var exchange = mogulSettingsEventsExchange.getName();
+		log.info("exchange is {}.", exchange);
 		return IntegrationFlow //
 			.from(authenticationAndSettingsEventApplicationEventListeningMessageProducer) //
 			.transform((GenericTransformer<AuthenticationAndSettingsEvent, Map<String, String>>) source -> Map.of(
@@ -49,7 +55,7 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 				log.info("sending {}", jsonResult);
 				return jsonResult;
 			}) //
-			.handle(Amqp.outboundAdapter(amqpTemplate).exchangeName(routingKey).routingKey(routingKey)) //
+			.handle(Amqp.outboundAdapter(amqpTemplate).exchangeName(exchange)) //
 			.get();
 	}
 

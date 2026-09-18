@@ -12,7 +12,7 @@ public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts tran
 	public record Feeds(String elementPrefix, String namespace) {
 	}
 
-	public record Amqp(String settingsEvents) {
+	public record Amqp(String settingsEvents, String cacheEvictions) {
 	}
 
 	public record Cache(int maxEntries) {

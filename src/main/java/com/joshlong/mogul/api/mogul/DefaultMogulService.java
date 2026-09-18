@@ -195,7 +195,6 @@ class DefaultMogulService implements MogulService {
 
 	@EventListener
 	void authenticationSuccessEvent(AuthenticationSuccessEvent ase) {
-		this.log.trace("handling authentication success event for {}", ase.getAuthentication().getName());
 		this.transactionTemplate.execute(_ -> {
 			var authentication = (JwtAuthenticationToken) ase.getAuthentication();
 			this.doLoginByPrincipal(authentication);

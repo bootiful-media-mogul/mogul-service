@@ -80,27 +80,31 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Map<Long, List<Segment>> getPodcastEpisodeSegmentsByEpisodes(Collection<Long> episodes) {
-		if (episodes.isEmpty()) {
+		if (episodes.isEmpty())
 			return new HashMap<>();
-		}
 		var segmentResultSetExtractor = new SegmentResultSetExtractor( //
 				this.managedFileService::getManagedFiles);
 		var segments = this.db //
-			.sql("select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ") //
+			.sql(" select * from podcast_episode_segment pes where pes.podcast_episode_id = any(?)  ") //
 			.params(new SqlArrayValue("bigint", (Object[]) episodes.toArray(Long[]::new)))//
 			.query(segmentResultSetExtractor);
 		var episodeToSegmentsMap = new HashMap<Long, List<Segment>>();
-		for (var s : segments) {
+		for (var s : segments)
 			episodeToSegmentsMap.computeIfAbsent(s.episodeId(), _ -> new ArrayList<>()).add(s);
-		}
-		for (var entry : episodeToSegmentsMap.entrySet()) {
+		for (var entry : episodeToSegmentsMap.entrySet())
 			orderedSegments(entry.getValue());
-		}
 		return episodeToSegmentsMap;
 	}
 
+	/**
+	 * the id breaks the tie. {@link List#sort} is stable, so ordering on the sequence
+	 * number alone left two segments that shared one in whatever order the database
+	 * happened to return them - an episode assembled differently from one read to the
+	 * next. the schema now refuses that pair outright; this makes the read deterministic
+	 * regardless.
+	 */
 	private List<Segment> orderedSegments(List<Segment> segments) {
-		segments.sort(Comparator.comparingInt(Segment::order));
+		segments.sort(Comparator.comparingInt(Segment::order).thenComparing(Segment::id));
 		return segments;
 	}
 
@@ -285,10 +289,11 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Podcast createPodcast(Long mogulId, String title) {
 		var generatedKeyHolder = new GeneratedKeyHolder();
-		this.db.sql(
-				" insert into podcast (mogul_id , title) values (?,?) on conflict on constraint podcast_mogul_id_title_key do update set title = excluded.title ")
-			.params(mogulId, title)
-			.update(generatedKeyHolder);
+		this.db.sql("""
+						insert into podcast (mogul_id , title) values (?,?)
+				    on conflict on constraint podcast_mogul_id_title_key
+					do update set title = excluded.title
+				""").params(mogulId, title).update(generatedKeyHolder);
 		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
 		var podcast = this.getPodcastById(id.longValue());
 		this.publisher.publishEvent(new PodcastCreatedEvent(podcast));
@@ -524,6 +529,20 @@ class DefaultPodcastService implements PodcastService {
 
 	@Override
 	public Segment createPodcastEpisodeSegment(Long mogulId, Long episodeId, String name, long crossfade) {
+		// the number this claims is read and then written, so two of these running at
+		// once on the same episode would both read the same max and both take the number
+		// after it. locking the episode row makes them take turns. it is the episode and
+		// not the table, so anyone working on a different episode is unaffected, and it
+		// is held only until this transaction commits.
+		// the number this claims is read and then written, so two of these running at
+		// once on the same episode would both read the same max and both take the number
+		// after it. locking the episode row makes them take turns. it is the episode and
+		// not the table, so anyone working on a different episode is unaffected, and it
+		// is held only until this transaction commits.
+		this.db.sql("select id from podcast_episode where id = ? for update")
+			.params(episodeId)
+			.query(Long.class)
+			.optional();
 		var maxOrder = (this.db
 			.sql("select max( sequence_number) from podcast_episode_segment where podcast_episode_id  = ? ")
 			.params(episodeId)

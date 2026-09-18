@@ -1,57 +1,38 @@
 package com.joshlong.mogul.api;
 
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.ExchangeBuilder;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * a settings change has to reach every node, because every node is holding its own cache
+ * of the thing that just changed.
+ */
 @Configuration
 class RabbitMqConfiguration {
 
-	private static final String BEAN_PREFIX = "mogulSettingsEvents";
+	static String settingsEventsExchangeName(String destination) {
+		return destination + "-fanout";
+	}
 
-	private static final String QUEUE_NAME = BEAN_PREFIX + "Queue";
-
-	private static final String EXCHANGE_NAME = BEAN_PREFIX + "Exchange";
-
-	private static final String BINDING_NAME = BEAN_PREFIX + "Binding";
-
-	private final String queueName;
+	private final String exchangeName;
 
 	RabbitMqConfiguration(ApiProperties properties) {
-		this.queueName = properties.amqp().settingsEvents();
+		this.exchangeName = settingsEventsExchangeName(properties.amqp().settingsEvents());
 	}
 
 	@Bean
 	InitializingBean mogulSettingsEventsAmqpInitializer(AmqpAdmin amqpAdmin,
-			@Qualifier(QUEUE_NAME) Queue mogulEventsQueue, @Qualifier(EXCHANGE_NAME) Exchange mogulEventsExchange,
-			@Qualifier(BINDING_NAME) Binding mogulSettingsEventsBinding) {
-		return () -> {
-			amqpAdmin.declareQueue(mogulEventsQueue);
-			amqpAdmin.declareExchange(mogulEventsExchange);
-			amqpAdmin.declareBinding(mogulSettingsEventsBinding);
-		};
+			FanoutExchange mogulSettingsEventsExchange) {
+		return () -> amqpAdmin.declareExchange(mogulSettingsEventsExchange);
 	}
 
-	@Bean(BINDING_NAME)
-	Binding mogulSettingsEventsBinding(@Qualifier(QUEUE_NAME) Queue mogulEventsQueue,
-			@Qualifier(EXCHANGE_NAME) Exchange mogulEventsExchange) {
-		return BindingBuilder //
-			.bind(mogulEventsQueue) //
-			.to(mogulEventsExchange)//
-			.with(this.queueName) //
-			.noargs();
-	}
-
-	@Bean(QUEUE_NAME)
-	Queue mogulSettingsEventsQueue() {
-		return QueueBuilder.durable(this.queueName).build();
-	}
-
-	@Bean(EXCHANGE_NAME)
-	Exchange mogulSettingsEventsExchange() {
-		return ExchangeBuilder.directExchange(this.queueName).build();
+	@Bean
+	FanoutExchange mogulSettingsEventsExchange() {
+		return ExchangeBuilder.fanoutExchange(this.exchangeName).durable(true).build();
 	}
 
 }
