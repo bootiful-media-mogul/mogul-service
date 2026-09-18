@@ -99,7 +99,7 @@ class DefaultPodcastService implements PodcastService {
 	/**
 	 * the id breaks the tie. {@link List#sort} is stable, so ordering on the sequence
 	 * number alone left two segments that shared one in whatever order the database
-	 * happened to return them -- an episode assembled differently from one read to the
+	 * happened to return them - an episode assembled differently from one read to the
 	 * next. the schema now refuses that pair outright; this makes the read deterministic
 	 * regardless.
 	 */
@@ -289,10 +289,11 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public Podcast createPodcast(Long mogulId, String title) {
 		var generatedKeyHolder = new GeneratedKeyHolder();
-		this.db.sql(
-				" insert into podcast (mogul_id , title) values (?,?) on conflict on constraint podcast_mogul_id_title_key do update set title = excluded.title ")
-			.params(mogulId, title)
-			.update(generatedKeyHolder);
+		this.db.sql("""
+						insert into podcast (mogul_id , title) values (?,?)
+				    on conflict on constraint podcast_mogul_id_title_key
+					do update set title = excluded.title
+				""").params(mogulId, title).update(generatedKeyHolder);
 		var id = JdbcUtils.getIdFromKeyHolder(generatedKeyHolder);
 		var podcast = this.getPodcastById(id.longValue());
 		this.publisher.publishEvent(new PodcastCreatedEvent(podcast));
@@ -533,7 +534,15 @@ class DefaultPodcastService implements PodcastService {
 		// after it. locking the episode row makes them take turns. it is the episode and
 		// not the table, so anyone working on a different episode is unaffected, and it
 		// is held only until this transaction commits.
-		// MUTATION: lock removed
+		// the number this claims is read and then written, so two of these running at
+		// once on the same episode would both read the same max and both take the number
+		// after it. locking the episode row makes them take turns. it is the episode and
+		// not the table, so anyone working on a different episode is unaffected, and it
+		// is held only until this transaction commits.
+		this.db.sql("select id from podcast_episode where id = ? for update")
+			.params(episodeId)
+			.query(Long.class)
+			.optional();
 		var maxOrder = (this.db
 			.sql("select max( sequence_number) from podcast_episode_segment where podcast_episode_id  = ? ")
 			.params(episodeId)

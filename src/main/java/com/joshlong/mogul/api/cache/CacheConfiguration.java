@@ -22,27 +22,22 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.UUID;
 
-/**
- * the caches themselves stay local -- caffeine, in this JVM, a nanosecond away -- and
- * only the evictions travel.
- */
 @Configuration
 class CacheConfiguration {
 
-	/**
-	 * distinguishes this node from its peers for no reason other than letting it ignore
-	 * the echo of its own evictions coming back around the fanout. it doesn't outlive the
-	 * process and nothing is addressed to it, so there's nothing to coordinate.
-	 */
+	// so we can exclude ourselves from eviction notifications we just published
 	private final String node = UUID.randomUUID().toString();
 
 	@Bean
 	FanoutExchange mogulCacheEvictionsExchange(ApiProperties properties) {
-		return ExchangeBuilder.fanoutExchange(properties.amqp().cacheEvictions()).durable(true).build();
+		return ExchangeBuilder //
+			.fanoutExchange(properties.amqp().cacheEvictions())//
+			.durable(true) //
+			.build();
 	}
 
 	@Bean
-	Queue mogulCacheEvictionsQueue() {
+	AnonymousQueue mogulCacheEvictionsQueue() {
 		return new AnonymousQueue();
 	}
 

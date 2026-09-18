@@ -31,7 +31,7 @@ abstract class SilenceDetector {
 			.redirectOutput(silence)
 			.redirectError(silence)
 			.start();
-		Assert.state(result.waitFor(1, TimeUnit.MINUTES), "the result of silence detection should be 0, or good.");
+		Assert.state(result.waitFor(10, TimeUnit.MINUTES), "the result of silence detection should be 0, or good.");
 		try (var output = new InputStreamReader(new FileInputStream(silence))) {
 			var content = FileCopyUtils.copyToString(output);
 			var silenceDetectionLogLines = Stream //
