@@ -2,18 +2,17 @@ package com.joshlong.mogul.api.cache;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.joshlong.mogul.api.ApiProperties;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.AmqpTemplate;
-import org.springframework.amqp.core.AnonymousQueue;
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.ExchangeBuilder;
-import org.springframework.amqp.core.FanoutExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.amqp.dsl.Amqp;
 import org.springframework.integration.core.GenericTransformer;
 import org.springframework.integration.dsl.IntegrationFlow;
@@ -23,10 +22,20 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Configuration
+@ImportRuntimeHints(CacheConfiguration.Hints.class)
 class CacheConfiguration {
 
 	// so we can exclude ourselves from eviction notifications we just published
 	private final String node = UUID.randomUUID().toString();
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			hints.reflection().registerType(CacheEviction.class, MemberCategory.values());
+		}
+
+	}
 
 	@Bean
 	FanoutExchange mogulCacheEvictionsExchange(ApiProperties properties) {
