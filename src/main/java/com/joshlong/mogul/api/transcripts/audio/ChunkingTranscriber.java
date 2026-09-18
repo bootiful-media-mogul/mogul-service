@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.transcripts.audio;
 
 import com.joshlong.mogul.api.utils.FileUtils;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
@@ -245,16 +246,21 @@ class ChunkingTranscriber implements Transcriber {
 					convertMillisToTimeFormat(stop), "-c", "copy", destination.getAbsolutePath())
 			.redirectErrorStream(true)
 			.start();
-		// ffmpeg writes its banner and its progress to stderr, and a pipe that nobody
-		// drains fills up and blocks the child forever -- so read to EOF *before*
-		// waiting. EOF arrives when ffmpeg exits, so the wait below is then immediate.
-		// the output is kept only to explain a failure; a stream copy says very little.
+		var output = drain(process);
+		var exitCode = process.waitFor();
+		Assert.state(exitCode == 0, () -> "the result must be a zero exit code, but was [" + exitCode + "]: " + output);
+	}
+
+	// ffmpeg writes its banner and its progress to stderr, and a pipe that nobody
+	// drains fills up and blocks the child forever -- so read to EOF *before*
+	// waiting. EOF arrives when ffmpeg exits, so the wait below is then immediate.
+	// the output is kept only to explain a failure; a stream copy says very little.
+	private static @NonNull String drain(Process process) throws IOException {
 		var output = (String) null;
 		try (var stdout = process.getInputStream()) {
 			output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
 		}
-		var exitCode = process.waitFor();
-		Assert.state(exitCode == 0, () -> "the result must be a zero exit code, but was [" + exitCode + "]: " + output);
+		return output;
 	}
 
 	private NumberFormat numberFormat() {
