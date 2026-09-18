@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
 import com.joshlong.mogul.api.PublisherPlugin;
+import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
@@ -47,10 +48,6 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 			var proxyFactoryBean = new ProxyFactoryBean();
 			proxyFactoryBean.addAdvice((MethodInterceptor) invocation -> {
 				var publishMethod = invocation.getMethod().getName().equalsIgnoreCase("publish");
-				// only plugins that publish the episode's audio need the lazy (and
-				// potentially long) production step; plugins like the blog-post one opt
-				// out
-				// via requiresProducedAudio() and publish straight through.
 				if (publishMethod && plugin.requiresProducedAudio()) {
 
 					var beanFactory = beanFactoryAtomicReference.get();
@@ -72,19 +69,32 @@ class ProducingPodcastPublisherPluginBeanPostProcessor implements BeanFactoryAwa
 							"#" + episode.id() + " / " + episode.title(), episode.producedAudioUpdated() + "",
 							episode.producedAudioAssetsUpdated() + "", shouldProduceAudio);
 					var mogulId = podcastService.getPodcastById(episode.podcastId()).mogulId();
-					return transactionTemplate.execute(_ -> {
 
-						if (shouldProduceAudio) {
-							this.log.debug("should produce audio! producing the audio for episode [{}] from scratch",
-									episode);
-							NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
-									new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()),
-									null));
-							var producedManagedFile = podcastProducer.produce(episode);
-							managedFileService.setManagedFileVisibility(producedManagedFile.id(), true);
-							this.log.debug(
-									"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
-									episode, producedManagedFile, podcastProducer);
+					// the render runs *before* the transaction opens. it is minutes of
+					// ffmpeg, and produce() is throttled with @ConcurrencyLimit, so
+					// inside a transaction a caller queueing for its turn would hold one
+					// of ten pooled connections for the wait and the render both --
+					// starving every other request in the app. little is given up by
+					// moving it out: produce() uploads to s3 and no rollback can undo
+					// that, so the old transaction never made this step atomic. it does
+					// mean a later publish failure leaves the produced audio recorded,
+					// which is the better outcome -- a retry skips the re-render.
+					var producedManagedFile = (ManagedFile) null;
+					if (shouldProduceAudio) {
+						this.log.debug("should produce audio! producing the audio for episode [{}] from scratch",
+								episode);
+						NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
+								new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()), null));
+						producedManagedFile = podcastProducer.produce(episode);
+						this.log.debug(
+								"produced the audio for episode [{}] from scratch to managedFile: [{}] using producer [{}]",
+								episode, producedManagedFile, podcastProducer);
+					}
+					var produced = producedManagedFile;
+
+					return transactionTemplate.execute(_ -> {
+						if (produced != null) {
+							managedFileService.setManagedFileVisibility(produced.id(), true);
 							var podcastEpisodeRenderFinishedEvent = new PodcastEpisodeRenderFinishedEvent(episode.id());
 							var event = NotificationEvent.visibleNotificationEventFor(mogulId,
 									podcastEpisodeRenderFinishedEvent, Long.toString(episode.id()), null);

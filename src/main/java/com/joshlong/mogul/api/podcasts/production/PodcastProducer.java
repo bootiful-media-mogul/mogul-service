@@ -10,6 +10,7 @@ import com.joshlong.mogul.api.utils.FileUtils;
 import com.joshlong.mogul.api.utils.ProcessUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.resilience.annotation.ConcurrencyLimit;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 
@@ -51,6 +52,7 @@ public class PodcastProducer {
 		Assert.notNull(this.podcastService, "the PodcastService reference is required");
 	}
 
+	@ConcurrencyLimit(limitString = "${mogul.podcasts.production.concurrency:2}")
 	public ManagedFile produce(Episode episode) {
 		var managedFileRoot = new File(this.root, "managed-files-for-podcast-production");
 		var workspace = new File(managedFileRoot, episode.id() + "/" + UUID.randomUUID() + "/");
