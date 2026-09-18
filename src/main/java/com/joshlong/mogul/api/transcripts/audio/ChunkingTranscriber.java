@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -113,7 +114,8 @@ class ChunkingTranscriber implements Transcriber {
 								return result.getResult().getOutput();
 							});
 						} //
-						catch (Throwable e) { // this will capture RetryException as
+						catch (Throwable e) {
+							// this will capture RetryException as
 							// thrown by RetryTemplate
 							var formatted = "oops! an error when trying to process a %s # %s"
 								.formatted(TranscriptionSegment.class.getName(), audioResource.getFilename());
@@ -229,7 +231,7 @@ class ChunkingTranscriber implements Transcriber {
 			var destinationFile = new File(file, numberFormat.format(indx) + ".mp3");
 			var start = (long) r[0];
 			var stop = (long) r[1];
-			this.bisect(originalAudio, destinationFile, start, stop);
+			bisect(originalAudio, destinationFile, start, stop);
 			listOfSegments.add(new TranscriptionSegment(new FileSystemResource(destinationFile), indx, start, stop));
 			indx += 1;
 		}
@@ -237,16 +239,22 @@ class ChunkingTranscriber implements Transcriber {
 		return listOfSegments.stream();
 	}
 
-	private void bisect(File source, File destination, long start, long stop) throws IOException, InterruptedException {
-		var result = new ProcessBuilder()
+	static void bisect(File source, File destination, long start, long stop) throws IOException, InterruptedException {
+		var process = new ProcessBuilder()
 			.command("ffmpeg", "-i", source.getAbsolutePath(), "-ss", convertMillisToTimeFormat(start), "-to",
 					convertMillisToTimeFormat(stop), "-c", "copy", destination.getAbsolutePath())
-			.inheritIO()
-			.redirectOutput(ProcessBuilder.Redirect.PIPE)
-			.redirectError(ProcessBuilder.Redirect.PIPE)
+			.redirectErrorStream(true)
 			.start();
-		var exitCode = result.waitFor();
-		Assert.state(exitCode == 0, "the result must be a zero exit code, but was [" + exitCode + "]");
+		// ffmpeg writes its banner and its progress to stderr, and a pipe that nobody
+		// drains fills up and blocks the child forever -- so read to EOF *before*
+		// waiting. EOF arrives when ffmpeg exits, so the wait below is then immediate.
+		// the output is kept only to explain a failure; a stream copy says very little.
+		var output = (String) null;
+		try (var stdout = process.getInputStream()) {
+			output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
+		}
+		var exitCode = process.waitFor();
+		Assert.state(exitCode == 0, () -> "the result must be a zero exit code, but was [" + exitCode + "]: " + output);
 	}
 
 	private NumberFormat numberFormat() {
