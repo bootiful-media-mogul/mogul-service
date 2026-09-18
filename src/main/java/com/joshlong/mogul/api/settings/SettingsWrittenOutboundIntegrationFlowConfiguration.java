@@ -32,12 +32,6 @@ class SettingsWrittenOutboundIntegrationFlowConfiguration {
 		return messageProducer;
 	}
 
-	/**
-	 * published to the fanout exchange declared alongside it, so that every node holding
-	 * a cache of these settings hears about the change and not just whichever one a
-	 * shared queue happened to hand the message to. a fanout ignores the routing key, so
-	 * there isn't one.
-	 */
 	@Bean
 	IntegrationFlow settingsWrittenEventExternalizationIntegrationFlow(AmqpTemplate amqpTemplate, ObjectMapper json,
 			FanoutExchange mogulSettingsEventsExchange,

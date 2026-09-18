@@ -58,12 +58,6 @@ class BroadcastingCacheManager implements CacheManager {
 		return this.delegate.getCacheNames();
 	}
 
-	/**
-	 * applies an eviction that arrived from somewhere else. it goes to the delegate and
-	 * deliberately not through {@link #getCache(String)}: evicting through the wrapper
-	 * would broadcast it straight back out again, and every node would answer every other
-	 * node forever.
-	 */
 	void apply(CacheEviction eviction) {
 		if (this.node.equals(eviction.node())) {
 			// our own, arriving back through the fanout. already done locally.
