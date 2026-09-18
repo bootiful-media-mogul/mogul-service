@@ -1,10 +1,11 @@
 package com.joshlong.mogul.api.jobs;
 
+import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
+import com.joshlong.mogul.api.managedfiles.ManagedFile;
+import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.utils.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -13,16 +14,12 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Controller;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.UUID;
 
 @Controller
 class JobsController {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Jobs jobs;
 
@@ -30,9 +27,13 @@ class JobsController {
 
 	private final ApplicationEventPublisher applicationEventPublisher;
 
-	JobsController(Jobs jobs, MogulService mogulService, ApplicationEventPublisher applicationEventPublisher) {
+	private final ManagedFileService managedFileService;
+
+	JobsController(Jobs jobs, MogulService mogulService, ManagedFileService managedFileService,
+			ApplicationEventPublisher applicationEventPublisher) {
 		this.jobs = jobs;
 		this.mogulService = mogulService;
+		this.managedFileService = managedFileService;
 		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
@@ -43,81 +44,64 @@ class JobsController {
 		// @formatter:on
 		if (JsonUtils.read(contextAsJson, typeReference) instanceof Map<String, Object> context) {
 			var mogulId = this.mogulService.getCurrentMogul().id();
-			context.putIfAbsent(Job.MOGUL_ID_KEY, mogulId);
-			var ctx = this.buildMapOfSuppliers(context);
-			var je = this.jobs.prepare(mogulId, jobName, ctx);
-			this.jobs.launch(mogulId, je.id(), ctx);
+			this.jobs.launch(mogulId, jobName, context);
 		}
 		return true;
 	}
 
-	void emit(Object event, long jobExecutionId) {
-		var jobExecution = this.jobs.getJobExecution(jobExecutionId);
-		this.applicationEventPublisher
-			.publishEvent(NotificationEvent.visibleNotificationEventFor(jobExecution.mogulId(), event,
-					jobExecution.jobName(), JsonUtils.write(Map.of("success", jobExecution.success()))));
+	private void emit(Object event, Long mogulId, String jobName, boolean success) {
+		this.applicationEventPublisher.publishEvent(NotificationEvent.visibleNotificationEventFor(mogulId, event,
+				jobName, JsonUtils.write(Map.of("success", success))));
 	}
 
 	@ApplicationModuleListener
 	void on(JobStartedEvent startedEvent) {
-		this.emit(startedEvent, startedEvent.jobExecutionId());
+		// a job that has only started has not succeeded yet, and saying so would be a
+		// lie the client renders.
+		this.emit(startedEvent, startedEvent.mogulId(), startedEvent.jobName(), false);
 	}
 
 	@ApplicationModuleListener
 	void on(JobStoppedEvent stoppedEvent) {
-		this.emit(stoppedEvent, stoppedEvent.jobExecutionId());
+		this.emit(stoppedEvent, stoppedEvent.mogulId(), stoppedEvent.jobName(), stoppedEvent.success());
 	}
 
-	private Map<String, Supplier<Object>> buildMapOfSuppliers(Map<String, Object> map) {
-		var m = new HashMap<String, Supplier<Object>>();
-		for (var k : map.keySet()) {
-			m.put(k, () -> map.get(k));
-		}
-		return m;
+	/**
+	 * jobs that take a {@link Job#MANAGED_FILE_ID_KEY} need somewhere to put the file
+	 * <em>before</em> the job runs, and the client needs its id to upload into. the draft
+	 * job_execution used to manufacture that as a side effect of being read; now the
+	 * client asks for it outright, which is the same thing said plainly.
+	 */
+	@MutationMapping
+	ManagedFile createJobManagedFile(@Argument String jobName) throws JobException {
+		var mogulId = this.mogulService.getCurrentMogul().id();
+		if (!this.jobs.jobs().containsKey(jobName))
+			throw new JobException("there is no job named [" + jobName + "]");
+		return this.managedFileService.createManagedFile(mogulId, jobName + "/" + UUID.randomUUID(), "archive.zip", 0,
+				CommonMediaTypes.BINARY, false);
 	}
 
 	@QueryMapping
 	Collection<JobView> jobs() {
-		var mogul = this.mogulService.getCurrentMogul().id();
 		return this.jobs //
 			.jobs()
 			.entrySet()//
 			.stream() //
-			.map(stringJobEntry -> this.buildJobView(mogul, stringJobEntry))
+			.map(entry -> new JobView(entry.getKey(), this.requiredContextAttributesFrom(entry.getValue())))
 			.toList();
 	}
 
-	private JobView buildJobView(Long mogul, Map.Entry<String, Job> jobEntry) {
-		// todo could we have some convention by which to
-		// default values from the Settings object?
-		var preparedJob = this.jobs.prepare(mogul, jobEntry.getKey(), Map.of());
-		var contextAttributes = this.paramMapToParamsCollection(preparedJob.context());
-		return new JobView(jobEntry.getKey(), contextAttributes,
-				this.requiredContextAttributesFrom(jobEntry.getValue()));
-	}
-
-	private String[] requiredContextAttributesFrom(Job execution) {
-		if (execution == null || execution.requiredContextAttributes() == null) {
+	private String[] requiredContextAttributesFrom(Job job) {
+		if (job == null || job.requiredContextAttributes() == null)
 			return new String[0];
-		}
-		return execution.requiredContextAttributes()
+		return job.requiredContextAttributes()
 			.stream()
+			// the mogul is supplied from the authenticated principal, never asked for
 			.filter(attributeName -> !attributeName.equals(Job.MOGUL_ID_KEY))
 			.toArray(String[]::new);
 	}
 
-	private Collection<JobParam> paramMapToParamsCollection(Map<String, JobExecutionParam> paramMap) {
-		var jobParamArrayList = new ArrayList<JobParam>();
-		paramMap.forEach((paramName, jobExecutionParam) -> {
-			jobParamArrayList.add(new JobParam(paramMap.get(paramName).name(), jobExecutionParam.jsonValue()));
-		});
-		return jobParamArrayList;
-	}
-
-	record JobView(String name, Collection<JobParam> contextAttributes, String[] requiredContextAttributes) {
-	}
-
-	record JobParam(String name, String value) {
+	record JobView(String name, String[] requiredContextAttributes) {
 	}
 
 }

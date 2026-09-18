@@ -61,6 +61,13 @@ class ManagedFileCachingTest {
 		verify(this.db, never()).sql(anyString());
 	}
 
+	@Test
+	void aNullManagedFileIdIsNotLookedUp(@Autowired ManagedFileService managedFileService) {
+		Mockito.clearInvocations(this.db);
+		assertNull(managedFileService.getManagedFileById(null), "there is no managed file null");
+		verify(this.db, never()).sql(anyString());
+	}
+
 	private Long managedFile(Long mogulId) {
 		return this.db
 			.sql("""

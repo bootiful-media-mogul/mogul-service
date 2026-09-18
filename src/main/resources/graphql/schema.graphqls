@@ -229,12 +229,6 @@ type WordPressStatus {
 type Job {
     name : String
     requiredContextAttributes : [String]
-    contextAttributes: [JobParam]
-}
-
-type JobParam {
-    name : String
-    value : String
 }
 
 type Mutation {
@@ -265,6 +259,7 @@ type Mutation {
 
     # jobs
     launchJob(jobName:String, contextAsJson: String ) : Boolean
+    createJobManagedFile(jobName:String) : ManagedFile
 
     # transcriptions
     writeTranscript(transcriptId:Int, transcript:String) : Boolean

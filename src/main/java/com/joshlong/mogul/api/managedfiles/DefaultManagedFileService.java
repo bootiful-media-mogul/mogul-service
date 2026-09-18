@@ -285,15 +285,17 @@ class DefaultManagedFileService implements ManagedFileService {
 
 	@Override
 	public ManagedFile getManagedFileById(Long managedFileId) {
+		if (managedFileId == null)
+			return null;
 		var all = this.getManagedFiles(List.of(managedFileId));
 		return CollectionUtils.firstOrNull(all.values());
 	}
 
 	private void debug() {
-		if (trace) {
+		if (this.trace) {
 			var calls = new StringBuilder();
 			StackWalker.getInstance().forEach(stackFrame -> calls.append(stackFrame.toString()).append("\n"));
-			log.info("called getManagedFiles {} times. stack trace for readThrough: {}", counter.incrementAndGet(),
+			this.log.info("called getManagedFiles {} times. stack trace for readThrough: {}", counter.incrementAndGet(),
 					calls);
 		}
 	}
@@ -304,10 +306,6 @@ class DefaultManagedFileService implements ManagedFileService {
 		var outcome = new HashMap<Long, ManagedFile>();
 		var everythingElse = new ArrayList<Long>();
 		for (var mfId : managedFileIds) {
-			// a null managed file column reads back out of a ResultSet as 0, and the
-			// sequence starts at 1, so there is no row to go looking for. an episode
-			// missing, say, its produced graphic would otherwise drag a query along
-			// behind it on every single load, however warm the cache was.
 			if (mfId == null || mfId <= 0)
 				continue;
 			var entry = this.cache.get(mfId, ManagedFile.class);

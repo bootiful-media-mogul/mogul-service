@@ -26,6 +26,11 @@
             <version>1.5.0</version>
         </dependency>
         <dependency>
+            <groupId>org.jobrunr</groupId>
+            <artifactId>jobrunr-spring-boot-4-starter</artifactId>
+            <version>8.7.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-core</artifactId>
             <version>${tika.version}</version>
@@ -259,6 +264,27 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!--
+                          every cached spring context in the suite would otherwise start
+                          its own JobRunr background server, and they all poll the same
+                          jobrunr_jobs table. a context whose handler has never heard of
+                          another test's job can still win it, fail it, and leave the
+                          test that enqueued it waiting: precisely the single-owner
+                          behaviour we want in production and precisely wrong here.
+                          set as a system property rather than in
+                          src/test/resources/application.properties, which would shadow
+                          the real one. JobsTest turns its own server back on with
+                          SpringBootTest(properties), which outranks a system property.
+                        -->
+                        <jobrunr.background-job-server.enabled>false</jobrunr.background-job-server.enabled>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>

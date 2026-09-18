@@ -6,14 +6,22 @@ import org.springframework.context.ApplicationEvent;
 
 public class JobStartedEvent extends ApplicationEvent {
 
+	private final Long mogulId;
+
 	@JsonCreator
-	public JobStartedEvent(@JsonProperty("jobExecutionId") Long jobExecutionId) {
-		super(jobExecutionId);
+	public JobStartedEvent(@JsonProperty("jobName") String jobName, @JsonProperty("mogulId") Long mogulId) {
+		super(jobName);
+		this.mogulId = mogulId;
 	}
 
 	@JsonProperty
-	public Long jobExecutionId() {
-		return (Long) getSource();
+	public String jobName() {
+		return (String) getSource();
+	}
+
+	@JsonProperty
+	public Long mogulId() {
+		return this.mogulId;
 	}
 
 }
