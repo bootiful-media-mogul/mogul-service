@@ -1,5 +1,6 @@
 package com.joshlong.mogul.api.transcripts;
 
+import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.TranscribableResolver;
 import com.joshlong.mogul.api.transcripts.audio.Transcriber;
@@ -67,10 +68,10 @@ class TranscriptConfiguration {
 
 	@Bean
 	@TranscriptMessageChannel
-	PublishSubscribeChannelSpec<?> transcriptMessageChannel() {
+	PublishSubscribeChannelSpec<?> transcriptMessageChannel(ApiProperties properties) {
 		var transcriptionTaskExecutor = new SimpleAsyncTaskSchedulerBuilder()//
 			.virtualThreads(true) //
-			.concurrencyLimit(2)//
+			.concurrencyLimit(properties.transcripts().concurrency())//
 			.build();
 		return MessageChannels.publishSubscribe(transcriptionTaskExecutor);
 	}
