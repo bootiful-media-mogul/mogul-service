@@ -2,12 +2,7 @@ package com.joshlong.mogul.api.cache;
 
 import com.joshlong.mogul.api.ApiProperties;
 import org.junit.jupiter.api.Test;
-import org.springframework.amqp.core.AmqpAdmin;
-import org.springframework.amqp.core.AmqpTemplate;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.ExchangeBuilder;
-import org.springframework.amqp.core.FanoutExchange;
-import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
@@ -18,9 +13,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * the caches are local to a node, so an edit on one node is invisible to the others until

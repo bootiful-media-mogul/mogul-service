@@ -5,7 +5,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.compositions.CompositionService;
 import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.mogul.MogulCreatedEvent;
-import com.joshlong.mogul.api.utils.JdbcUtils;
+import com.joshlong.mogul.utils.JdbcUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.RowMapper;

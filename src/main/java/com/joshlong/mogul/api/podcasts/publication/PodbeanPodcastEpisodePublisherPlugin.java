@@ -3,7 +3,7 @@ package com.joshlong.mogul.api.podcasts.publication;
 import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
-import com.joshlong.mogul.api.utils.FileUtils;
+import com.joshlong.mogul.utils.FileUtils;
 import com.joshlong.podbean.EpisodeStatus;
 import com.joshlong.podbean.EpisodeType;
 import com.joshlong.podbean.PodbeanClient;

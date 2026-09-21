@@ -6,7 +6,7 @@ import com.joshlong.mogul.api.compositions.Attachment;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.settings.Settings;
-import com.joshlong.mogul.api.utils.UriUtils;
+import com.joshlong.mogul.utils.UriUtils;
 import org.springframework.util.StringUtils;
 
 import java.net.URI;

@@ -1,7 +1,6 @@
 package com.joshlong.mogul.api.jobs;
 
 import org.jobrunr.scheduling.JobRequestScheduler;
-import org.jobrunr.storage.StorageProvider;
 import org.jobrunr.storage.sql.postgres.PostgresStorageProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;

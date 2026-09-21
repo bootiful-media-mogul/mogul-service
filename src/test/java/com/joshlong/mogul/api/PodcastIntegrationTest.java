@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api;
 
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.utils.JsonUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

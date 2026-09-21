@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.compositions.Composition;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
-import com.joshlong.mogul.api.utils.DateUtils;
+import com.joshlong.mogul.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;

@@ -14,14 +14,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class RabbitMqConfiguration {
 
-	static String settingsEventsExchangeName(String destination) {
-		return destination + "-fanout";
-	}
-
 	private final String exchangeName;
 
 	RabbitMqConfiguration(ApiProperties properties) {
 		this.exchangeName = settingsEventsExchangeName(properties.amqp().settingsEvents());
+	}
+
+	static String settingsEventsExchangeName(String destination) {
+		return destination + "-fanout";
 	}
 
 	@Bean

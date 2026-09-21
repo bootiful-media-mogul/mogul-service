@@ -28,15 +28,6 @@ class CacheConfiguration {
 	// so we can exclude ourselves from eviction notifications we just published
 	private final String node = UUID.randomUUID().toString();
 
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-			hints.reflection().registerType(CacheEviction.class, MemberCategory.values());
-		}
-
-	}
-
 	@Bean
 	FanoutExchange mogulCacheEvictionsExchange(ApiProperties properties) {
 		return ExchangeBuilder //
@@ -83,6 +74,15 @@ class CacheConfiguration {
 				return null;
 			}) //
 			.get();
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			hints.reflection().registerType(CacheEviction.class, MemberCategory.values());
+		}
+
 	}
 
 }

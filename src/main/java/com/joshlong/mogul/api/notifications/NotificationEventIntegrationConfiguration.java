@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.notifications;
 
 import com.joshlong.mogul.api.notifications.ably.integration.AblyHeaders;
 import com.joshlong.mogul.api.notifications.ably.integration.AblyMessageHandler;
-import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.utils.JsonUtils;
 import io.ably.lib.realtime.AblyRealtime;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;

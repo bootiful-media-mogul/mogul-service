@@ -4,9 +4,7 @@ import com.joshlong.mogul.api.AbstractSearchableResolver;
 import com.joshlong.mogul.api.Note;
 import com.joshlong.mogul.api.SearchableResult;
 import com.joshlong.mogul.api.notes.NoteService;
-import com.joshlong.mogul.api.utils.TypeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.joshlong.mogul.utils.TypeUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -15,8 +13,6 @@ import java.util.*;
 class NoteSearchableResolver extends AbstractSearchableResolver<Note> {
 
 	private final NoteService noteService;
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	NoteSearchableResolver(NoteService noteService) {
 		super(Note.class);

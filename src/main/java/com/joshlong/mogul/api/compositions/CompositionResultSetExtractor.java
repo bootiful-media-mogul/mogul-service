@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.compositions;
 
-import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.simple.JdbcClient;

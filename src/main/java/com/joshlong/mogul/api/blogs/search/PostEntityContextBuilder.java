@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.EntityContext;
 import com.joshlong.mogul.api.EntityContextBuilder;
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.blogs.Post;
-import com.joshlong.mogul.api.utils.TypeUtils;
+import com.joshlong.mogul.utils.TypeUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

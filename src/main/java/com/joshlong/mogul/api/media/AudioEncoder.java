@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.media;
 
-import com.joshlong.mogul.api.utils.FileUtils;
+import com.joshlong.mogul.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

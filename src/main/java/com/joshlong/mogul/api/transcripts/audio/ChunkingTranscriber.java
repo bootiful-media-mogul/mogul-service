@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.transcripts.audio;
 
-import com.joshlong.mogul.api.utils.FileUtils;
+import com.joshlong.mogul.utils.FileUtils;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +93,29 @@ class ChunkingTranscriber implements Transcriber {
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	static void bisect(File source, File destination, long start, long stop) throws IOException, InterruptedException {
+		var process = new ProcessBuilder()
+			.command("ffmpeg", "-i", source.getAbsolutePath(), "-ss", convertMillisToTimeFormat(start), "-to",
+					convertMillisToTimeFormat(stop), "-c", "copy", destination.getAbsolutePath())
+			.redirectErrorStream(true)
+			.start();
+		var output = drain(process);
+		var exitCode = process.waitFor();
+		Assert.state(exitCode == 0, () -> "the result must be a zero exit code, but was [" + exitCode + "]: " + output);
+	}
+
+	// ffmpeg writes its banner and its progress to stderr, and a pipe that nobody
+	// drains fills up and blocks the child forever -- so read to EOF *before*
+	// waiting. EOF arrives when ffmpeg exits, so the wait below is then immediate.
+	// the output is kept only to explain a failure; a stream copy says very little.
+	private static @NonNull String drain(Process process) throws IOException {
+		var output = (String) null;
+		try (var stdout = process.getInputStream()) {
+			output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
+		}
+		return output;
 	}
 
 	@Override
@@ -238,29 +261,6 @@ class ChunkingTranscriber implements Transcriber {
 		}
 
 		return listOfSegments.stream();
-	}
-
-	static void bisect(File source, File destination, long start, long stop) throws IOException, InterruptedException {
-		var process = new ProcessBuilder()
-			.command("ffmpeg", "-i", source.getAbsolutePath(), "-ss", convertMillisToTimeFormat(start), "-to",
-					convertMillisToTimeFormat(stop), "-c", "copy", destination.getAbsolutePath())
-			.redirectErrorStream(true)
-			.start();
-		var output = drain(process);
-		var exitCode = process.waitFor();
-		Assert.state(exitCode == 0, () -> "the result must be a zero exit code, but was [" + exitCode + "]: " + output);
-	}
-
-	// ffmpeg writes its banner and its progress to stderr, and a pipe that nobody
-	// drains fills up and blocks the child forever -- so read to EOF *before*
-	// waiting. EOF arrives when ffmpeg exits, so the wait below is then immediate.
-	// the output is kept only to explain a failure; a stream copy says very little.
-	private static @NonNull String drain(Process process) throws IOException {
-		var output = (String) null;
-		try (var stdout = process.getInputStream()) {
-			output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
-		}
-		return output;
 	}
 
 	private NumberFormat numberFormat() {

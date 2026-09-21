@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.transcripts;
 
 import com.joshlong.mogul.api.Transcribable;
 import com.joshlong.mogul.api.Transcript;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.ResultSet;

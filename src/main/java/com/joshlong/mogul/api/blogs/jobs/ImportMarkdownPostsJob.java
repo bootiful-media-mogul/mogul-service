@@ -1,6 +1,8 @@
 package com.joshlong.mogul.api.blogs.jobs;
 
-import com.joshlong.mogul.api.jobs.*;
+import com.joshlong.mogul.api.jobs.Job;
+import com.joshlong.mogul.api.jobs.JobExecutionContext;
+import com.joshlong.mogul.api.jobs.JobExecutionResult;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 

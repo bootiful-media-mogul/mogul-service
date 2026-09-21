@@ -2,8 +2,8 @@ package com.joshlong.mogul.api.blogs.publication;
 
 import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.utils.CollectionUtils;
-import com.joshlong.mogul.api.utils.JdbcUtils;
+import com.joshlong.mogul.utils.CollectionUtils;
+import com.joshlong.mogul.utils.JdbcUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -65,6 +65,13 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 	}
 
 	/**
+	 * one row, read but not yet resolved: the post and the managed file it points at are
+	 * fetched for the whole batch once every row is in hand.
+	 */
+	private record PostPreviewRow(Long publicationId, Long id, Long postId, Long managedFileId) {
+	}
+
+	/**
 	 * a preview points at both a post and a managed file, and resolving those a row at a
 	 * time would be two queries per row. only one row is ever asked for today, which is
 	 * the only reason that has not cost anything -- so this reads the rows first and
@@ -96,13 +103,6 @@ class DefaultPostPreviewsService implements PostPreviewsService {
 			return results;
 		}
 
-	}
-
-	/**
-	 * one row, read but not yet resolved: the post and the managed file it points at are
-	 * fetched for the whole batch once every row is in hand.
-	 */
-	private record PostPreviewRow(Long publicationId, Long id, Long postId, Long managedFileId) {
 	}
 
 }

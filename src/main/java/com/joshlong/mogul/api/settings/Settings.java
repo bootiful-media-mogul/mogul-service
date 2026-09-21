@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.settings;
 
-import com.joshlong.mogul.api.utils.CollectionUtils;
+import com.joshlong.mogul.utils.CollectionUtils;
 import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.RowMapper;

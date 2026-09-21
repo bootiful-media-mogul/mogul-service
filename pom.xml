@@ -140,6 +140,11 @@
             <version>0.0.2</version>
         </dependency>
         <dependency>
+            <groupId>com.joshlong.mogul</groupId>
+            <artifactId>utils</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <exclusions>
@@ -270,18 +275,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <!--
-                          every cached spring context in the suite would otherwise start
-                          its own JobRunr background server, and they all poll the same
-                          jobrunr_jobs table. a context whose handler has never heard of
-                          another test's job can still win it, fail it, and leave the
-                          test that enqueued it waiting: precisely the single-owner
-                          behaviour we want in production and precisely wrong here.
-                          set as a system property rather than in
-                          src/test/resources/application.properties, which would shadow
-                          the real one. JobsTest turns its own server back on with
-                          SpringBootTest(properties), which outranks a system property.
-                        -->
                         <jobrunr.background-job-server.enabled>false</jobrunr.background-job-server.enabled>
                     </systemPropertyVariables>
                 </configuration>
@@ -302,15 +295,24 @@
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>25</source>
-                    <target>25</target>
-                </configuration>
-            </plugin>
+
         </plugins>
     </build>
-
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/bootiful-media-mogul/artifacts</url>
+        </repository>
+    </distributionManagement>
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>GitHub Bootiful Media Mogul Packages</name>
+            <url>https://maven.pkg.github.com/bootiful-media-mogul/artifacts</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
