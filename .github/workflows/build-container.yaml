@@ -5,6 +5,8 @@ env:
   GCLOUD_PROJECT: joshlong
   GH_PAT: ${{ secrets.MOGUL_GITHUB_PERSONAL_ACCESS_TOKEN }}
   AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+  GH_TOKEN: ${{ secrets.MOGUL_GITHUB_PERSONAL_ACCESS_TOKEN }}
+  GH_USER: ${{ github.actor }}
 
 on:
   push:
