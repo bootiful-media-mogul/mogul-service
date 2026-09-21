@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.graphql.execution.RuntimeWiringConfigurer;
 import org.springframework.integration.annotation.IntegrationComponentScan;
-import org.springframework.security.config.Customizer;
 import org.springframework.resilience.annotation.EnableResilientMethods;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import java.time.ZoneOffset;

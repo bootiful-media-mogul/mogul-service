@@ -1,7 +1,7 @@
 package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.utils.ReflectionUtils;
-import com.joshlong.mogul.api.utils.TypeUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.TypeUtils;
 import org.jspecify.annotations.NonNull;
 import org.springframework.util.Assert;
 

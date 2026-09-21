@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.utils.CollectionUtils;
+import com.joshlong.mogul.utils.CollectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

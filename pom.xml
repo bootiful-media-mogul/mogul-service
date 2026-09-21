@@ -295,14 +295,7 @@
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>25</source>
-                    <target>25</target>
-                </configuration>
-            </plugin>
+
         </plugins>
     </build>
     <distributionManagement>
@@ -316,7 +309,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Bootiful Media Mogul Packages</name>
-            <url>https://maven.pkg.github.com/bootiful-media-mogul/*</url>
+            <url>https://maven.pkg.github.com/bootiful-media-mogul/artifacts</url>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>

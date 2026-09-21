@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.podcasts.publication;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.podcasts.Episode;
-import com.joshlong.mogul.api.utils.UriUtils;
+import com.joshlong.mogul.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

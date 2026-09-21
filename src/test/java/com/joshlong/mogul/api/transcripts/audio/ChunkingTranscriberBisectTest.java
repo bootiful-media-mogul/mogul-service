@@ -40,6 +40,32 @@ class ChunkingTranscriberBisectTest {
 		}
 	}
 
+	private static double durationOf(File file) {
+		try {
+			var process = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+					"csv=p=0", file.getAbsolutePath())
+				.redirectErrorStream(true)
+				.start();
+			String out;
+			try (var stdout = process.getInputStream()) {
+				out = new String(stdout.readAllBytes(), StandardCharsets.UTF_8).trim();
+			}
+			assertThat(process.waitFor()).isZero();
+			return Double.parseDouble(out);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static boolean commandExists(String command) throws Exception {
+		var process = new ProcessBuilder(command, "-version").redirectErrorStream(true).start();
+		try (var stdout = process.getInputStream()) {
+			stdout.readAllBytes();
+		}
+		return process.waitFor() == 0;
+	}
+
 	@Test
 	void bisectExtractsTheRequestedRange(@TempDir Path tmp) {
 		var destination = tmp.resolve("segment.mp3").toFile();
@@ -51,7 +77,9 @@ class ChunkingTranscriberBisectTest {
 		assertThat(durationOf(destination)).isCloseTo(30d, org.assertj.core.data.Offset.offset(1.5d));
 	}
 
-	/** cutting from the tail forces ffmpeg to seek right through the whole input. */
+	/**
+	 * cutting from the tail forces ffmpeg to seek right through the whole input.
+	 */
 	@Test
 	void bisectCutsFromTheEndOfALongInput(@TempDir Path tmp) {
 		var destination = tmp.resolve("late-segment.mp3").toFile();
@@ -88,32 +116,6 @@ class ChunkingTranscriberBisectTest {
 			.isThrownBy(() -> ChunkingTranscriber.bisect(missing, destination, 0, 1_000))
 			.withMessageContaining("zero exit code")
 			.withMessageContaining("No such file or directory");
-	}
-
-	private static double durationOf(File file) {
-		try {
-			var process = new ProcessBuilder("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
-					"csv=p=0", file.getAbsolutePath())
-				.redirectErrorStream(true)
-				.start();
-			String out;
-			try (var stdout = process.getInputStream()) {
-				out = new String(stdout.readAllBytes(), StandardCharsets.UTF_8).trim();
-			}
-			assertThat(process.waitFor()).isZero();
-			return Double.parseDouble(out);
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private static boolean commandExists(String command) throws Exception {
-		var process = new ProcessBuilder(command, "-version").redirectErrorStream(true).start();
-		try (var stdout = process.getInputStream()) {
-			stdout.readAllBytes();
-		}
-		return process.waitFor() == 0;
 	}
 
 }

@@ -5,8 +5,8 @@ import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.modulith.events.ApplicationModuleListener;
 
@@ -134,7 +134,9 @@ class JobsTest {
 
 	}
 
-	/** launched only by the events test, so its announcements are unambiguous. */
+	/**
+	 * launched only by the events test, so its announcements are unambiguous.
+	 */
 	static class AnnouncingJob implements Job {
 
 		@Override

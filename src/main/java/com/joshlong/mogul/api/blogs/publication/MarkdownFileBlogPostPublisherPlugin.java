@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.blogs.BlogService;
 import com.joshlong.mogul.api.blogs.Post;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.publications.PublicationService;
-import com.joshlong.mogul.api.utils.UriUtils;
+import com.joshlong.mogul.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;

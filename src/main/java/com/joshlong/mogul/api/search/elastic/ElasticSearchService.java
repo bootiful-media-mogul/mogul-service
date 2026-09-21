@@ -6,7 +6,7 @@ import com.joshlong.mogul.api.SearchableResolver;
 import com.joshlong.mogul.api.SearchableResult;
 import com.joshlong.mogul.api.search.SearchService;
 import com.joshlong.mogul.api.transcripts.TranscriptRecordedEvent;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

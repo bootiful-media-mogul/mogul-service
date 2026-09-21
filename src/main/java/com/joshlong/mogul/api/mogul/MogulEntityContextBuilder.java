@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.mogul;
 
 import com.joshlong.mogul.api.EntityContext;
 import com.joshlong.mogul.api.EntityContextBuilder;
-import com.joshlong.mogul.api.utils.TypeUtils;
+import com.joshlong.mogul.utils.TypeUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 

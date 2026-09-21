@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api.managedfiles;
 
-import com.joshlong.mogul.api.utils.FileUtils;
+import com.joshlong.mogul.utils.FileUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.File;

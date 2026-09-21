@@ -1,6 +1,6 @@
 package com.joshlong.mogul.api;
 
-import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.beans.factory.aot.BeanFactoryInitializationAotContribution;

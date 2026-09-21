@@ -1,9 +1,9 @@
 package com.joshlong.mogul.api.blogs.publication;
 
 import com.joshlong.mogul.api.blogs.Post;
-import com.joshlong.mogul.api.utils.UriUtils;
 import com.joshlong.mogul.api.wordpress.WordPressClient;
 import com.joshlong.mogul.api.wordpress.WordPressPost;
+import com.joshlong.mogul.utils.UriUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

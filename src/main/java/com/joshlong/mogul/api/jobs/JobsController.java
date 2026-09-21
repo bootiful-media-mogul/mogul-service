@@ -5,7 +5,7 @@ import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.api.mogul.MogulService;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
-import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.utils.JsonUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.graphql.data.method.annotation.Argument;

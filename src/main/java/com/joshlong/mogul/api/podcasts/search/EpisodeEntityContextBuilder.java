@@ -4,7 +4,7 @@ import com.joshlong.mogul.api.EntityContext;
 import com.joshlong.mogul.api.EntityContextBuilder;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import com.joshlong.mogul.api.utils.TypeUtils;
+import com.joshlong.mogul.utils.TypeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

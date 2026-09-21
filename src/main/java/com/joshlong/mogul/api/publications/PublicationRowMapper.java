@@ -1,9 +1,9 @@
 package com.joshlong.mogul.api.publications;
 
 import com.joshlong.mogul.api.Publication;
-import com.joshlong.mogul.api.utils.JdbcUtils;
-import com.joshlong.mogul.api.utils.JsonUtils;
-import com.joshlong.mogul.api.utils.ReflectionUtils;
+import com.joshlong.mogul.utils.JdbcUtils;
+import com.joshlong.mogul.utils.JsonUtils;
+import com.joshlong.mogul.utils.ReflectionUtils;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;

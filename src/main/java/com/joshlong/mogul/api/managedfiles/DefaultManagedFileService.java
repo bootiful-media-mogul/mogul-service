@@ -1,8 +1,8 @@
 package com.joshlong.mogul.api.managedfiles;
 
 import com.joshlong.mogul.api.ApiProperties;
-import com.joshlong.mogul.api.utils.CollectionUtils;
-import com.joshlong.mogul.api.utils.FileUtils;
+import com.joshlong.mogul.utils.CollectionUtils;
+import com.joshlong.mogul.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;

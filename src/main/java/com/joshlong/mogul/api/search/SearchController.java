@@ -2,8 +2,8 @@ package com.joshlong.mogul.api.search;
 
 import com.joshlong.mogul.api.Searchable;
 import com.joshlong.mogul.api.SearchableResult;
-import com.joshlong.mogul.api.utils.DateUtils;
-import com.joshlong.mogul.api.utils.JsonUtils;
+import com.joshlong.mogul.utils.DateUtils;
+import com.joshlong.mogul.utils.JsonUtils;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;

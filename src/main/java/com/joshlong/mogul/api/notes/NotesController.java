@@ -2,7 +2,7 @@ package com.joshlong.mogul.api.notes;
 
 import com.joshlong.mogul.api.Note;
 import com.joshlong.mogul.api.mogul.MogulService;
-import com.joshlong.mogul.api.utils.DateUtils;
+import com.joshlong.mogul.utils.DateUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
