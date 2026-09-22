@@ -35,8 +35,44 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
 
+      - name: Maven settings for GitHub Packages
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${env.GH_USER}</username>
+                <password>${env.GH_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
+
+      - name: Generate Maven settings.xml
+        uses: s4u/maven-settings-action@v4.0.0
+        with:
+          servers: |
+            [
+              {
+                "id": "github",
+                "username": "${{ github.actor }}",
+                "password": "${{ env.GH_PAT }}"
+              }
+            ]
+          repositories: |
+            [
+              {
+                "id": "github",
+                "name": "Mogul Github Artifacts",
+                "url": "https://maven.pkg.github.com/bootiful-media-mogul/artifacts"
+              }
+            ]
+
 
       - name: Publish Container
         run: |
