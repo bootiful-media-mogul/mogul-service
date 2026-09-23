@@ -76,6 +76,7 @@ class ProcessorsConfiguration {
 			.from(inboundAdapter)//
 			// todo transform the replies into events and then publish them on another
 			// well-known, qualifier-by-annotation message channel.
+				// as applicationevents
 			.handle(new GenericHandler<String>() {
 				@Override
 				public @Nullable Object handle(String payload, MessageHeaders headers) {
