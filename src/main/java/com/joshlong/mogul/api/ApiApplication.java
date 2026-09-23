@@ -33,7 +33,7 @@ import java.util.TimeZone;
 public class ApiApplication {
 
 	static void main(String[] args) {
-		// pin the timezone so that it doesnt matter in which geozone we run the app
+		// pin the timezone so that it doesn't matter in which geozone we run the app
 		TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
 		var app = new SpringApplication(ApiApplication.class);
 		app.setApplicationStartup(new BufferingApplicationStartup(1024 * 4));
