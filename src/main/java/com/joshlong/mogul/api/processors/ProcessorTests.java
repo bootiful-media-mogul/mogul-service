@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
 
+/// todo delete this as soon as u have a workign e2e
 @Configuration
 class ProcessorTests implements ApplicationRunner {
 

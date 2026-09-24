@@ -44,7 +44,7 @@ class ProcessorsConfiguration {
 
 		var noargs = BindingBuilder.bind(queue)//
 			.to(exchange)//
-			.with(PROCESSOR_REPLIES)//
+			.with(name)//
 			.noargs();
 		amqpAdmin.declareBinding(noargs);
 	}
