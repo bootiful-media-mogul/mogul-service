@@ -38,7 +38,7 @@ class DefaultProcessors implements ApplicationEventPublisherAware, Processors {
 		var when = Instant.now();
 		this.requests.send(build);
 		this.transactionTemplate.executeWithoutResult(_ -> this.applicationEventPublisher.get()
-			.publishEvent(new ProcessorLaunchedEvent(processorId, params, when)));
+			.publishEvent(new ProcessorLaunchedEvent(processorId, correlationId, params, when)));
 	}
 
 	@Override

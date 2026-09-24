@@ -18,8 +18,7 @@ class ProcessorTests implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
-		this.processors.process("mediaNormalizationProcessor",
-				"123", Map.of("s3", "http://adobe.com", "id", 2L));
+		this.processors.process("mediaNormalizationProcessor", "123", Map.of("s3", "http://adobe.com", "id", 2L));
 		IO.println("Done processing media normalization request!");
 	}
 
