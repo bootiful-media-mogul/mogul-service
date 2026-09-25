@@ -15,7 +15,8 @@ class TranscriptRowMapper implements RowMapper<Transcript> {
 	public Transcript mapRow(ResultSet rs, int rowNum) throws SQLException {
 		var payloadClass = (Class<? extends Transcribable>) ReflectionUtils.classForName(rs.getString("payload_class"));
 		return new Transcript(rs.getLong("mogul_id"), rs.getLong("id"), rs.getDate("created"),
-				rs.getDate("transcribed"), rs.getString("payload"), payloadClass, rs.getString("transcript"));
+				rs.getDate("transcribed"), rs.getString("payload"), payloadClass, rs.getString("transcript"),
+				rs.getString("source_etag"));
 	}
 
 }

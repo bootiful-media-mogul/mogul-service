@@ -5,7 +5,7 @@ alter table settings
     rename column mogul_id to mogul;
 
 alter table managed_file
-    rename column mogul_id to mogul ;
+    rename column mogul_id to mogul;
 
 alter table managed_file_deletion_request
     rename column mogul_id to mogul;
@@ -25,7 +25,8 @@ alter table podcast_episode_segment
 alter table podcast_episode
     rename column podcast_id to podcast;
 
-alter table podcast_episode_segment add column transcript text null ;
+alter table podcast_episode_segment
+    add column transcript text null;
 
 alter table publication
     rename column mogul_id to mogul;

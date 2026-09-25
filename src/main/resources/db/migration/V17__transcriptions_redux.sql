@@ -1,13 +1,23 @@
 create table if not exists transcription
 (
-    id            serial primary key,
-    created       timestamp not null default now(),
-    transcribed   timestamp null,
-    payload_class text      not null,
-    payload       text      not null,
-    transcript    text      null,
-    mogul_id      bigint    not null
-);
+    id
+    serial
+    primary
+    key,
+    created
+    timestamp
+    not
+    null
+    default
+    now
+(
+),
+    transcribed timestamp null,
+    payload_class text not null,
+    payload text not null,
+    transcript text null,
+    mogul_id bigint not null
+    );
 
 
 insert into transcription(mogul_id, payload_class, payload, transcript, transcribed)
@@ -18,7 +28,7 @@ select (select p.mogul_id
         where pes.podcast_episode_id = pe.id
           and p.id = pe.podcast_id
           and pes.id = peso.id
-        limit 1),
+           limit 1),
        'com.joshlong.mogul.api.podcasts.Segment',
        peso.id::text,
        peso.transcript,

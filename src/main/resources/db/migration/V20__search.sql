@@ -1,5 +1,7 @@
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE
+EXTENSION IF NOT EXISTS vector;
+CREATE
+EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE document
 (
@@ -19,43 +21,52 @@ CREATE TABLE document_chunk
     chunk_index INT    NOT NULL,
     text        TEXT   NOT NULL,
     tsv         TSVECTOR,
-    embedding         VECTOR(1536),
+    embedding   VECTOR(1536),
     clean_text  TEXT   NOT NULL,
     tokens      TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[]
 );
 
 
-CREATE OR REPLACE FUNCTION chunk_tsv_trigger()
+CREATE
+OR REPLACE FUNCTION chunk_tsv_trigger()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    NEW.tsv := to_tsvector('english', NEW.text);
-    RETURN NEW;
+    NEW.tsv
+:= to_tsvector('english', NEW.text);
+RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$
+LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION chunk_clean_text_and_tokens_trigger()
+CREATE
+OR REPLACE FUNCTION chunk_clean_text_and_tokens_trigger()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    NEW.clean_text :=
+    NEW.clean_text
+:=
             lower(regexp_replace(coalesce(NEW.text, ''), '[^a-zA-Z0-9 ]', ' ', 'g'));
-    NEW.tokens := string_to_array(NEW.clean_text, ' ');
-    RETURN NEW;
+    NEW.tokens
+:= string_to_array(NEW.clean_text, ' ');
+RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$
+LANGUAGE plpgsql;
 
 CREATE TRIGGER chunk_tsv_update
-    BEFORE INSERT OR UPDATE
+    BEFORE INSERT OR
+UPDATE
     ON document_chunk
     FOR EACH ROW
-EXECUTE PROCEDURE chunk_tsv_trigger();
+    EXECUTE PROCEDURE chunk_tsv_trigger();
 
 CREATE TRIGGER chunk_clean_text_and_tokens_update
-    BEFORE INSERT OR UPDATE
+    BEFORE INSERT OR
+UPDATE
     ON document_chunk
     FOR EACH ROW
-EXECUTE PROCEDURE chunk_clean_text_and_tokens_trigger();
+    EXECUTE PROCEDURE chunk_clean_text_and_tokens_trigger();
 
 -- Full-text GIN index on tsv
 CREATE INDEX idx_document_chunk_tsv ON document_chunk USING GIN (tsv);

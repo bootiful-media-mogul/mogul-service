@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.processors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -11,12 +10,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.UUID;
 
 // todo encrypt the body values
-class DefaultProcessors implements ApplicationEventPublisherAware, Processors {
-
-	private final AtomicReference<ApplicationEventPublisher> applicationEventPublisher = new AtomicReference<>();
+class DefaultProcessors implements Processors {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -24,32 +21,41 @@ class DefaultProcessors implements ApplicationEventPublisherAware, Processors {
 
 	private final JsonMapper jsonMapper;
 
+	private final ApplicationEventPublisher publisher;
+
 	private final TransactionTemplate transactionTemplate;
 
-	DefaultProcessors(MessageChannel requests, TransactionTemplate transactionTemplate, JsonMapper jsonMapper) {
+	DefaultProcessors(MessageChannel requests, JsonMapper jsonMapper, ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate) {
 		this.requests = requests;
 		this.jsonMapper = jsonMapper;
+		this.publisher = publisher;
 		this.transactionTemplate = transactionTemplate;
 	}
 
 	@Override
-	public void process(String processorId, String correlationId, Map<String, Object> context) throws Exception {
-		var request = new ProcessorRequest(processorId, correlationId, context);
-		var bodyAsJson = this.jsonMapper.writeValueAsString(request);
-		var message = MessageBuilder.withPayload(bodyAsJson)//
+	public void process(String processorId, Map<String, Object> context) throws Exception {
+		var correlationId = UUID.randomUUID().toString();
+		var envelope = new ProcessorRequest(processorId, correlationId, context);
+		var message = MessageBuilder.withPayload(this.jsonMapper.writeValueAsString(envelope))//
 			.setHeader(ProcessorHeaders.PROCESSOR_ID, processorId)//
 			.setHeader(ProcessorHeaders.PROCESSOR_REQUEST_ID, correlationId)//
 			.build();
 		var when = Instant.now();
 		this.log.debug("launching processor [{}] with correlation id [{}]", processorId, correlationId);
 		this.requests.send(message);
-		this.transactionTemplate.executeWithoutResult(_ -> this.applicationEventPublisher.get()
-			.publishEvent(new ProcessorLaunchedEvent(processorId, correlationId, context, when)));
+		this.publish(new ProcessorLaunchedEvent(processorId, correlationId, context, when));
 	}
 
-	@Override
-	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
-		this.applicationEventPublisher.set(applicationEventPublisher);
+	void complete(ProcessorResponse response) {
+		this.log.debug("processor [{}] finished [{}]: success = {}", response.processorId(), response.correlationId(),
+				response.success());
+		this.publish(new ProcessorCompletedEvent(response.processorId(), response.correlationId(), response.context(),
+				Instant.now(), response.success(), response.error()));
+	}
+
+	private void publish(Object event) {
+		this.transactionTemplate.executeWithoutResult(_ -> this.publisher.publishEvent(event));
 	}
 
 }

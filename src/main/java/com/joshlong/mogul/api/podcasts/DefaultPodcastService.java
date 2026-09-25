@@ -134,8 +134,9 @@ class DefaultPodcastService implements PodcastService {
 
 	}
 
-	private void triggerTranscription(Long mogulId, Long segmentId) {
-		this.publisher.publishEvent(new TranscriptInvalidatedEvent(mogulId, segmentId, Segment.class, Map.of()));
+	private void triggerTranscription(Long mogulId, Long segmentId, String sourceEtag) {
+		this.publisher
+			.publishEvent(new TranscriptInvalidatedEvent(mogulId, segmentId, Segment.class, sourceEtag, Map.of()));
 	}
 
 	@ApplicationModuleListener
@@ -153,7 +154,7 @@ class DefaultPodcastService implements PodcastService {
 				this.db.sql("update podcast_episode set produced_audio_assets_updated = ? where id = ? ")
 					.params(new Date(), episodeId)
 					.update();
-				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId);
+				this.triggerTranscription(normalizedEvent.in().mogulId(), segmentId, normalizedEvent.out().etag());
 				// todo
 				this.db.sql("update podcast_episode_segment set duration =  ? where id = ? ")
 					.params(normalizedEvent.context().getOrDefault(MediaNormalizedEvent.DURATION_IN_MILLISECONDS, 0L),

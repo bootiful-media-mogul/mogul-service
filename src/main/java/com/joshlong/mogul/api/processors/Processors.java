@@ -5,12 +5,10 @@ import java.util.Map;
 public interface Processors {
 
 	/**
-	 * asynchronously launch a processor
-	 * @param processorId with a given processorId
-	 * @param context and a map of parameters (that you know to convert well to JSON via
-	 * Jackson 3)
-	 * @throws Exception if for some reason the processor cannot be launched
+	 * asynchronously launch a processor. returns as soon as the request is on the wire;
+	 * the work happens in another process and announces itself later with a
+	 * {@link ProcessorCompletedEvent}.
 	 */
-	void process(String processorId, String correlationId, Map<String, Object> context) throws Exception;
+	void process(String processorId, Map<String, Object> context) throws Exception;
 
 }

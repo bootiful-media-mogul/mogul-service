@@ -9,7 +9,7 @@ import java.util.Date;
 import static com.joshlong.mogul.api.managedfiles.DefaultManagedFileService.visibleBucketFor;
 
 public record ManagedFile(Long mogulId, Long id, String bucket, String storageFilename, String folder, String filename,
-		Date created, boolean written, long size, String contentType, boolean visible) {
+		Date created, boolean written, long size, String contentType, boolean visible, String etag) {
 
 	public File uniqueLocalFile() {
 		var extension = "";
