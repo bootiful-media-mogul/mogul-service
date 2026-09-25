@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.Map;
 
 /**
- * represents the result of the {@code MediaService#encode(File)} operation.
+ * represents the result of an {@link Encoder#encode(File)} operation.
  */
 public interface EncodedFile {
 

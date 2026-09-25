@@ -128,6 +128,14 @@ class Storage {
 		this.s3.copyObject(result);
 	}
 
+	/**
+	 * the authoritative size of an object that something other than this process wrote.
+	 */
+	public long contentLength(String bucket, String key) {
+		var request = HeadObjectRequest.builder().bucket(bucket).key(key).build();
+		return this.s3.headObject(request).contentLength();
+	}
+
 	public boolean exists(String bucket, String key) {
 		var request = HeadObjectRequest.builder().bucket(bucket).key(key).build();
 		try {

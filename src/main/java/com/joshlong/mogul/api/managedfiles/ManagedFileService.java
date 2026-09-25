@@ -36,6 +36,18 @@ public interface ManagedFileService {
 	void write(Long managedFileId, String filename, MediaType mts, Resource resource);
 
 	/**
+	 * the counterpart to {@link #write}, for bytes that something else put in S3 -- the
+	 * {@code processors} module writes its results straight to the output object, so
+	 * there is nothing to upload here, only a record to reconcile with what is now
+	 * actually in storage. publishes the same {@link ManagedFileUpdatedEvent} that
+	 * {@link #write} does, so everything downstream of a write behaves identically
+	 * whichever process did the writing.
+	 * @param mediaType the type the bytes were written as, which is not necessarily the
+	 * type they arrived as: normalization turns a wav into an mp3
+	 */
+	void refreshManagedFileFromStorage(Long managedFileId, String filename, MediaType mediaType);
+
+	/**
 	 * behind the scenes this variant simply creates a {@link FileSystemResource} which
 	 * can be queried for its content length
 	 */

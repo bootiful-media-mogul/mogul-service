@@ -22,6 +22,14 @@ public record ManagedFile(Long mogulId, Long id, String bucket, String storageFi
 		return FileUtils.tempFile("managed-files-" + id, extension);
 	}
 
+	/**
+	 * the key the bytes live under inside {@link #bucket()}. the {@code processors}
+	 * module is handed this and the bucket, and nothing else about the file.
+	 */
+	public String key() {
+		return this.folder() + '/' + this.storageFilename();
+	}
+
 	public String visibleBucket() {
 		return visibleBucketFor(this.bucket());
 	}

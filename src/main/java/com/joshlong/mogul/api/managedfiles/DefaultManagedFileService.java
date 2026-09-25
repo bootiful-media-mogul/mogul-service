@@ -148,6 +148,29 @@ class DefaultManagedFileService implements ManagedFileService {
 		});
 	}
 
+	@Override
+	public void refreshManagedFileFromStorage(Long managedFileId, String filename, MediaType mediaType) {
+		var managedFile = this.getManagedFileById(managedFileId);
+		var fqn = this.fqn(managedFile.folder(), managedFile.storageFilename());
+		var bucket = managedFile.bucket();
+		// don't take the writer's word for it. a reply that says the work succeeded and a
+		// bucket that has the bytes in it are two different claims, and only the second
+		// one is worth marking the file written over.
+		Assert.state(this.storage.exists(bucket, fqn),
+				() -> "the object [" + bucket + "/" + fqn + "] for ManagedFile #" + managedFileId + " is not in S3");
+		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
+		this.db //
+			.sql("update managed_file set filename = ?, content_type = ?, written = true, size = ? where id= ?") //
+			.params(filename, clientMediaType.toString(), this.storage.contentLength(bucket, fqn), managedFileId) //
+			.update();
+		this.invalidateCache(managedFileId);
+		var freshManagedFile = this.getManagedFileById(managedFileId);
+		this.transactionTemplate.execute(_ -> {
+			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
+			return null;
+		});
+	}
+
 	private void invalidateCache(Long managedFileId) {
 		this.cache.evictIfPresent(managedFileId);
 	}

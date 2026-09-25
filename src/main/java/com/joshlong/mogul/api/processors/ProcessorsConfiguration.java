@@ -1,5 +1,7 @@
 package com.joshlong.mogul.api.processors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -14,26 +16,26 @@ import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.transaction.support.TransactionTemplate;
-import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
-import java.util.Map;
 
+/**
+ * the client half of the {@code processors} module: requests go out on one queue, replies
+ * come back on another, and a {@link ProcessorCompletedEvent} is published for whichever
+ * part of the api cares about that {@code processorId}.
+ */
 @Configuration
 class ProcessorsConfiguration {
 
-	// todo extract these values out to properties since they need to be the same for both
-	// this api and the media-processor module
-	private static final String PROCESSOR_REQUESTS = "processor-requests";
-
-	private static final String PROCESSOR_REPLIES = "processor-replies";
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	@Bean
 	InitializingBean processorsAmqpInitialization(AmqpAdmin amqpAdmin) {
 		return () -> {
-			this.register(amqpAdmin, PROCESSOR_REPLIES);
-			this.register(amqpAdmin, PROCESSOR_REQUESTS);
+			this.register(amqpAdmin, ProcessorHeaders.PROCESSOR_REPLIES);
+			this.register(amqpAdmin, ProcessorHeaders.PROCESSOR_REQUESTS);
 		};
 	}
 
@@ -53,50 +55,47 @@ class ProcessorsConfiguration {
 	}
 
 	@Bean
-	DefaultProcessors defaultProcessors(@Qualifier(PROCESSOR_REQUESTS) MessageChannel requests,
+	DefaultProcessors defaultProcessors(@Qualifier(ProcessorHeaders.PROCESSOR_REQUESTS) MessageChannel requests,
 			TransactionTemplate transactionTemplate, JsonMapper jsonMapper) {
 		return new DefaultProcessors(requests, transactionTemplate, jsonMapper);
 	}
 
-	@Bean(name = PROCESSOR_REQUESTS)
+	@Bean(name = ProcessorHeaders.PROCESSOR_REQUESTS)
 	DirectChannelSpec processorRequests() {
 		return MessageChannels.direct();
 	}
 
 	@Bean
-	IntegrationFlow processorRequestsIntegrationFlow(@Qualifier(PROCESSOR_REQUESTS) MessageChannel processorRequests, //
+	IntegrationFlow processorRequestsIntegrationFlow(
+			@Qualifier(ProcessorHeaders.PROCESSOR_REQUESTS) MessageChannel processorRequests, //
 			AmqpTemplate template //
 	) {
-		var amqpOutbound = Amqp.outboundAdapter(template).routingKey(PROCESSOR_REQUESTS);
+		var amqpOutbound = Amqp.outboundAdapter(template).routingKey(ProcessorHeaders.PROCESSOR_REQUESTS);
 		return IntegrationFlow.from(processorRequests).handle(amqpOutbound).get();
 	}
 
 	@Bean
-	IntegrationFlow processorRepliesIntegrationFlow(JsonMapper jsonMapper,
+	IntegrationFlow processorRepliesIntegrationFlow(JsonMapper jsonMapper, TransactionTemplate transactionTemplate,
 			ApplicationEventPublisher applicationEventPublisher, ConnectionFactory connectionFactory) {
-		var inboundAdapter = Amqp.inboundAdapter(connectionFactory, PROCESSOR_REPLIES);
-
+		var inboundAdapter = Amqp.inboundAdapter(connectionFactory, ProcessorHeaders.PROCESSOR_REPLIES);
+		// a processor's context crosses the wire as json, where `2` and `2L` are the same
+		// thing. the listeners downstream of this cast those values back to the Long ids
+		// they were when they went out, so read every integral number as a Long and spare
+		// them a ClassCastException that only shows up for small ids.
+		var reader = jsonMapper.reader()//
+			.with(DeserializationFeature.USE_LONG_FOR_INTS)//
+			.forType(ProcessorResponse.class);
 		return IntegrationFlow//
 			.from(inboundAdapter)//
-			// todo transform the replies into events and then publish them on another
-			// well-known, qualifier-by-annotation message channel.
-			// as applicationevents
-			.handle((GenericHandler<String>) (payload, headers) -> {
-				IO.println("payload: " + payload);
-				headers.forEach((k, v) -> IO.println("header: " + k + " value: " + v));
-				var obj = jsonMapper.readValue(payload, new TypeReference<Map<String, Object>>() {
-				});
-				@SuppressWarnings("unchecked")
-				var context = (Map<String, Object>) obj.get("context");
-				var success = (boolean) context.getOrDefault("success", false);
-				var processorId = (String) context.get("processorId");
-				var correlationId = (String) context.get("correlationId");
-
-				obj.forEach((k, v) -> IO.println("payload:: key: " + k + " value: " + v));
-
-				var processorCompletedEvent = new ProcessorCompletedEvent(processorId, correlationId, context,
-						Instant.now(), success);
-				applicationEventPublisher.publishEvent(processorCompletedEvent);
+			.handle((GenericHandler<String>) (payload, _) -> {
+				ProcessorResponse response = reader.readValue(payload);
+				this.log.debug("processor [{}] finished [{}]: success = {}", response.processorId(),
+						response.correlationId(), response.success());
+				var event = new ProcessorCompletedEvent(response.processorId(), response.correlationId(),
+						response.context(), Instant.now(), response.success());
+				// @ApplicationModuleListener only sees events published inside a
+				// transaction, and an AMQP listener thread has none of its own.
+				transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 				return null;
 			})
 			.get();
