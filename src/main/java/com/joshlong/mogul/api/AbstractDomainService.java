@@ -3,6 +3,7 @@ package com.joshlong.mogul.api;
 import com.joshlong.mogul.utils.ReflectionUtils;
 import com.joshlong.mogul.utils.TypeUtils;
 import org.jspecify.annotations.NonNull;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
@@ -36,7 +37,14 @@ public abstract class AbstractDomainService<M, R extends DomainResolver<M, ?>> {
 
 	private void initializeTypeMap() {
 		for (var resolver : resolvers) {
-			for (var cl : ReflectionUtils.genericsFor(resolver.getClass())) {
+			// the ultimate target, not the bean. a resolver that is @Transactional --
+			// the transcribable one is -- reaches us as a CGLIB subclass, and a
+			// subclass of SegmentTranscribableResolver has no type arguments of its
+			// own: the parameterized superclass is one level further up than the
+			// generics walk looks. so the proxied resolvers contributed nothing and
+			// this map came up empty, which classForType reports as "couldn't find a
+			// matching class for type [segment]" much later and somewhere else.
+			for (var cl : ReflectionUtils.genericsFor(AopProxyUtils.ultimateTargetClass(resolver))) {
 				this.typeMap.put(typeForClass(cl), cl);
 			}
 		}

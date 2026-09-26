@@ -2,12 +2,11 @@ package com.joshlong.mogul.api;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.io.File;
 import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
-public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Podcasts podcasts, Cache cache,
-		Feeds feeds, Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
+public record ApiProperties(Aws aws, ManagedFiles managedFiles, Podcasts podcasts, Cache cache, Feeds feeds, Amqp amqp,
+		Notifications notifications, Settings settings, boolean debug) {
 
 	public record Feeds(String elementPrefix, String namespace) {
 	}
@@ -22,14 +21,6 @@ public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts tran
 		public record Ably(String apiKey) {
 		}
 
-	}
-
-	/**
-	 * {@code concurrency} bounds how many transcriptions run at once. each one forks
-	 * {@code ffmpeg} -- a full decode to detect silence, then a cut per segment -- and
-	 * those subprocesses are charged to the pod's memory, not the heap.
-	 */
-	public record Transcripts(File root, int concurrency) {
 	}
 
 	public record Settings(String password, String salt) {

@@ -1,7 +1,5 @@
 package com.joshlong.mogul.api;
 
-import org.springframework.core.io.Resource;
-
 import java.util.Map;
 
 /**
@@ -11,7 +9,22 @@ import java.util.Map;
  */
 public interface TranscribableResolver<T extends Transcribable> extends DomainResolver<Transcribable, T> {
 
-	Resource audio(Long key);
+	/**
+	 * where the audio to transcribe lives -- not the bytes. transcription happens in the
+	 * {@code processors} module now, and all that has to cross the wire is a bucket and a
+	 * key.
+	 */
+	Audio audio(Long key);
+
+	/**
+	 * one object in storage. deliberately not a {@code ManagedFile}: that lives in a
+	 * module of its own, and a type in this package that referred to it would close a
+	 * cycle, since that module reads its configuration from here.
+	 *
+	 * @param written whether anything has actually been put there yet
+	 */
+	record Audio(String bucket, String key, boolean written) {
+	}
 
 	/**
 	 * Provides default context for the transcription event. After the transcript has been

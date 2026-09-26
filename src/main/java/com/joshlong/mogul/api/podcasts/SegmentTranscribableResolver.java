@@ -1,9 +1,7 @@
 package com.joshlong.mogul.api.podcasts;
 
 import com.joshlong.mogul.api.AbstractTranscribableResolver;
-import com.joshlong.mogul.api.managedfiles.ManagedFileService;
 import com.joshlong.mogul.utils.CollectionUtils;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +18,9 @@ class SegmentTranscribableResolver extends AbstractTranscribableResolver<Segment
 
 	private final PodcastService podcastService;
 
-	private final ManagedFileService managedFileService;
-
-	SegmentTranscribableResolver(PodcastService podcastService, ManagedFileService managedFileService) {
+	SegmentTranscribableResolver(PodcastService podcastService) {
 		super(Segment.class);
 		this.podcastService = podcastService;
-		this.managedFileService = managedFileService;
 	}
 
 	@Override
@@ -35,9 +30,9 @@ class SegmentTranscribableResolver extends AbstractTranscribableResolver<Segment
 	}
 
 	@Override
-	public Resource audio(Long transcribableKey) {
-		var segment = this.find(transcribableKey);
-		return this.managedFileService.read(segment.producedAudio().id());
+	public Audio audio(Long transcribableKey) {
+		var producedAudio = this.find(transcribableKey).producedAudio();
+		return new Audio(producedAudio.bucket(), producedAudio.key(), producedAudio.written());
 	}
 
 	@Override

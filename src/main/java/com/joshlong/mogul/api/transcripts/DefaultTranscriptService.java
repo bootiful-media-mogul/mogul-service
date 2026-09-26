@@ -6,6 +6,8 @@ import com.joshlong.mogul.api.TranscribableResolver;
 import com.joshlong.mogul.api.Transcript;
 import com.joshlong.mogul.api.notifications.NotificationEvent;
 import com.joshlong.mogul.api.notifications.NotificationEvents;
+import com.joshlong.mogul.api.processors.ProcessorCompletedEvent;
+import com.joshlong.mogul.api.processors.Processors;
 import com.joshlong.mogul.utils.CollectionUtils;
 import com.joshlong.mogul.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -13,10 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.SqlArrayValue;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,6 +29,29 @@ import java.util.stream.Collectors;
 class DefaultTranscriptService extends AbstractDomainService<Transcribable, TranscribableResolver<?>>
 		implements TranscriptService {
 
+	/**
+	 * the name of the {@code Processor} bean over in the processors module, which is also
+	 * the name a reply for us comes back under.
+	 */
+	static final String PROCESSOR_ID = "audioTranscriptionProcessor";
+
+	// what the processor reads
+	private static final String INPUT_BUCKET = "inputBucket";
+
+	private static final String INPUT_KEY = "inputKey";
+
+	// what it writes back
+	private static final String TRANSCRIPT = "transcript";
+
+	// what it never looks at, and hands back untouched: our own return address. the
+	// type is not among them -- the transcript row records the class it is for, and
+	// re-reading it beats a second copy on the wire that can disagree with the first.
+	private static final String MOGUL_ID = "mogulId";
+
+	private static final String TRANSCRIBABLE_ID = "transcribableId";
+
+	private static final String TRANSCRIPT_ID = "transcriptId";
+
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final JdbcClient db;
@@ -34,16 +60,19 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 
 	private final ApplicationEventPublisher publisher;
 
-	private final MessageChannel requests;
+	private final Processors processors;
+
+	private final TransactionTemplate transactionTemplate;
 
 	DefaultTranscriptService(TranscriptRowMapper transcribableRowMapper, JdbcClient db,
-			Collection<TranscribableResolver<?>> resolvers, ApplicationEventPublisher publisher,
-			MessageChannel requests) {
+			Collection<TranscribableResolver<?>> resolvers, ApplicationEventPublisher publisher, Processors processors,
+			TransactionTemplate transactionTemplate) {
 		super(resolvers);
 		this.transcribableRowMapper = transcribableRowMapper;
 		this.db = db;
 		this.publisher = publisher;
-		this.requests = requests;
+		this.processors = processors;
+		this.transactionTemplate = transactionTemplate;
 	}
 
 	private static String classNameFor(Transcribable transcribable) {
@@ -112,14 +141,72 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	public void transcribe(Long mogulId, Transcribable payload, Map<String, Object> context) {
 		var transcript = this.transcript(mogulId, payload);
 		var transcribableKey = this.keyFor(transcript);
-		var defaultContext = this.resolverFor(payload.getClass()).defaultContext(transcribableKey);
-		var finalMap = new HashMap<String, Object>();
-		finalMap.putAll(defaultContext);
-		finalMap.putAll(context);
-		var message = MessageBuilder //
-			.withPayload(new TranscriptionRequest(mogulId, payload, finalMap)) //
-			.build();
-		this.requests.send(message);
+		var clazz = transcript.payloadClass();
+		var resolver = this.resolverFor(clazz);
+		var audio = resolver.audio(transcribableKey);
+		// a transcription of an object with nothing in it would come back empty and
+		// overwrite whatever text is there, which is worse than not running.
+		Assert.state(audio != null && audio.written(),
+				() -> "there is no audio to transcribe for " + clazz.getName() + " #" + transcribableKey);
+		var request = new HashMap<String, Object>();
+		request.putAll(resolver.defaultContext(transcribableKey));
+		request.putAll(context);
+		request.put(INPUT_BUCKET, audio.bucket());
+		request.put(INPUT_KEY, audio.key());
+		request.put(MOGUL_ID, mogulId);
+		request.put(TRANSCRIBABLE_ID, transcribableKey);
+		request.put(TRANSCRIPT_ID, transcript.id());
+		try {
+			this.processors.process(PROCESSOR_ID, request);
+		} //
+		catch (Exception e) {
+			throw new RuntimeException("could not request the transcription of transcript #" + transcript.id(), e);
+		}
+		this.publish(new TranscriptionStartedEvent(mogulId, transcribableKey, transcript.id(), clazz));
+		this.log.debug("requested the transcription of {} #{} into transcript #{}", clazz.getName(), transcribableKey,
+				transcript.id());
+	}
+
+	@ApplicationModuleListener
+	void onProcessorCompleted(ProcessorCompletedEvent event) {
+		if (!PROCESSOR_ID.equals(event.processorId()))
+			return;
+		var context = event.context();
+		var mogulId = (Long) context.get(MOGUL_ID);
+		var transcribableId = (Long) context.get(TRANSCRIBABLE_ID);
+		var transcriptId = (Long) context.get(TRANSCRIPT_ID);
+		var transcript = this.transcriptById(transcriptId);
+		if (transcript == null) {
+			// the row went away while the work was in flight -- the segment was deleted,
+			// most likely. there is nothing left to write the text to.
+			this.log.warn("transcript #{} no longer exists; dropping the reply for it", transcriptId);
+			return;
+		}
+		var clazz = transcript.payloadClass();
+		if (!event.success()) {
+			var error = StringUtils.hasText(event.error()) ? event.error() : "no reason given";
+			this.log.warn("the transcription of {} #{} failed: {}", clazz.getName(), transcribableId, error);
+			// the etag was claimed before dispatch so that a duplicate delivery wouldn't
+			// start a second transcription of the same bytes. nothing is in flight any
+			// more, so release the claim -- otherwise this recording can never be
+			// transcribed again, and the guard turns a transient failure into a
+			// permanent one.
+			this.db.sql("update transcript set source_etag = null where id = ?").params(transcriptId).update();
+			var failed = new TranscriptionFailedEvent(mogulId, transcribableId, transcriptId, clazz, error);
+			this.publish(failed);
+			// visible, not merely delivered: the editor has a transcript panel disabled
+			// and waiting on this, and nothing else is going to tell the mogul why the
+			// text never showed up.
+			NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId, failed,
+					transcribableId.toString(), JsonUtils.write(Map.of("transcriptId", transcriptId))));
+			return;
+		}
+		var text = context.get(TRANSCRIPT) instanceof String s ? s : "";
+		this.publish(new TranscriptCompletedEvent(mogulId, transcribableId, transcriptId, clazz, text));
+	}
+
+	private void publish(Object event) {
+		this.transactionTemplate.executeWithoutResult(_ -> this.publisher.publishEvent(event));
 	}
 
 	private Transcribable transcribableFor(Long transcriptId) {
