@@ -1,8 +1,13 @@
 package com.joshlong.mogul.api.processors;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -13,7 +18,19 @@ import java.util.Map;
 import java.util.UUID;
 
 // todo encrypt the body values
+@ImportRuntimeHints(DefaultProcessors.Hints.class)
 class DefaultProcessors implements Processors {
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+			for (var pr : new Class<?>[] { ProcessorResponse.class, ProcessorRequest.class }) {
+				hints.reflection().registerType(pr, MemberCategory.values());
+			}
+		}
+
+	}
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
