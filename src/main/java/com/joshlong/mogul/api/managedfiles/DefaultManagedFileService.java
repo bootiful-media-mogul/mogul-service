@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -100,6 +101,40 @@ class DefaultManagedFileService implements ManagedFileService {
 					+ this.fqn(managedFile.folder(), managedFile.storageFilename());
 		}
 		return url;
+	}
+
+	@Override
+	public String getVersionedPublicUrlForManagedFile(Long managedFileId) {
+		var url = this.getPublicUrlForManagedFile(managedFileId);
+		if (url == null)
+			return null;
+		var version = version(this.getManagedFileById(managedFileId));
+		if (version == null)
+			return url;
+		return UriComponentsBuilder.fromUriString(url).queryParam("v", version).toUriString();
+	}
+
+	@Override
+	public String getDownloadableUrlForManagedFile(Long managedFileId) {
+		var managedFile = this.getManagedFileById(managedFileId);
+		if (managedFile == null || !managedFile.written() || !managedFile.visible())
+			return null;
+		var url = this.getVersionedPublicUrlForManagedFile(managedFileId);
+		if (url == null)
+			return null;
+		return UriComponentsBuilder.fromUriString(url).queryParam("download", "true").toUriString();
+	}
+
+	/**
+	 * S3 hands etags back quoted, and a multipart upload's carries a {@code -<parts>}
+	 * suffix. the quotes have no business in a URL; what's left is hex and a dash, which
+	 * needs no encoding. a file written before we started recording etags has none, and
+	 * goes unversioned rather than unfetchable.
+	 */
+	private static String version(ManagedFile managedFile) {
+		if (managedFile == null || !StringUtils.hasText(managedFile.etag()))
+			return null;
+		return managedFile.etag().replace("\"", "");
 	}
 
 	@ApplicationModuleListener

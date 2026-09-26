@@ -57,6 +57,24 @@ public interface ManagedFileService {
 
 	String getPublicUrlForManagedFile(Long managedFile);
 
+	/**
+	 * a managed file's storage key never changes: one produced-audio object is
+	 * overwritten in place every time its episode is re-rendered. a bare public URL is
+	 * therefore indistinguishable from the URL of the generation before it, and a CDN (or
+	 * a browser) will go on serving the bytes it already has. the etag moves with every
+	 * write, so pinning it to the query string makes each generation a resource of its
+	 * own.
+	 */
+	String getVersionedPublicUrlForManagedFile(Long managedFile);
+
+	/**
+	 * the {@link #getVersionedPublicUrlForManagedFile versioned} URL, marked so that
+	 * following it downloads the file rather than displaying it. {@code null} for a file
+	 * with nothing written to it, or one that isn't publicly visible: there is nothing to
+	 * hand out in either case.
+	 */
+	String getDownloadableUrlForManagedFile(Long managedFile);
+
 	ManagedFile createManagedFile(Long mogulId, String folder, String fileName, long size, MediaType mediaType,
 			boolean visible);
 
