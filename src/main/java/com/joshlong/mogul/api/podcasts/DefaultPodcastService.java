@@ -681,7 +681,10 @@ class DefaultPodcastService implements PodcastService {
 	@Override
 	public void writePodcastEpisodeProducedAudio(Long episodeId, Long managedFileId) {
 		try {
-			this.managedFileService.refreshManagedFile(managedFileId);
+			// the ManagedFile has already been reconciled with what the processors
+			// module actually wrote; there is nothing left to move here, only a date to
+			// record. this used to download the whole produced episode out of S3 and
+			// push it straight back up again just to refresh one row.
 			this.db //
 				.sql("update podcast_episode set produced_audio_updated=? where id = ? ") //
 				.params(new Date(), episodeId) //

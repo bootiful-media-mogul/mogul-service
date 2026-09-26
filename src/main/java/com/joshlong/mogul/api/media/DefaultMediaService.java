@@ -11,24 +11,33 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 class DefaultMediaService implements MediaService {
 
 	/**
-	 * the name of the {@code Processor} bean over in the processors module, which is also
-	 * the name a reply for us comes back under.
+	 * the names of the {@code Processor} beans over in the processors module, which are
+	 * also the names a reply for us comes back under.
 	 */
-	static final String PROCESSOR_ID = "mediaNormalizationProcessor";
+	static final String NORMALIZATION_PROCESSOR_ID = "mediaNormalizationProcessor";
 
-	// what it never looks at, and hands back untouched
+	static final String PRODUCTION_PROCESSOR_ID = "audioProductionProcessor";
+
+	// what neither of them looks at, and both hand back untouched
 	static final String INPUT_MANAGED_FILE_ID = "inputManagedFileId";
+
 	static final String OUTPUT_MANAGED_FILE_ID = "outputManagedFileId";
 
-	// what the processor reads
+	// what the processors read
 	private static final String INPUT_BUCKET = "inputBucket";
 
 	private static final String INPUT_KEY = "inputKey";
@@ -37,11 +46,15 @@ class DefaultMediaService implements MediaService {
 
 	private static final String INPUT_CONTENT_TYPE = "inputContentType";
 
+	private static final String INPUT_BUCKETS = "inputBuckets";
+
+	private static final String INPUT_KEYS = "inputKeys";
+
 	private static final String OUTPUT_BUCKET = "outputBucket";
 
 	private static final String OUTPUT_KEY = "outputKey";
 
-	// what it writes back
+	// what they write back
 	private static final String OUTPUT_CONTENT_TYPE = "outputContentType";
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -53,6 +66,9 @@ class DefaultMediaService implements MediaService {
 	private final ApplicationEventPublisher publisher;
 
 	private final TransactionTemplate transactionTemplate;
+
+	private final Map<String, Consumer<ProcessorCompletedEvent>> processorHandlers = new ConcurrentHashMap<>(
+			Map.of(NORMALIZATION_PROCESSOR_ID, this::normalized, PRODUCTION_PROCESSOR_ID, this::produced));
 
 	DefaultMediaService(Processors processors, ManagedFileService managedFileService,
 			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate) {
@@ -77,25 +93,59 @@ class DefaultMediaService implements MediaService {
 		request.put(OUTPUT_KEY, output.key());
 		request.put(INPUT_MANAGED_FILE_ID, input.id());
 		request.put(OUTPUT_MANAGED_FILE_ID, output.id());
+		this.launch(NORMALIZATION_PROCESSOR_ID, request,
+				() -> "could not request the normalization of ManagedFile #" + input.id());
+		this.log.debug("requested the normalization of {} into {}", input.id(), output.id());
+	}
+
+	@Override
+	public void produce(List<ManagedFile> inputs, ManagedFile output, Map<String, Object> context) {
+		Assert.state(!inputs.isEmpty(), "there must be something to produce");
+		for (var input : inputs)
+			Assert.state(input.written(), () -> "ManagedFile #" + input.id() + " has nothing written to it yet");
+		var buckets = new ArrayList<String>();
+		var keys = new ArrayList<String>();
+		for (var input : inputs) {
+			buckets.add(input.bucket());
+			keys.add(input.key());
+		}
+		var request = new HashMap<>(context);
+		request.put(INPUT_BUCKETS, buckets);
+		request.put(INPUT_KEYS, keys);
+		request.put(OUTPUT_BUCKET, output.bucket());
+		request.put(OUTPUT_KEY, output.key());
+		request.put(OUTPUT_MANAGED_FILE_ID, output.id());
+		this.launch(PRODUCTION_PROCESSOR_ID, request,
+				() -> "could not request the production of ManagedFile #" + output.id());
+		this.log.debug("requested the production of {} into {}", keys, output.id());
+	}
+
+	private void launch(String processorId, Map<String, Object> request, Supplier<String> failure) {
 		try {
-			this.processors.process(PROCESSOR_ID, request);
-			this.log.debug("requested the normalization of {} into {}", input.id(), output.id());
+			this.processors.process(processorId, request);
 		} //
 		catch (Exception e) {
-			throw new RuntimeException("could not request the normalization of ManagedFile #" + input.id(), e);
+			throw new RuntimeException(failure.get(), e);
 		}
 	}
 
 	@ApplicationModuleListener
 	void onProcessorCompleted(ProcessorCompletedEvent event) {
-		if (!PROCESSOR_ID.equals(event.processorId()))
-			return;
+		Assert.notNull(event, "the ProcessorCompletedEvent must not be null");
+		if (this.processorHandlers.containsKey(event.processorId()))
+			this.processorHandlers.get(event.processorId()).accept(event);
+		else {
+			this.log.warn("no handler for ProcessorCompletedEvent with processorId {}", event.processorId());
+		}
+	}
+
+	private void normalized(ProcessorCompletedEvent event) {
 		var context = event.context();
 		var inputId = (Long) context.get(INPUT_MANAGED_FILE_ID);
 		var outputId = (Long) context.get(OUTPUT_MANAGED_FILE_ID);
 		if (!event.success()) {
 			this.log.warn("the normalization of ManagedFile #{} into #{} failed: {}", inputId, outputId,
-					StringUtils.hasText(event.error()) ? event.error() : "no reason given");
+					this.reason(event));
 			return;
 		}
 		var in = this.managedFileService.getManagedFileById(inputId);
@@ -103,9 +153,35 @@ class DefaultMediaService implements MediaService {
 		this.managedFileService.refreshManagedFileFromStorage(output.id(), output.filename(),
 				this.outputContentType(context, in));
 		var out = this.managedFileService.getManagedFileById(output.id());
-		this.transactionTemplate
-			.executeWithoutResult(_ -> this.publisher.publishEvent(new MediaNormalizedEvent(in, out, context)));
+		this.publish(new MediaNormalizedEvent(in, out, context));
 		this.log.debug("media normalization completed for {} into {}", in.id(), out.id());
+	}
+
+	private void produced(ProcessorCompletedEvent event) {
+		var context = event.context();
+		var outputId = (Long) context.get(OUTPUT_MANAGED_FILE_ID);
+		if (!event.success()) {
+			// this one is announced rather than merely logged. somebody asked for this
+			// render and is waiting on it -- a publication, most likely -- and silence
+			// leaves them waiting forever.
+			this.log.warn("the production of ManagedFile #{} failed: {}", outputId, this.reason(event));
+			this.publish(new AudioProducedEvent(this.managedFileService.getManagedFileById(outputId), false,
+					event.error(), context));
+			return;
+		}
+		var output = this.managedFileService.getManagedFileById(outputId);
+		this.managedFileService.refreshManagedFileFromStorage(output.id(), output.filename(), CommonMediaTypes.MP3);
+		var out = this.managedFileService.getManagedFileById(output.id());
+		this.publish(new AudioProducedEvent(out, true, null, context));
+		this.log.debug("audio production completed into {}", out.id());
+	}
+
+	private String reason(ProcessorCompletedEvent event) {
+		return StringUtils.hasText(event.error()) ? event.error() : "no reason given";
+	}
+
+	private void publish(Object event) {
+		this.transactionTemplate.executeWithoutResult(_ -> this.publisher.publishEvent(event));
 	}
 
 	private MediaType outputContentType(Map<String, Object> context, ManagedFile input) {

@@ -3,7 +3,6 @@ package com.joshlong.mogul.api.managedfiles;
 import com.joshlong.mogul.api.ApiProperties;
 import com.joshlong.mogul.storage.Storage;
 import com.joshlong.mogul.utils.CollectionUtils;
-import com.joshlong.mogul.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
@@ -18,13 +17,10 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -226,33 +222,6 @@ class DefaultManagedFileService implements ManagedFileService {
 	 * re-writes it, allowing us to synchronize our view of the S3 asset with the actual
 	 * state of the S3 object.
 	 */
-	@Override
-	@Transactional
-	public void refreshManagedFile(Long managedFileId) {
-		this.invalidateCache(managedFileId);
-		var managedFile = this.getManagedFileById(managedFileId);
-		var resource = this.read(managedFile.id());
-		var tmp = FileUtils.tempFileWithExtension();
-		try {
-			try (var in = resource.getInputStream(); var out = new FileOutputStream(tmp)) {
-				this.log.debug("starting download to local file [{}]", tmp.getAbsolutePath());
-				FileCopyUtils.copy(in, out);
-				this.log.debug("finished download to local file [{}]", tmp.getAbsolutePath());
-			} //
-			this.write(managedFile.id(), managedFile.filename(), CommonMediaTypes.MP3, tmp);
-		} //
-		catch (IOException e) {
-			throw new RuntimeException(
-					"could not refresh the file [" + tmp.getAbsolutePath() + "] for ManagedFile [" + managedFile + "]",
-					e);
-		} //
-		finally {
-			FileUtils.delete(tmp);
-		}
-		var mf = this.getManagedFileById(managedFileId);
-		this.log.debug("refreshed managed file {}", mf);
-	}
-
 	@Override
 	public ManagedFileDeletionRequest getManagedFileDeletionRequestById(Long managedFileDeletionRequestId) {
 		return db.sql("select * from managed_file_deletion_request where id =? ")

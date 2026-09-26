@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -39,11 +40,14 @@ class PublicationController<T extends Publishable> {
 
 	private final Map<String, PublisherPlugin<T>> plugins = new ConcurrentHashMap<>();
 
+	private final List<PublicationGate> gates;
+
 	PublicationController(Settings settings, PublicationService publicationService, MogulService mogulService,
-			Map<String, PublisherPlugin<?>> plugins) {
+			Map<String, PublisherPlugin<?>> plugins, List<PublicationGate> gates) {
 		this.publicationService = publicationService;
 		this.mogulService = mogulService;
 		this.settings = settings;
+		this.gates = gates;
 		plugins.forEach((k, v) -> this.plugins.put(k, (PublisherPlugin<T>) v));
 	}
 
@@ -88,11 +92,20 @@ class PublicationController<T extends Publishable> {
 			contextAndSettings.put(PublicationService.BASE_URL, baseUrl);
 		var attempt = this.publicationService.startPublication(currentMogulId, publishable, contextAndSettings,
 				publisherPlugin);
-		this.executor.execute(() -> {
+		// the authentication is captured here, on the request thread, because everything
+		// past this point happens on some other one -- and, if a gate takes the attempt,
+		// possibly minutes later on a thread that had nothing to do with this request.
+		var run = (Runnable) () -> this.executor.execute(() -> {
 			SecurityContextHolder.getContext().setAuthentication(auth);
 			this.mogulService.assertAuthorizedMogul(currentMogulId);
 			this.publicationService.completePublication(attempt);
 		});
+		for (var gate : this.gates)
+			if (gate.defer(attempt, run)) {
+				this.log.debug("publication {} was deferred by {}", attempt.publicationId(), gate.getClass().getName());
+				return attempt.publicationId();
+			}
+		run.run();
 		return attempt.publicationId();
 	}
 

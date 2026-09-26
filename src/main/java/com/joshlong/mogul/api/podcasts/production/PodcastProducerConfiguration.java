@@ -1,21 +1,21 @@
 package com.joshlong.mogul.api.podcasts.production;
 
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.media.AudioEncoder;
+import com.joshlong.mogul.api.media.MediaService;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.io.File;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 class PodcastProducerConfiguration {
 
 	@Bean
-	PodcastProducer podcastProducer(AudioEncoder audioEncoder, ManagedFileService managedFileService,
-			PodcastService podcastService, @Value("${mogul.podcasts.pipeline.root}") File root) {
-		return new PodcastProducer(audioEncoder, managedFileService, podcastService, root);
+	PodcastProducer podcastProducer(MediaService mediaService, ManagedFileService managedFileService,
+			PodcastService podcastService, ApplicationEventPublisher publisher,
+			TransactionTemplate transactionTemplate) {
+		return new PodcastProducer(mediaService, managedFileService, podcastService, publisher, transactionTemplate);
 	}
 
 }

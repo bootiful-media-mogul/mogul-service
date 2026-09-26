@@ -142,19 +142,35 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	@Override
 	public <T extends Publishable> Publication completePublication(PublicationAttempt<T> attempt) {
 		Assert.notNull(attempt, "the attempt must not be null");
-		var publicationId = attempt.publicationId();
-		var mogulId = attempt.mogulId();
 		var plugin = attempt.plugin();
 		var pc = attempt.publishContext();
-		var context = pc.context();
-
 		try {
 			plugin.publish(pc);
 		} //
 		catch (Throwable throwable) {
 			pc.failure(plugin.name(), throwable.getMessage());
-			this.log.warn("couldn't publish {} ", publicationId, throwable);
+			this.log.warn("couldn't publish {} ", attempt.publicationId(), throwable);
 		}
+		return this.record(attempt);
+	}
+
+	@Override
+	public <T extends Publishable> Publication failPublication(PublicationAttempt<T> attempt, String error) {
+		Assert.notNull(attempt, "the attempt must not be null");
+		this.log.warn("abandoning publication {}: {}", attempt.publicationId(), error);
+		attempt.publishContext().failure(attempt.plugin().name(), error);
+		return this.record(attempt);
+	}
+
+	/**
+	 * writes down how it went. the publication is marked finished either way -- an
+	 * attempt that stays {@code DRAFT} is one the client never stops waiting on.
+	 */
+	private <T extends Publishable> Publication record(PublicationAttempt<T> attempt) {
+		var publicationId = attempt.publicationId();
+		var mogulId = attempt.mogulId();
+		var pc = attempt.publishContext();
+		var context = pc.context();
 
 		return this.transactionTemplate.execute(_ -> {
 

@@ -13,12 +13,6 @@ public interface ManagedFileService {
 	// some files can be referenced externally, and they are said to be {@code visible}.
 	void setManagedFileVisibility(Long managedFileId, boolean visible);
 
-	/**
-	 * this will delete the record _and_ queue it up for deletion by a separate process in
-	 * S3 if required
-	 */
-	void refreshManagedFile(Long managedFileId);
-
 	Collection<ManagedFileDeletionRequest> getOutstandingManagedFileDeletionRequests();
 
 	ManagedFileDeletionRequest getManagedFileDeletionRequestById(Long managedFileDeletionRequestId);

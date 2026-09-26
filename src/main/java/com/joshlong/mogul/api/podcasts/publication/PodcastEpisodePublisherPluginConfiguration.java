@@ -1,38 +1,17 @@
 package com.joshlong.mogul.api.podcasts.publication;
 
-import org.springframework.aot.hint.RuntimeHints;
-import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.beans.factory.BeanFactory;
+import com.joshlong.mogul.api.podcasts.production.PodcastProducer;
+import com.joshlong.mogul.api.publications.PublicationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.ImportRuntimeHints;
 
 @Configuration
-@ImportRuntimeHints(PodcastEpisodePublisherPluginConfiguration.Hints.class)
 class PodcastEpisodePublisherPluginConfiguration {
 
 	@Bean
-	static ProducingPodcastPublisherPluginBeanPostProcessor podcastProducingBeanPostProcessor(BeanFactory beanFactory) {
-		return new ProducingPodcastPublisherPluginBeanPostProcessor();
-	}
-
-	static class Hints implements RuntimeHintsRegistrar {
-
-		@Override
-		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-
-			hints.proxies()
-				.registerJdkProxy(PodcastEpisodePublisherPlugin.class, org.springframework.aop.SpringProxy.class,
-						org.springframework.aop.framework.Advised.class,
-						org.springframework.core.DecoratingProxy.class);
-
-			hints.proxies()
-				.registerJdkProxy(PodcastEpisodePublisherPlugin.class,
-						org.springframework.beans.factory.BeanNameAware.class,
-						org.springframework.aop.SpringProxy.class, org.springframework.aop.framework.Advised.class,
-						org.springframework.core.DecoratingProxy.class);
-		}
-
+	ProducedAudioPublicationGate producedAudioPublicationGate(PodcastProducer podcastProducer,
+			PublicationService publicationService) {
+		return new ProducedAudioPublicationGate(podcastProducer, publicationService);
 	}
 
 }

@@ -53,6 +53,15 @@ public interface PublicationService {
 
 	<T extends Publishable> Publication completePublication(PublicationAttempt<T> attempt);
 
+	/**
+	 * abandons an attempt that never got as far as its plugin, recording why. for the
+	 * work that has to happen before a publication can run -- see {@link PublicationGate}
+	 * -- and that didn't: publishing anyway would send whatever the last render left
+	 * behind, and publishing nothing at all would leave the client waiting on a
+	 * publication that is never going to move.
+	 */
+	<T extends Publishable> Publication failPublication(PublicationAttempt<T> attempt, String error);
+
 	record PublicationAttempt<T extends Publishable>(Long publicationId, Long mogulId, PublisherPlugin<T> plugin,
 			PublisherPlugin.PublishContext<T> publishContext) {
 	}

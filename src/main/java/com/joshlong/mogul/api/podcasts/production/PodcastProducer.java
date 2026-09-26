@@ -1,153 +1,87 @@
 package com.joshlong.mogul.api.podcasts.production;
 
-import com.joshlong.mogul.api.managedfiles.CommonMediaTypes;
-import com.joshlong.mogul.api.managedfiles.ManagedFile;
 import com.joshlong.mogul.api.managedfiles.ManagedFileService;
-import com.joshlong.mogul.api.media.AudioEncoder;
+import com.joshlong.mogul.api.media.AudioProducedEvent;
+import com.joshlong.mogul.api.media.MediaService;
+import com.joshlong.mogul.api.notifications.NotificationEvent;
+import com.joshlong.mogul.api.notifications.NotificationEvents;
 import com.joshlong.mogul.api.podcasts.Episode;
 import com.joshlong.mogul.api.podcasts.PodcastService;
-import com.joshlong.mogul.utils.FileUtils;
-import com.joshlong.mogul.utils.ProcessUtils;
+import com.joshlong.mogul.api.podcasts.Segment;
+import com.joshlong.mogul.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.resilience.annotation.ConcurrencyLimit;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.FileCopyUtils;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
- * given a {@link com.joshlong.mogul.api.podcasts.Podcast}, turn this into a complete
- * audio file.
+ * turns an episode's segments into the one audio file that gets published.
  */
 public class PodcastProducer {
 
+	static final String PODCAST_EPISODE_ID = "podcastEpisodeId";
+
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final AudioEncoder audioEncoder;
+	private final MediaService mediaService;
 
 	private final ManagedFileService managedFileService;
 
 	private final PodcastService podcastService;
 
-	private final File root;
+	private final ApplicationEventPublisher publisher;
 
-	PodcastProducer(AudioEncoder audioEncoder, ManagedFileService managedFileService, PodcastService podcastService,
-			File root) {
-		this.audioEncoder = audioEncoder;
+	private final TransactionTemplate transactionTemplate;
+
+	PodcastProducer(MediaService mediaService, ManagedFileService managedFileService, PodcastService podcastService,
+			ApplicationEventPublisher publisher, TransactionTemplate transactionTemplate) {
+		this.mediaService = mediaService;
 		this.managedFileService = managedFileService;
 		this.podcastService = podcastService;
-		this.root = root;
-		Assert.notNull(this.audioEncoder, "the AudioEncoder reference is required");
+		this.publisher = publisher;
+		this.transactionTemplate = transactionTemplate;
+		Assert.notNull(this.mediaService, "the MediaService reference is required");
 		Assert.notNull(this.managedFileService, "the ManagedFileService reference is required");
-		Assert.notNull(this.root, "the root folder reference is required");
 		Assert.notNull(this.podcastService, "the PodcastService reference is required");
 	}
 
-	@ConcurrencyLimit(limitString = "${mogul.podcasts.production.concurrency:2}")
-	public ManagedFile produce(Episode episode) {
-		var managedFileRoot = new File(this.root, "managed-files-for-podcast-production");
-		var workspace = new File(managedFileRoot, episode.id() + "/" + UUID.randomUUID() + "/");
-		this.log.debug("going to produce podcast in the following workspace folder [{}]", workspace.getAbsolutePath());
-		try {
-			Assert.state(workspace.exists() || workspace.mkdirs(),
-					"the workspace directory [" + workspace.getAbsolutePath() + "] does not exist");
-			var episodeId = episode.id();
-			var segments = this.podcastService.getPodcastEpisodeSegmentsByEpisode(episodeId);
-			var segmentFiles = new ArrayList<File>();
-			for (var s : segments) {
-				var localFile = new File(workspace, Long.toString(s.producedAudio().id()));
-				this.log.debug("produced audio file name locally {}", localFile.getAbsolutePath());
-				try (var in = this.managedFileService.read(s.producedAudio().id()).getInputStream();
-						var out = new FileOutputStream(localFile)) {
-					FileCopyUtils.copy(in, out);
-					this.log.debug("downloading [{}] to [{}]", s.producedAudio().id(), localFile.getAbsolutePath());
-				} //
-				catch (IOException e) {
-					this.log.error("got an exception when downloading the file to ");
-				}
-				segmentFiles.add(localFile);
-			}
-			var producedWav = this.produce(workspace, segmentFiles.toArray(new File[0]));
-			var producedMp3 = this.audioEncoder.encode(producedWav);
-			var producedAudio = episode.producedAudio();
-			this.managedFileService.write(producedAudio.id(), producedMp3.file().getName(), CommonMediaTypes.MP3,
-					producedMp3.file());
-			this.log.debug("writing [{}]", episode.id());
-			this.podcastService.writePodcastEpisodeProducedAudio(episode.id(), producedAudio.id());
-			this.log.debug("wrote [{}]", episode.id());
-			return this.managedFileService.getManagedFileById(producedAudio.id());
-		} //
-		catch (Throwable throwable) {
-			throw new RuntimeException(throwable);
-		} //
-		finally {
-			try {
-				FileUtils.delete(workspace);
-			} //
-			catch (Exception e) {
-				log.trace("could not delete workspace directory [{}]", workspace.getAbsolutePath());
-			}
-			Assert.state(!workspace.exists(),
-					"we could not delete the temporary directory [" + workspace.getAbsolutePath() + "]");
-		}
+	public void produce(Episode episode) {
+		var segments = this.podcastService.getPodcastEpisodeSegmentsByEpisode(episode.id());
+		Assert.state(!segments.isEmpty(), () -> "episode #" + episode.id() + " has no segments to produce");
+		var inputs = segments.stream().map(Segment::producedAudio).toList();
+		var mogulId = episode.producedAudio().mogulId();
+		this.log.debug("requesting the production of episode [{}] from {} segment(s)", episode.id(), inputs.size());
+		this.mediaService.produce(inputs, episode.producedAudio(), Map.of(PODCAST_EPISODE_ID, (Object) episode.id()));
+		NotificationEvents.notifyAsync(NotificationEvent.visibleNotificationEventFor(mogulId,
+				new PodcastEpisodeRenderStartedEvent(episode.id()), Long.toString(episode.id()), null));
 	}
 
-	private File ensureWav(File workspace, File input) {
-		try {
-			var inputAbsolutePath = input.getAbsolutePath();
-			Assert.state(input.exists() && input.isFile(),
-					"the input ['" + inputAbsolutePath + "'] must be a valid, existing file");
-			var ext = "wav";
-			if (inputAbsolutePath.toLowerCase().endsWith(ext))
-				return input;
-			var wav = workspaceTempFile(workspace, ext);
-			var wavAbsolutePath = wav.getAbsolutePath();
-			var exit = ProcessUtils.runCommand("ffmpeg", "-i", inputAbsolutePath, "-acodec", "pcm_s16le", "-vn", "-f",
-					"wav", wavAbsolutePath);
-			Assert.state(exit == 0, "the ffmpeg command ran successfully");
-			return wav;
+	@ApplicationModuleListener
+	void onAudioProduced(AudioProducedEvent event) {
+		if (!(event.context().get(PODCAST_EPISODE_ID) instanceof Long episodeId))
+			return; // somebody else's render.
+		var out = event.out();
+		if (event.success()) {
+			// the bytes are in S3 and the ManagedFile row already knows it; all that is
+			// left is to let the episode say when, and to let the world at the file.
+			this.managedFileService.setManagedFileVisibility(out.id(), true);
+			this.podcastService.writePodcastEpisodeProducedAudio(episodeId, out.id());
+			this.log.debug("produced the audio for episode [{}] into ManagedFile [{}]", episodeId, out.id());
 		} //
-		catch (Exception e) {
-			throw new RuntimeException(e);
+		else {
+			this.log.warn("could not produce the audio for episode [{}]: {}", episodeId, event.error());
 		}
-	}
-
-	private File workspaceTempFile(File workspace, String ext) {
-		return new File(workspace, UUID.randomUUID() + (ext.startsWith(".") ? ext : "." + ext));
-	}
-
-	private File produce(File workspace, File... audioFiles) throws Exception {
-		Assert.state((workspace.exists() && workspace.isDirectory()) || workspace.mkdirs(),
-				"the folder root [" + workspace.getAbsolutePath() + "] does not exist");
-		var fileNames = Arrays.stream(audioFiles)
-			.parallel()
-			.peek(file -> Assert.state(file.exists() && file.isFile(),
-					"the file '" + file.getAbsolutePath() + "' does not exist"))
-			.map(file -> (file.getAbsolutePath().toLowerCase(Locale.ROOT).endsWith("wav")) ? file
-					: ensureWav(workspace, file))
-			.map(File::getAbsolutePath)
-			.map(path -> "file '" + path + "'")
-			.collect(Collectors.joining(System.lineSeparator()));
-		var filesFile = workspaceTempFile(workspace, "txt");
-		try (var out = new FileWriter(filesFile)) {
-			FileCopyUtils.copy(fileNames, out);
-		}
-		var producedWav = workspaceTempFile(workspace, "wav");
-		ProcessUtils.runCommand("ffmpeg", "-f", "concat", "-safe", "0", "-i", filesFile.getAbsolutePath(), "-c", "copy",
-				producedWav.getAbsolutePath());
-		Assert.state(producedWav.exists(),
-				"the produced audio at " + producedWav.getAbsolutePath() + " does not exist.");
-		return producedWav;
-
+		var finished = new PodcastEpisodeRenderFinishedEvent(episodeId, event.success(), event.error());
+		this.transactionTemplate.executeWithoutResult(_ -> this.publisher.publishEvent(finished));
+		// there is a publication sitting in draft waiting on this, and what the client
+		// shows next depends on which way it went, so say which.
+		var json = JsonUtils.write(Map.of("episodeId", episodeId, "success", event.success()));
+		NotificationEvents.notifyAsync(
+				NotificationEvent.visibleNotificationEventFor(out.mogulId(), finished, Long.toString(episodeId), json));
 	}
 
 }
