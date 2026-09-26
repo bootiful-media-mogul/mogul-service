@@ -19,7 +19,8 @@ class ManagedFileRowMapper implements RowMapper<ManagedFile> {
 				rs.getBoolean("written"), //
 				rs.getLong("size"), //
 				rs.getString("content_type"), //
-				rs.getBoolean("visible"));
+				rs.getBoolean("visible"), //
+				rs.getString("etag"));
 	}
 
 }

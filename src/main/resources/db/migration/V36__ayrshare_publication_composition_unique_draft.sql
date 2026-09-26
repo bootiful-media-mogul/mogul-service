@@ -23,5 +23,4 @@ where id in (select id from ranked where rn > 1);
 -- non-draft rows are the historical record of what was published, so there are
 -- legitimately many of those per platform. only the drafts are constrained.
 create unique index ayrshare_publication_composition_one_draft_per_platform_uq
-    on ayrshare_publication_composition (mogul_id, platform)
-    where draft;
+    on ayrshare_publication_composition (mogul_id, platform) where draft;

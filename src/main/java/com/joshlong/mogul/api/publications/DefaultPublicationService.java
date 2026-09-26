@@ -105,6 +105,12 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 	@Override
 	public <T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin) {
+		return this.completePublication(this.startPublication(mogulId, payload, contextAndSettings, plugin));
+	}
+
+	@Override
+	public <T extends Publishable> PublicationAttempt<T> startPublication(Long mogulId, T payload,
+			Map<String, String> contextAndSettings, PublisherPlugin<T> plugin) {
 		Assert.notNull(plugin, "the plugin must not be null");
 		Assert.notNull(payload, "the payload must not be null");
 		var configuration = this.settingsLookup.apply(new SettingsLookup(mogulId, plugin.name()));
@@ -129,7 +135,19 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		}));
 		context.put(PUBLICATION_ID, Long.toString(publicationId));
 		this.doNotify(mogulId, publicationId, new PublicationStartedEvent(this.getPublicationById(publicationId)));
-		var pc = PublisherPlugin.PublishContext.of(mogulId, payload, context);
+		return new PublicationAttempt<>(publicationId, mogulId, plugin,
+				PublisherPlugin.PublishContext.of(mogulId, payload, context));
+	}
+
+	@Override
+	public <T extends Publishable> Publication completePublication(PublicationAttempt<T> attempt) {
+		Assert.notNull(attempt, "the attempt must not be null");
+		var publicationId = attempt.publicationId();
+		var mogulId = attempt.mogulId();
+		var plugin = attempt.plugin();
+		var pc = attempt.publishContext();
+		var context = pc.context();
+
 		try {
 			plugin.publish(pc);
 		} //
@@ -138,13 +156,12 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 			this.log.warn("couldn't publish {} ", publicationId, throwable);
 		}
 
-		return this.transactionTemplate.execute((status) -> {
+		return this.transactionTemplate.execute(_ -> {
 
 			this.db.sql(" update publication set state = ? , context = ?, published = ?  where id = ?")
 				.params(Publication.State.PUBLISHED.name(), textEncryptor.encrypt(JsonUtils.write(context)), new Date(),
 						publicationId)
 				.update();
-
 			pc.outcomes().forEach((outcome) -> {
 				this.db.sql(
 						"insert into publication_outcome(publication_id, success, uri , key ,server_error_message, preview ) values (?,?,?,?,?,?)")
@@ -152,13 +169,10 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 							outcome.key(), outcome.serverErrorMessage(), outcome.preview())
 					.update();
 			});
-
 			this.doNotify(mogulId, publicationId,
 					new PublicationCompletedEvent(this.getPublicationById(publicationId)));
-
 			return this.getPublicationById(publicationId);
 		});
-
 	}
 
 	private void doNotify(Long mogulId, Long publicationId, Object event) {
@@ -189,10 +203,6 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 		var map = new HashMap<Long, Publication>();
 		var pubs = this.db //
 			.sql("select * from publication p where p.id = any(?) ") //
-			// an array, not the ids spread across the one placeholder: postgres rejects a
-			// scalar on the right of ANY outright, so this threw for every non-empty
-			// lookup. it went unnoticed because its one caller reads ayrshare drafts,
-			// whose publication ids are null and get filtered out before we get here.
 			.params(new SqlArrayValue("bigint", ids.toArray())) //
 			.query(this.getPublicationRowMapper()) //
 			.list();
@@ -228,9 +238,6 @@ class DefaultPublicationService extends AbstractDomainService<Publishable, Publi
 			results.put(key, new ArrayList<>());
 		if (keys.isEmpty())
 			return results;
-		// one query for the whole batch. the row mapper then reads every one of their
-		// outcomes in one more, so this is two queries regardless of how many
-		// publishables were asked for.
 		var payloads = keys.stream().map(key -> Long.toString(key)).toArray(String[]::new);
 		var publications = this.db //
 			.sql("select * from publication where payload = any(?) and payload_class = ? order by created desc") //

@@ -57,6 +57,10 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 		return keyed;
 	}
 
+	static boolean alreadyDispatchedFor(String sourceEtag, Transcript existing) {
+		return sourceEtag != null && existing != null && sourceEtag.equals(existing.sourceEtag());
+	}
+
 	private Transcript readThroughTranscriptionByKey(String clazz, String payloadKeyAsJson) {
 		return CollectionUtils
 			.firstOrNull(this.db.sql("select * from transcript where payload_class = ? and payload = ?")
@@ -239,6 +243,27 @@ class DefaultTranscriptService extends AbstractDomainService<Transcribable, Tran
 	void transcriptInvalidatedEvent(TranscriptInvalidatedEvent event) {
 		var repository = this.resolverFor(event.type());
 		var payload = repository.find(event.key());
+		var sourceEtag = event.sourceEtag();
+		if (sourceEtag != null) {
+			// the audio that got us here arrives over an at-least-once queue, so this can
+			// be the same recording announced twice. transcription is the most expensive
+			// thing in the system -- a full ffmpeg decode plus the model calls -- and it
+			// is worth one SELECT to find out we already started it for exactly these
+			// bytes.
+			var existing = this.transcript(event.mogulId(), payload);
+			if (alreadyDispatchedFor(sourceEtag, existing)) {
+				this.log.debug("already transcribing [{}] of {} #{}; not doing it twice", sourceEtag,
+						event.type().getName(), event.key());
+				return;
+			}
+			// claimed before dispatch, not after it completes: the duplicate delivery we
+			// are guarding against arrives while the first transcription is still
+			// running,
+			// so waiting for a result to stamp would let it straight through.
+			this.db.sql("update transcript set source_etag = ? where id = ?")
+				.params(sourceEtag, existing.id())
+				.update();
+		}
 		this.transcribe(event.mogulId(), payload, event.context());
 	}
 

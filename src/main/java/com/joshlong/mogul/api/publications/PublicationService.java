@@ -42,17 +42,20 @@ public interface PublicationService {
 
 	Collection<Publication> getPublicationsByPublicationKeyAndClass(Long publicationKey, String clazz);
 
-	/**
-	 * the batched form of {@link #getPublicationsByPublicationKeyAndClass(Long, Class)}:
-	 * every publishable in {@code publicationKeys} costs one query between them, not one
-	 * apiece. keys with no publications come back with an empty collection, so callers
-	 * don't have to null-check.
-	 */
 	Map<Long, Collection<Publication>> getPublicationsByPublicationKeysAndClass(Collection<Long> publicationKeys,
 			Class<?> clazz);
 
 	<T extends Publishable> Publication publish(Long mogulId, T payload, Map<String, String> contextAndSettings,
 			PublisherPlugin<T> plugin);
+
+	<T extends Publishable> PublicationAttempt<T> startPublication(Long mogulId, T payload,
+			Map<String, String> contextAndSettings, PublisherPlugin<T> plugin);
+
+	<T extends Publishable> Publication completePublication(PublicationAttempt<T> attempt);
+
+	record PublicationAttempt<T extends Publishable>(Long publicationId, Long mogulId, PublisherPlugin<T> plugin,
+			PublisherPlugin.PublishContext<T> publishContext) {
+	}
 
 	<T extends Publishable> Publication unpublish(Long mogulId, Publication publication, PublisherPlugin<T> plugin);
 

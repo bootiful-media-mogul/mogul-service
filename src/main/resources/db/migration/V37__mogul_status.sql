@@ -13,12 +13,29 @@
 
 create table if not exists mogul_status
 (
-    id       serial primary key,
-    mogul_id bigint    not null references mogul (id),
-    date     date      not null,
-    created  timestamp not null default now(),
-    unique (mogul_id, date)
-);
+    id
+    serial
+    primary
+    key,
+    mogul_id
+    bigint
+    not
+    null
+    references
+    mogul
+(
+    id
+),
+    date date not null,
+    created timestamp not null default now
+(
+),
+    unique
+(
+    mogul_id,
+    date
+)
+    );
 
 -- rows are created lazily, the first time a mogul does something on a given day.
 -- pre-creating one per mogul per day would just relocate the unbounded growth we
@@ -34,16 +51,15 @@ create table if not exists mogul_status
 insert into mogul_status (mogul_id, date)
 select distinct p.mogul_id, p.created::date
 from publication p
-where p.payload_class = 'com.joshlong.mogul.api.mogul.Mogul'
-on conflict (mogul_id, date) do nothing;
+where p.payload_class = 'com.joshlong.mogul.api.mogul.Mogul' on conflict (mogul_id, date) do nothing;
 
 update publication p
-set payload       = ms.id::text,
+set payload = ms.id::text,
     payload_class = 'com.joshlong.mogul.api.mogul.MogulStatus'
 from mogul_status ms
 where p.payload_class = 'com.joshlong.mogul.api.mogul.Mogul'
   and ms.mogul_id = p.mogul_id
-  and ms.date = p.created::date;
+  and ms.date = p.created:: date;
 
 -- nothing to do to ayrshare_publication_composition: it reaches a mogul_status
 -- the same way it reaches a post or an episode, through publication_id and the

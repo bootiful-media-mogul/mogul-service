@@ -9,7 +9,7 @@ import java.util.Date;
 import static com.joshlong.mogul.api.managedfiles.DefaultManagedFileService.visibleBucketFor;
 
 public record ManagedFile(Long mogulId, Long id, String bucket, String storageFilename, String folder, String filename,
-		Date created, boolean written, long size, String contentType, boolean visible) {
+		Date created, boolean written, long size, String contentType, boolean visible, String etag) {
 
 	public File uniqueLocalFile() {
 		var extension = "";
@@ -20,6 +20,14 @@ public record ManagedFile(Long mogulId, Long id, String bucket, String storageFi
 				extension = extension.substring(1);
 		}
 		return FileUtils.tempFile("managed-files-" + id, extension);
+	}
+
+	/**
+	 * the key the bytes live under inside {@link #bucket()}. the {@code processors}
+	 * module is handed this and the bucket, and nothing else about the file.
+	 */
+	public String key() {
+		return this.folder() + '/' + this.storageFilename();
 	}
 
 	public String visibleBucket() {

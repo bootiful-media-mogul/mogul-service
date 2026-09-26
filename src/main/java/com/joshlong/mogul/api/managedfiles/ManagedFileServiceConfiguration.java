@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.managedfiles;
 
 import com.joshlong.mogul.api.ApiProperties;
+import com.joshlong.mogul.storage.Storage;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;

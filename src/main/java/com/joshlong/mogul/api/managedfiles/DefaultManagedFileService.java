@@ -1,6 +1,7 @@
 package com.joshlong.mogul.api.managedfiles;
 
 import com.joshlong.mogul.api.ApiProperties;
+import com.joshlong.mogul.storage.Storage;
 import com.joshlong.mogul.utils.CollectionUtils;
 import com.joshlong.mogul.utils.FileUtils;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -101,6 +103,40 @@ class DefaultManagedFileService implements ManagedFileService {
 		return url;
 	}
 
+	@Override
+	public String getVersionedPublicUrlForManagedFile(Long managedFileId) {
+		var url = this.getPublicUrlForManagedFile(managedFileId);
+		if (url == null)
+			return null;
+		var version = version(this.getManagedFileById(managedFileId));
+		if (version == null)
+			return url;
+		return UriComponentsBuilder.fromUriString(url).queryParam("v", version).toUriString();
+	}
+
+	@Override
+	public String getDownloadableUrlForManagedFile(Long managedFileId) {
+		var managedFile = this.getManagedFileById(managedFileId);
+		if (managedFile == null || !managedFile.written() || !managedFile.visible())
+			return null;
+		var url = this.getVersionedPublicUrlForManagedFile(managedFileId);
+		if (url == null)
+			return null;
+		return UriComponentsBuilder.fromUriString(url).queryParam("download", "true").toUriString();
+	}
+
+	/**
+	 * S3 hands etags back quoted, and a multipart upload's carries a {@code -<parts>}
+	 * suffix. the quotes have no business in a URL; what's left is hex and a dash, which
+	 * needs no encoding. a file written before we started recording etags has none, and
+	 * goes unversioned rather than unfetchable.
+	 */
+	private static String version(ManagedFile managedFile) {
+		if (managedFile == null || !StringUtils.hasText(managedFile.etag()))
+			return null;
+		return managedFile.etag().replace("\"", "");
+	}
+
 	@ApplicationModuleListener
 	void onManagedFileUpdated(ManagedFileUpdatedEvent event) {
 		var managedFile = event.managedFile();
@@ -134,11 +170,37 @@ class DefaultManagedFileService implements ManagedFileService {
 		var managedFile = this.getManagedFileById(managedFileId);
 		var bucket = managedFile.bucket();
 		var folder = managedFile.folder();
-		this.storage.write(bucket, this.fqn(folder, managedFile.storageFilename()), resource, mediaType);
+		var fqn = this.fqn(folder, managedFile.storageFilename());
+		this.storage.write(bucket, fqn, resource, mediaType);
 		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
 		this.db //
-			.sql("update managed_file set filename = ?, content_type = ?, written = true, size = ? where id= ?") //
-			.params(filename, clientMediaType.toString(), contentLength(resource), managedFileId) //
+			.sql("update managed_file set filename = ?, content_type = ?, written = true, size = ?, etag = ? where id= ?") //
+			.params(filename, clientMediaType.toString(), contentLength(resource), this.etag(bucket, fqn),
+					managedFileId) //
+			.update();
+		this.invalidateCache(managedFileId);
+		var freshManagedFile = this.getManagedFileById(managedFileId);
+		this.transactionTemplate.execute(_ -> {
+			this.publisher.publishEvent(new ManagedFileUpdatedEvent(freshManagedFile));
+			return null;
+		});
+	}
+
+	@Override
+	public void refreshManagedFileFromStorage(Long managedFileId, String filename, MediaType mediaType) {
+		var managedFile = this.getManagedFileById(managedFileId);
+		var fqn = this.fqn(managedFile.folder(), managedFile.storageFilename());
+		var bucket = managedFile.bucket();
+		// don't take the writer's word for it. a reply that says the work succeeded and a
+		// bucket that has the bytes in it are two different claims, and only the second
+		// one is worth marking the file written over.
+		Assert.state(this.storage.exists(bucket, fqn),
+				() -> "the object [" + bucket + "/" + fqn + "] for ManagedFile #" + managedFileId + " is not in S3");
+		var clientMediaType = mediaType == null ? CommonMediaTypes.BINARY : mediaType;
+		var metadata = this.storage.metadata(bucket, fqn);
+		this.db //
+			.sql("update managed_file set filename = ?, content_type = ?, written = true, size = ?, etag = ? where id= ?") //
+			.params(filename, clientMediaType.toString(), metadata.contentLength(), metadata.etag(), managedFileId) //
 			.update();
 		this.invalidateCache(managedFileId);
 		var freshManagedFile = this.getManagedFileById(managedFileId);
@@ -253,6 +315,23 @@ class DefaultManagedFileService implements ManagedFileService {
 		var fn = this.fqn(mf.folder(), mf.storageFilename());
 		var bucket = mf.bucket();
 		return this.storage.read(bucket, fn);
+	}
+
+	/**
+	 * the identifier for the bytes we just wrote, which is what lets work keyed to this
+	 * file tell whether it has already been done. worth one HEAD: the alternative is
+	 * paying for a whole transcription to find out nothing changed.
+	 */
+	private String etag(String bucket, String fqn) {
+		try {
+			return this.storage.metadata(bucket, fqn).etag();
+		} //
+		catch (Throwable throwable) {
+			// a missing etag costs a redundant transcription, not a wrong one, so it is
+			// not worth failing a completed upload over.
+			this.log.warn("could not read the etag for [{}/{}]", bucket, fqn, throwable);
+			return null;
+		}
 	}
 
 	private long contentLength(Resource resource) {

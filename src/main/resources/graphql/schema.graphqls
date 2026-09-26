@@ -265,10 +265,12 @@ type Mutation {
     writeTranscript(transcriptId:Int, transcript:String) : Boolean
     refreshTranscript(transcriptId :Int) : Boolean
 
+    # mogul
+    setMogulTimeZone( timeZone: String ) : Boolean
+
     # publicationService
     unpublish( publicationId: Int ) : Boolean
-    setMogulTimeZone( timeZone: String ) : Boolean
-    publish( publishableId: Int, publishableType: String, contextJson: String, plugin: String ) : Boolean
+    publish( publishableId: Int, publishableType: String, contextJson: String, plugin: String ) : Int
 
     # compositions
     createCompositionAttachment( compositionId: Int ) : Attachment

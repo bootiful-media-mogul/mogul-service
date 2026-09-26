@@ -6,8 +6,8 @@ import java.io.File;
 import java.net.URI;
 
 @ConfigurationProperties(prefix = "mogul")
-public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Media media, Podcasts podcasts,
-		Cache cache, Feeds feeds, Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
+public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts transcripts, Podcasts podcasts, Cache cache,
+		Feeds feeds, Amqp amqp, Notifications notifications, Settings settings, boolean debug) {
 
 	public record Feeds(String elementPrefix, String namespace) {
 	}
@@ -37,16 +37,6 @@ public record ApiProperties(Aws aws, ManagedFiles managedFiles, Transcripts tran
 
 	public record Aws(String accessKey, String accessKeySecret, String region, Cloudfront cloudfront) {
 		public record Cloudfront(URI domain) {
-		}
-	}
-
-	/**
-	 * {@code concurrency} bounds how many media files are normalized at once. every
-	 * normalization forks {@code ffmpeg} or {@code magick}, so left unbounded a burst of
-	 * uploads turns straight into a burst of subprocesses.
-	 */
-	public record Media(Normalization normalization) {
-		public record Normalization(int concurrency) {
 		}
 	}
 

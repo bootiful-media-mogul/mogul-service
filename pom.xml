@@ -11,7 +11,7 @@
     <groupId>com.joshlong.mogul</groupId>
     <artifactId>api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>mogul-service</name>
+    <name>api</name>
     <properties>
         <java.version>25</java.version>
         <tika.version>3.2.3</tika.version>
@@ -26,9 +26,9 @@
             <version>1.5.0</version>
         </dependency>
         <dependency>
-            <groupId>org.jobrunr</groupId>
-            <artifactId>jobrunr-spring-boot-4-starter</artifactId>
-            <version>8.7.0</version>
+            <groupId>com.joshlong.mogul</groupId>
+            <artifactId>jobrunr</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
@@ -171,6 +171,11 @@
             <artifactId>spring-modulith-events-messaging</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.joshlong.mogul</groupId>
+            <artifactId>storage</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
@@ -182,6 +187,10 @@
         <dependency>
             <groupId>org.springframework.integration</groupId>
             <artifactId>spring-integration-amqp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
