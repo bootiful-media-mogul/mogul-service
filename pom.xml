@@ -11,7 +11,7 @@
     <groupId>com.joshlong.mogul</groupId>
     <artifactId>api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>mogul-service</name>
+    <name>api</name>
     <properties>
         <java.version>25</java.version>
         <tika.version>3.2.3</tika.version>
@@ -26,9 +26,9 @@
             <version>1.5.0</version>
         </dependency>
         <dependency>
-            <groupId>org.jobrunr</groupId>
-            <artifactId>jobrunr-spring-boot-4-starter</artifactId>
-            <version>8.7.0</version>
+            <groupId>com.joshlong.mogul</groupId>
+            <artifactId>jobrunr</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
